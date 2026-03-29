@@ -10,12 +10,12 @@ struct StartTabView: View {
     @State private var showAbout: Bool = false
     @State private var lformType: LocationFormType? // For adding/updating locations
     @State private var showActivitiesManager: Bool = false
-    @State private var showOtherCities: Bool = false // NEW: For Other cities view
-    @State private var showBackupExport: Bool = false // NEW: For backup/import
-    @State private var showFirstLaunchWizard: Bool = false // NEW: For first launch wizard
-    @State private var showTripsManagement: Bool = false // NEW: For trips management
-    @State private var showDefaultLocation: Bool = false // NEW: For default location settings
-    @State private var showImportGolfshot: Bool = false // NEW: For Golfshot CSV import
+    @State private var showBackupExport: Bool = false // For backup/import
+    @State private var showFirstLaunchWizard: Bool = false // For first launch wizard
+    @State private var showTripsManagement: Bool = false // For trips management
+    @State private var showImportGolfshot: Bool = false // For Golfshot CSV import
+    @State private var showLocationsManagement: Bool = false // For managing locations
+    @State private var showTravelHistory: Bool = false // For comprehensive travel history
     
     var body: some View {
         NavigationStack {
@@ -24,7 +24,7 @@ struct StartTabView: View {
                 HomeView(
                     onAddEvent: { selection = 1 },
                     onAddLocation: { lformType = .new },
-                    onShowOtherCities: { showOtherCities = true },
+                    onShowOtherCities: { showTravelHistory = true }, // Now opens Travel History
                     onOpenCalendar: { selection = 1 },
                     onOpenLocations: { selection = 3 },
                     onOpenInfographics: { selection = 4 }
@@ -80,13 +80,20 @@ struct StartTabView: View {
                             Label("About LocTrac", systemImage: "info.circle")
                         }
                         
+                        // Travel History option (moved here)
+                        Button {
+                            showTravelHistory = true
+                        } label: {
+                            Label("Travel History", systemImage: "airplane.departure")
+                        }
+                        
                         Divider()
                         
-                        // Add Location option
+                        // Manage Locations option
                         Button {
-                            lformType = .new
+                            showLocationsManagement = true
                         } label: {
-                            Label("Add Location", systemImage: "plus.circle")
+                            Label("Manage Locations", systemImage: "map")
                         }
                         
                         Button {
@@ -101,37 +108,13 @@ struct StartTabView: View {
                             Label("Manage Trips", systemImage: "airplane")
                         }
                         
-                        Button {
-                            showDefaultLocation = true
-                        } label: {
-                            Label("Default Location", systemImage: "mappin.circle")
-                        }
-                        
                         Divider()
                         
-                        // Import Golfshot CSV
-                        Button {
-                            showImportGolfshot = true
-                        } label: {
-                            Label("Import Golfshot CSV…", systemImage: "tray.and.arrow.down")
-                        }
-                        
-                        // Backup & Import option (renamed)
+                        // Backup & Import option
                         Button {
                             showBackupExport = true
                         } label: {
                             Label("Backup & Import", systemImage: "square.and.arrow.up")
-                        }
-                        
-                        Divider()
-                        
-                        // View Other Cities option
-                        if store.locations.contains(where: { $0.name == "Other" }) {
-                            Button {
-                                showOtherCities = true
-                            } label: {
-                                Label("View Other Cities", systemImage: "mappin.and.ellipse")
-                            }
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -151,12 +134,12 @@ struct StartTabView: View {
                 ActivitiesMaintenanceView()
                     .environmentObject(store)
             }
-            .sheet(isPresented: $showTripsManagement) {
-                TripsManagementView()
+            .sheet(isPresented: $showLocationsManagement) {
+                LocationsManagementView()
                     .environmentObject(store)
             }
-            .sheet(isPresented: $showDefaultLocation) {
-                DefaultLocationSettingsView()
+            .sheet(isPresented: $showTripsManagement) {
+                TripsManagementView()
                     .environmentObject(store)
             }
             .sheet(isPresented: $showBackupExport) {
@@ -168,23 +151,9 @@ struct StartTabView: View {
                 ImportGolfshotView(isPresented: $showImportGolfshot)
                     .environmentObject(store)
             }
-            .sheet(isPresented: $showOtherCities) {
-                if store.locations.contains(where: { $0.name == "Other" }),
-                   let otherLocation = store.locations.first(where: { $0.name == "Other" }) {
-                    NavigationStack {
-                        OtherCitiesListView(location: otherLocation)
-                            .environmentObject(store)
-                            .navigationTitle("Other Cities & Dates")
-                            .navigationBarTitleDisplayMode(.inline)
-                            .toolbar {
-                                ToolbarItem(placement: .navigationBarTrailing) {
-                                    Button("Done") {
-                                        showOtherCities = false
-                                    }
-                                }
-                            }
-                    }
-                }
+            .sheet(isPresented: $showTravelHistory) {
+                TravelHistoryView()
+                    .environmentObject(store)
             }
         }
     }

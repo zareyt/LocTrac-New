@@ -17,6 +17,10 @@
 		3D065F5329DD023D0078E77A /* LocationsMapViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D065F5229DD023D0078E77A /* LocationsMapViewModel.swift */; };
 		3D09FBD72EF61324001376B9 /* AboutLocTracView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D09FBD62EF61313001376B9 /* AboutLocTracView.swift */; };
 		3D09FBD92EF61F89001376B9 /* OtherCitiesListView.swift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D09FBD82EF61F6E001376B9 /* OtherCitiesListView.swift.swift */; };
+		3D1E00172F7997E7004BC4D3 /* TravelHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D1E00162F7997E7004BC4D3 /* TravelHistoryView.swift */; };
+		3D1E00192F799914004BC4D3 /* TRAVEL_HISTORY_BUILD_FIX.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D1E00182F799914004BC4D3 /* TRAVEL_HISTORY_BUILD_FIX.md */; };
+		3D1E001B2F799AF9004BC4D3 /* TRAVEL_HISTORY_PERFORMANCE_FIX.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D1E001A2F799AF9004BC4D3 /* TRAVEL_HISTORY_PERFORMANCE_FIX.md */; };
+		3D1E001D2F799F2A004BC4D3 /* TRAVEL_HISTORY_FINAL_FIXES.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D1E001C2F799F2A004BC4D3 /* TRAVEL_HISTORY_FINAL_FIXES.md */; };
 		3D32CE772F6F112500CEC497 /* ReverseGeocoderHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D32CE762F6F112500CEC497 /* ReverseGeocoderHelper.swift */; };
 		3D32CE7F2F6F270C00CEC497 /* COUNTRY_INITIALIZATION_GUIDE.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D32CE7E2F6F270C00CEC497 /* COUNTRY_INITIALIZATION_GUIDE.md */; };
 		3D32CE812F6F28DD00CEC497 /* DEBUGGING_COUNTRY_LOADING.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D32CE802F6F28DD00CEC497 /* DEBUGGING_COUNTRY_LOADING.md */; };
@@ -171,6 +175,16 @@
 		3D065F5229DD023D0078E77A /* LocationsMapViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LocationsMapViewModel.swift; sourceTree = "<group>"; };
 		3D09FBD62EF61313001376B9 /* AboutLocTracView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutLocTracView.swift; sourceTree = "<group>"; };
 		3D09FBD82EF61F6E001376B9 /* OtherCitiesListView.swift.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtherCitiesListView.swift.swift; sourceTree = "<group>"; };
+		3D1E00162F7997E7004BC4D3 /* TravelHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelHistoryView.swift; sourceTree = "<group>"; };
+		3D1E00182F799914004BC4D3 /* TRAVEL_HISTORY_BUILD_FIX.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TRAVEL_HISTORY_BUILD_FIX.md; sourceTree = "<group>"; };
+		3D1E001A2F799AF9004BC4D3 /* TRAVEL_HISTORY_PERFORMANCE_FIX.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TRAVEL_HISTORY_PERFORMANCE_FIX.md; sourceTree = "<group>"; };
+		3D1E001C2F799F2A004BC4D3 /* TRAVEL_HISTORY_FINAL_FIXES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TRAVEL_HISTORY_FINAL_FIXES.md; sourceTree = "<group>"; };
+		3D1E001E2F79E00D004BC4D3 /* EventCountryGeocoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventCountryGeocoder.swift; sourceTree = "<group>"; };
+		3D1E001F2F79E055004BC4D3 /* VERSION_1.1_RELEASE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = VERSION_1.1_RELEASE.md; sourceTree = "<group>"; };
+		3D1E00202F79E089004BC4D3 /* GIT_COMMIT_SUMMARY_V1.1.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GIT_COMMIT_SUMMARY_V1.1.md; sourceTree = "<group>"; };
+		3D1E00212F79E0BB004BC4D3 /* CHANGELOG.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
+		3D1E00222F79E0F7004BC4D3 /* VERSION_1.1_SUMMARY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = VERSION_1.1_SUMMARY.md; sourceTree = "<group>"; };
+		3D1E00232F79E0FD004BC4D3 /* V1.1_QUICK_CARD.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = V1.1_QUICK_CARD.md; sourceTree = "<group>"; };
 		3D32CE762F6F112500CEC497 /* ReverseGeocoderHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReverseGeocoderHelper.swift; sourceTree = "<group>"; };
 		3D32CE7E2F6F270C00CEC497 /* COUNTRY_INITIALIZATION_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = COUNTRY_INITIALIZATION_GUIDE.md; sourceTree = "<group>"; };
 		3D32CE802F6F28DD00CEC497 /* DEBUGGING_COUNTRY_LOADING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DEBUGGING_COUNTRY_LOADING.md; sourceTree = "<group>"; };
@@ -460,6 +474,12 @@
 			children = (
 				3DD0AA8729A6EA0C003625C1 /* LocTrac */,
 				3DD0AA8629A6EA0C003625C1 /* Products */,
+				3D1E001E2F79E00D004BC4D3 /* EventCountryGeocoder.swift */,
+				3D1E001F2F79E055004BC4D3 /* VERSION_1.1_RELEASE.md */,
+				3D1E00202F79E089004BC4D3 /* GIT_COMMIT_SUMMARY_V1.1.md */,
+				3D1E00212F79E0BB004BC4D3 /* CHANGELOG.md */,
+				3D1E00222F79E0F7004BC4D3 /* VERSION_1.1_SUMMARY.md */,
+				3D1E00232F79E0FD004BC4D3 /* V1.1_QUICK_CARD.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -527,6 +547,7 @@
 				3D6E85A82F78F9050090F594 /* InfographicsView.swift */,
 				3DD4F89F2F7821CB00AD9370 /* HomeView.swift */,
 				3D09FBD62EF61313001376B9 /* AboutLocTracView.swift */,
+				3D1E00162F7997E7004BC4D3 /* TravelHistoryView.swift */,
 				3D065F4729DD01FC0078E77A /* MapView */,
 				3D481E9329B8DB0E0016C6ED /* ThemePicker.swift */,
 				3D481E9529B8DC8D0016C6ED /* ThemeView.swift */,
@@ -535,6 +556,9 @@
 				3DD0AAA629A6EAD1003625C1 /* EditUpdateView */,
 				3DD0AAB129A6EAD1003625C1 /* CalendarViewTab */,
 				3DD0AAB529A6EAD1003625C1 /* ListView Tab */,
+				3D1E00182F799914004BC4D3 /* TRAVEL_HISTORY_BUILD_FIX.md */,
+				3D1E001A2F799AF9004BC4D3 /* TRAVEL_HISTORY_PERFORMANCE_FIX.md */,
+				3D1E001C2F799F2A004BC4D3 /* TRAVEL_HISTORY_FINAL_FIXES.md */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -680,6 +704,7 @@
 				3D551E9B2F79031F0092B775 /* RELEASE_4.2_CHECKLIST.md in Resources */,
 				3DB4B3482F749E3600E0A42C /* CLEANUP_IMPROVEMENTS.md in Resources */,
 				3D98ECAC2F74328900C5B8C0 /* EVENT_FORM_MODERNIZATION.md in Resources */,
+				3D1E001B2F799AF9004BC4D3 /* TRAVEL_HISTORY_PERFORMANCE_FIX.md in Resources */,
 				3DD0AA9029A6EA0E003625C1 /* Preview Assets.xcassets in Resources */,
 				3D5176A62F71DCBA00231C27 /* QUICK_FIX_SUMMARY.md in Resources */,
 				3D98ECAE2F74343B00C5B8C0 /* EVENT_FORM_UPDATES.md in Resources */,
@@ -704,6 +729,7 @@
 				3D32CE7F2F6F270C00CEC497 /* COUNTRY_INITIALIZATION_GUIDE.md in Resources */,
 				3DB4B33A2F74819100E0A42C /* LOCATION_MANAGEMENT_GUIDE.md in Resources */,
 				3DEB4FFB2F706FE6004B6339 /* UNIFIED_VIEW_BUG_FIXES.md in Resources */,
+				3D1E001D2F799F2A004BC4D3 /* TRAVEL_HISTORY_FINAL_FIXES.md in Resources */,
 				3DEB4FFD2F70738A004B6339 /* MAP_VIEW_SIMPLIFICATION.md in Resources */,
 				3DEB500B2F707D1D004B6339 /* FINAL_MAP_DESIGN.md in Resources */,
 				3DEB4FF92F7063A9004B6339 /* LOCATIONS_UNIFIED_VIEW_GUIDE.md in Resources */,
@@ -741,6 +767,7 @@
 				3D5176A22F71DC6A00231C27 /* INFOPLIST_SETUP_REQUIRED.md in Resources */,
 				3DEB50172F7090F0004B6339 /* TRAVEL_JOURNEY_QUICKSTART.md in Resources */,
 				3D32CE812F6F28DD00CEC497 /* DEBUGGING_COUNTRY_LOADING.md in Resources */,
+				3D1E00192F799914004BC4D3 /* TRAVEL_HISTORY_BUILD_FIX.md in Resources */,
 				3D98ECA62F74301E00C5B8C0 /* BUILD_FIXES.md in Resources */,
 				3DDD0BE82F76CF9F00B2E5EB /* SWAP_TOGGLE_FEATURE.md in Resources */,
 				3D5176C22F7334F700231C27 /* INFOGRAPHICS_OPTIMIZATION.md in Resources */,
@@ -795,6 +822,7 @@
 				3D46AC422F43D0FC001374DE /* ContactsSearchPicker.swift in Sources */,
 				3DD0AAC429A6EAD1003625C1 /* EventsCalendarView.swift in Sources */,
 				3DEB4FF72F70634A004B6339 /* LocationsUnifiedView.swift in Sources */,
+				3D1E00172F7997E7004BC4D3 /* TravelHistoryView.swift in Sources */,
 				3DD0AA8B29A6EA0C003625C1 /* ContentView.swift in Sources */,
 				3DB4B3422F74824A00E0A42C /* LOCATION_MANAGEMENT_VISUAL_GUIDE.swift in Sources */,
 				3D09FBD72EF61324001376B9 /* AboutLocTracView.swift in Sources */,
@@ -981,7 +1009,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 4.1;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = TimOrg.LocTrac;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1018,7 +1046,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 4.1;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = TimOrg.LocTrac;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

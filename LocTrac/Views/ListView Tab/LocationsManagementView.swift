@@ -15,6 +15,7 @@ struct LocationsManagementView: View {
     @State private var selectedLocation: Location?
     @State private var showingLocationEditor = false
     @State private var sortOrder: SortOrder = .alphabetical
+    @AppStorage("defaultLocationID") private var defaultLocationID: String = ""
     
     enum SortOrder: String, CaseIterable {
         case alphabetical = "A-Z"
@@ -66,23 +67,36 @@ struct LocationsManagementView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
+            List {
+                // Default Location Section
+                defaultLocationSection
+                
                 // Search bar
-                searchBar
+                Section {
+                    searchBar
+                }
                 
                 // Sort options
-                sortSection
+                Section {
+                    sortSection
+                }
                 
                 // Stats
-                statsSection
+                Section {
+                    statsSection
+                }
                 
-                // Locations list
+                // Locations list sections
                 if filteredLocations.isEmpty {
-                    emptyState
+                    Section {
+                        emptyState
+                    }
                 } else {
-                    locationsList
+                    locationsListSections
                 }
             }
+            .listStyle(.insetGrouped)
+            .searchable(text: $searchText, prompt: "Search locations...")
             .navigationTitle("Manage Locations")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -101,67 +115,146 @@ struct LocationsManagementView: View {
                 }
             }
             .sheet(item: $selectedLocation) { location in
-                LocationEditorSheet(location: location, isDefault: store.isDefaultLocation(location))
+                LocationEditorSheet(location: location)
                     .environmentObject(store)
             }
             .sheet(isPresented: $showingLocationEditor) {
-                // New location editor with default option
-                NewLocationWithDefaultSheet()
+                // Use standard location form
+                LocationFormView(viewModel: LocationFormViewModel())
                     .environmentObject(store)
             }
+        }
+    }
+    
+    // MARK: - Default Location Section
+    private var defaultLocationSection: some View {
+        Section {
+            // Default Location Picker
+            Picker("Default Location", selection: $defaultLocationID) {
+                Text("None").tag("")
+                ForEach(store.locations.filter { $0.name != "Other" }) { location in
+                    HStack {
+                        Circle()
+                            .fill(location.theme.mainColor)
+                            .frame(width: 12, height: 12)
+                        Text(location.name)
+                    }
+                    .tag(location.id)
+                }
+            }
+            
+            // Current Default Display or Empty State
+            if !defaultLocationID.isEmpty,
+               let defaultLocation = store.locations.first(where: { $0.id == defaultLocationID }) {
+                // Current Default
+                HStack(spacing: 16) {
+                    Circle()
+                        .fill(defaultLocation.theme.mainColor)
+                        .frame(width: 50, height: 50)
+                        .overlay(
+                            Image(systemName: "mappin.circle.fill")
+                                .foregroundColor(.white)
+                                .font(.title2)
+                        )
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(defaultLocation.name)
+                            .font(.headline)
+                        if let city = defaultLocation.city {
+                            Text(city)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        if let country = defaultLocation.country {
+                            Text(country)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                        .font(.title2)
+                }
+                .padding(.vertical, 8)
+                
+                // Clear button
+                Button(role: .destructive) {
+                    defaultLocationID = ""
+                } label: {
+                    Label("Clear Default Location", systemImage: "xmark.circle")
+                }
+            } else {
+                // No default set
+                VStack(spacing: 12) {
+                    Image(systemName: "mappin.slash.circle")
+                        .font(.system(size: 48))
+                        .foregroundColor(.gray)
+                    Text("No Default Location Set")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    Text("Select a location above to set it as default")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+            }
+            
+            // Benefits Info
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Benefits", systemImage: "star.fill")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.orange)
+                
+                InfoRow(icon: "bolt.fill", text: "Faster event creation", color: .blue)
+                InfoRow(icon: "checkmark.circle.fill", text: "Consistent data entry", color: .green)
+                InfoRow(icon: "house.fill", text: "Home location always ready", color: .purple)
+                InfoRow(icon: "square.and.arrow.up.fill", text: "Can override when traveling", color: .orange)
+            }
+            .padding(.vertical, 8)
+        } header: {
+            Label("Default Location", systemImage: "mappin.circle.fill")
+        } footer: {
+            Text("This location will be automatically selected when creating new events.")
         }
     }
     
     private var searchBar: some View {
-        HStack {
-            Image(systemName: "magnifyingglass")
-                .foregroundColor(.gray)
-            TextField("Search locations...", text: $searchText)
-                .textFieldStyle(.plain)
-            if !searchText.isEmpty {
-                Button {
-                    searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.gray)
-                }
-            }
-        }
-        .padding(8)
-        .background(Color(.systemGray6))
-        .cornerRadius(10)
-        .padding()
+        // Search is now handled by .searchable modifier on the List
+        EmptyView()
     }
     
     private var sortSection: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                ForEach(SortOrder.allCases, id: \.self) { order in
-                    Button {
-                        withAnimation(.spring(response: 0.3)) {
-                            sortOrder = order
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: order.icon)
-                                .font(.caption)
-                            Text(order.rawValue)
-                                .font(.subheadline)
-                        }
-                        .fontWeight(sortOrder == order ? .semibold : .regular)
-                        .foregroundColor(sortOrder == order ? .white : .primary)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 20)
-                                .fill(sortOrder == order ? Color.blue : Color(.tertiarySystemBackground))
-                        )
+        HStack(spacing: 12) {
+            ForEach(SortOrder.allCases, id: \.self) { order in
+                Button {
+                    withAnimation(.spring(response: 0.3)) {
+                        sortOrder = order
                     }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: order.icon)
+                            .font(.caption)
+                        Text(order.rawValue)
+                            .font(.subheadline)
+                    }
+                    .fontWeight(sortOrder == order ? .semibold : .regular)
+                    .foregroundColor(sortOrder == order ? .white : .primary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(sortOrder == order ? Color.blue : Color(.tertiarySystemBackground))
+                    )
                 }
             }
-            .padding(.horizontal)
         }
-        .padding(.bottom, 8)
+        .frame(maxWidth: .infinity)
     }
     
     private var statsSection: some View {
@@ -170,21 +263,17 @@ struct LocationsManagementView: View {
             StatBox(title: "Countries", value: "\(Set(filteredLocations.compactMap { $0.country }).count)", color: .green)
             StatBox(title: "Events", value: "\(store.events.count)", color: .orange)
         }
-        .padding()
-        .background(Color(.secondarySystemBackground))
     }
     
-    private var locationsList: some View {
-        List {
+    private var locationsListSections: some View {
+        Group {
             if sortOrder == .country {
                 ForEach(locationsByCountry, id: \.country) { section in
                     Section(header: Text(section.country)) {
                         ForEach(section.locations) { location in
                             LocationManagementRow(
                                 location: location,
-                                store: store,
-                                isDefault: store.isDefaultLocation(location),
-                                onSetDefault: { setDefaultLocation(location) }
+                                store: store
                             )
                             .contentShape(Rectangle())
                             .onTapGesture {
@@ -197,22 +286,21 @@ struct LocationsManagementView: View {
                     }
                 }
             } else {
-                ForEach(filteredLocations) { location in
-                    LocationManagementRow(
-                        location: location,
-                        store: store,
-                        isDefault: store.isDefaultLocation(location),
-                        onSetDefault: { setDefaultLocation(location) }
-                    )
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        selectedLocation = location
+                Section {
+                    ForEach(filteredLocations) { location in
+                        LocationManagementRow(
+                            location: location,
+                            store: store
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            selectedLocation = location
+                        }
                     }
+                    .onDelete(perform: deleteFilteredLocations)
                 }
-                .onDelete(perform: deleteFilteredLocations)
             }
         }
-        .listStyle(.plain)
     }
     
     private var emptyState: some View {
@@ -240,10 +328,6 @@ struct LocationsManagementView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
-    private func setDefaultLocation(_ location: Location) {
-        store.setDefaultLocation(location)
-    }
-    
     private func deleteFilteredLocations(at offsets: IndexSet) {
         for index in offsets {
             let location = filteredLocations[index]
@@ -253,11 +337,6 @@ struct LocationsManagementView: View {
             if hasEvents {
                 // TODO: Show alert
                 continue
-            }
-            
-            // Clear default if deleting default location
-            if store.isDefaultLocation(location) {
-                store.clearDefaultLocation()
             }
             
             store.delete(location)
@@ -275,11 +354,6 @@ struct LocationsManagementView: View {
                 continue
             }
             
-            // Clear default if deleting default location
-            if store.isDefaultLocation(location) {
-                store.clearDefaultLocation()
-            }
-            
             store.delete(location)
         }
     }
@@ -289,8 +363,6 @@ struct LocationsManagementView: View {
 struct LocationManagementRow: View {
     let location: Location
     let store: DataStore
-    let isDefault: Bool
-    let onSetDefault: () -> Void
     
     private var eventCount: Int {
         store.events.filter { $0.location.id == location.id }.count
@@ -302,7 +374,7 @@ struct LocationManagementRow: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header with location name and default badge
+            // Header with location name
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
@@ -313,21 +385,6 @@ struct LocationManagementRow: View {
                         Text(location.name)
                             .font(.headline)
                             .fontWeight(.semibold)
-                        
-                        if isDefault {
-                            HStack(spacing: 2) {
-                                Image(systemName: "star.fill")
-                                    .font(.caption2)
-                                Text("DEFAULT")
-                                    .font(.caption2)
-                                    .fontWeight(.bold)
-                            }
-                            .foregroundColor(.yellow)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.yellow.opacity(0.2))
-                            .cornerRadius(4)
-                        }
                     }
                     
                     if let city = location.city, let country = location.country {
@@ -346,18 +403,6 @@ struct LocationManagementRow: View {
                 }
                 
                 Spacer()
-                
-                // Set as default button
-                if !isDefault {
-                    Button {
-                        onSetDefault()
-                    } label: {
-                        Image(systemName: "star")
-                            .font(.title3)
-                            .foregroundColor(.gray)
-                    }
-                    .buttonStyle(.plain)
-                }
             }
             
             // Mini map preview
@@ -406,17 +451,25 @@ struct LocationEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     
     let location: Location
-    let initialIsDefault: Bool
     
     @StateObject private var editor: LocationSheetEditorModel
     
-    init(location: Location, isDefault: Bool) {
+    init(location: Location) {
         self.location = location
-        self.initialIsDefault = isDefault
-        self._editor = StateObject(wrappedValue: LocationSheetEditorModel(location: location, isDefault: isDefault))
+        self._editor = StateObject(wrappedValue: LocationSheetEditorModel(location: location, isDefault: false))
     }
     
     var body: some View {
+        // Bridge Theme <-> Color for the ColorPicker (same as Add Location view)
+        let colorBinding = Binding<Color>(
+            get: { editor.selectedTheme.mainColor },
+            set: { newColor in
+                if let nearest = nearestTheme(to: newColor) {
+                    editor.selectedTheme = nearest
+                }
+            }
+        )
+        
         NavigationStack {
             Form {
                 // Basic info
@@ -462,45 +515,17 @@ struct LocationEditorSheet: View {
                     .cornerRadius(8)
                 }
                 
-                // Theme
-                Section("Color Theme") {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            ForEach(Theme.allCases, id: \.self) { theme in
-                                Button {
-                                    editor.selectedTheme = theme
-                                } label: {
-                                    VStack(spacing: 4) {
-                                        Circle()
-                                            .fill(theme.mainColor)
-                                            .frame(width: 40, height: 40)
-                                            .overlay(
-                                                Circle()
-                                                    .stroke(editor.selectedTheme == theme ? Color.primary : Color.clear, lineWidth: 3)
-                                            )
-                                        Text(theme.rawValue)
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(.vertical, 4)
+                // Theme (using ColorPicker like Add Location view)
+                Section("Theme Color") {
+                    ColorPicker("Color", selection: colorBinding, supportsOpacity: false)
+                    
+                    HStack {
+                        Text("Preview")
+                        Spacer()
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(editor.selectedTheme.mainColor)
+                            .frame(width: 30, height: 30)
                     }
-                }
-                
-                // Default setting
-                Section {
-                    Toggle(isOn: $editor.isDefault) {
-                        HStack {
-                            Image(systemName: "star.fill")
-                                .foregroundColor(.yellow)
-                            Text("Set as Default Location")
-                        }
-                    }
-                } footer: {
-                    Text("The default location will be automatically selected when creating new events.")
                 }
                 
                 // Location info
@@ -555,57 +580,100 @@ struct LocationEditorSheet: View {
         )
         
         store.update(updatedLocation)
-        
-        // Update default if needed
-        if editor.isDefault {
-            store.setDefaultLocation(updatedLocation)
-        } else if store.isDefaultLocation(location) {
-            // Only clear if this was the default
-            store.clearDefaultLocation()
-        }
-        
         dismiss()
+    }
+    
+    // MARK: - Theme mapping helpers (same as Add Location view)
+    
+    // Find the nearest Theme to a picked Color by comparing sRGB components via UIColor
+    private func nearestTheme(to color: Color) -> Theme? {
+        guard let target = UIColorResolver.rgba(from: color) else { return nil }
+        var best: (theme: Theme, distance: CGFloat)?
+        for theme in Theme.allCases {
+            if let c = UIColorResolver.rgba(from: theme.uiColor) {
+                let d = squaredDistance(lhs: target, rhs: c)
+                if best == nil || d < best!.distance {
+                    best = (theme, d)
+                }
+            }
+        }
+        return best?.theme
+    }
+    
+    private func squaredDistance(lhs: RGBA, rhs: RGBA) -> CGFloat {
+        let dr = lhs.r - rhs.r
+        let dg = lhs.g - rhs.g
+        let db = lhs.b - rhs.b
+        return dr*dr + dg*dg + db*db
     }
 }
 
 
+// MARK: - Color Utilities for Theme Mapping
 
-// MARK: - New Location with Default Option
-/// Wrapper around LocationFormView that adds default location option
-struct NewLocationWithDefaultSheet: View {
-    @EnvironmentObject var store: DataStore
-    @Environment(\.dismiss) private var dismiss
-    @StateObject private var viewModel = LocationFormViewModel()
-    @State private var setAsDefault = false
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Use the existing LocationFormView
-            LocationFormView(viewModel: viewModel)
-                .environmentObject(store)
-            
-            // Add default location option at the bottom
-            VStack(spacing: 0) {
-                Divider()
-                
-                Toggle(isOn: $setAsDefault) {
-                    HStack {
-                        Image(systemName: "star.fill")
-                            .foregroundColor(.yellow)
-                        Text("Set as Default Location")
-                            .font(.subheadline)
-                    }
-                }
-                .padding()
-                .background(Color(.systemGroupedBackground))
-            }
+private struct RGBA {
+    let r: CGFloat
+    let g: CGFloat
+    let b: CGFloat
+    let a: CGFloat
+}
+
+private enum UIColorResolver {
+    // Extract RGBA from a SwiftUI Color by resolving to UIColor
+    static func rgba(from color: Color) -> RGBA? {
+        #if canImport(UIKit)
+        let ui = ColorToUIColorResolver.resolve(color)
+        return rgba(from: ui)
+        #else
+        return nil
+        #endif
+    }
+
+    // Extract RGBA from a UIColor
+    static func rgba(from ui: UIColor) -> RGBA? {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        guard ui.getRed(&r, green: &g, blue: &b, alpha: &a) else { return nil }
+        return RGBA(r: r, g: g, b: b, a: a)
+    }
+}
+
+// Helper that converts SwiftUI.Color to UIColor using the most compatible path
+private enum ColorToUIColorResolver {
+    static func resolve(_ color: Color) -> UIColor {
+        #if canImport(UIKit)
+        // Preferred: direct initializer if available on your SDK
+        if let ui = tryUIColorInit(color) {
+            return ui
         }
-        .onDisappear {
-            // If a new location was just added and should be default, set it
-            if setAsDefault, let lastLocation = store.locations.last {
-                store.setDefaultLocation(lastLocation)
-            }
-        }
+        // Fallback: host a tiny UIView and set backgroundColor via UIColor(Color)
+        let host = UIHostingController(rootView: ColorUIView(color: color))
+        host.view.frame = CGRect(x: 0, y: 0, width: 1, height: 1)
+        _ = host.view // force load
+        return host.view.backgroundColor ?? .clear
+        #else
+        return .clear
+        #endif
+    }
+
+    private static func tryUIColorInit(_ color: Color) -> UIColor? {
+        #if canImport(UIKit)
+        return UIColor(color)
+        #else
+        return nil
+        #endif
+    }
+}
+
+// A tiny UIViewRepresentable that assigns UIColor(Color) to backgroundColor
+private struct ColorUIView: UIViewRepresentable {
+    let color: Color
+    func makeUIView(context: Context) -> UIView {
+        let v = UIView(frame: .zero)
+        v.backgroundColor = UIColor(color)
+        return v
+    }
+    func updateUIView(_ uiView: UIView, context: Context) {
+        uiView.backgroundColor = UIColor(color)
     }
 }
 
