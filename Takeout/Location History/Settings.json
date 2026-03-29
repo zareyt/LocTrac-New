@@ -1,0 +1,55 @@
+{
+  "createdTime": "2022-06-28T08:24:21.406Z",
+  "modifiedTime": "2022-12-28T00:42:54.328Z",
+  "historyEnabled": true,
+  "historyDeletionTime": "2023-03-17T12:29:41.138Z",
+  "deviceSettings": [{
+    "deviceTag": -1300756120,
+    "reportingEnabled": true,
+    "legalCountryCode": "us",
+    "devicePrettyName": "iPhone",
+    "platformType": "IOS",
+    "deviceCreationTime": "2022-12-28T00:42:54.328Z",
+    "latestLocationReportingSettingChange": {
+      "reportingEnabledModificationTime": "2022-12-28T00:42:54.328Z"
+    },
+    "iosVersion": "16.3.1",
+    "deviceSpec": {
+      "device": "iPhone15,3"
+    }
+  }, {
+    "deviceTag": 1682819213,
+    "reportingEnabled": true,
+    "legalCountryCode": "us",
+    "devicePrettyName": "iPhone",
+    "platformType": "IOS",
+    "deviceCreationTime": "2022-06-28T09:53:26.853Z",
+    "latestLocationReportingSettingChange": {
+      "reportingEnabledModificationTime": "2022-06-28T09:53:26.853Z"
+    },
+    "iosVersion": "16.1.2",
+    "deviceSpec": {
+      "device": "iPhone13,1"
+    }
+  }, {
+    "deviceTag": -303546066,
+    "reportingEnabled": true,
+    "legalCountryCode": "us",
+    "devicePrettyName": "iPad",
+    "platformType": "IOS",
+    "deviceCreationTime": "2022-06-28T08:24:21.406Z",
+    "latestLocationReportingSettingChange": {
+      "reportingEnabledModificationTime": "2022-06-28T08:24:21.406Z"
+    },
+    "iosVersion": "16.3.1",
+    "deviceSpec": {
+      "device": "iPad11,6"
+    }
+  }],
+  "latestLocationHistorySettingChange": {
+    "historyEnabledModificationTime": "2022-06-28T08:24:21.406Z"
+  },
+  "retentionWindowDays": 540,
+  "hasReportedLocations": true,
+  "hasSetRetention": false
+}

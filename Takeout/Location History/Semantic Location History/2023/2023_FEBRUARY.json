@@ -1,0 +1,103 @@
+{
+  "timelineObjects": [{
+    "placeVisit": {
+      "location": {
+        "latitudeE7": 230068212,
+        "longitudeE7": -1097142818,
+        "placeId": "ChIJ8cn0LlRQr4YRdMAjeGTMdIw",
+        "address": "Carr. Transpeninsular, Tourist Corridor, 23400 San José del Cabo, B.C.S., México",
+        "name": "One\u0026Only Palmilla",
+        "sourceInfo": {
+          "deviceTag": -1300756120
+        },
+        "locationConfidence": 47.162674,
+        "calibratedProbability": 34.602356
+      },
+      "duration": {
+        "startTimestamp": "2023-02-14T00:00:44Z",
+        "endTimestamp": "2023-02-14T00:52:27Z"
+      },
+      "placeConfidence": "LOW_CONFIDENCE",
+      "centerLatE7": 230058040,
+      "centerLngE7": -1097171545,
+      "visitConfidence": 91,
+      "otherCandidateLocations": [{
+        "latitudeE7": 230055369,
+        "longitudeE7": -1097166091,
+        "placeId": "ChIJl38GRWtRr4YRrcvedI52004",
+        "address": "Bahia Rocas Lte. 3 Villas del Mar Palmilla, Tourist Corridor, 23406 B.C.S., Mexico",
+        "name": "Casa Edwards",
+        "locationConfidence": 26.547504,
+        "calibratedProbability": 19.477398
+      }, {
+        "latitudeE7": 230058735,
+        "longitudeE7": -1097171353,
+        "placeId": "ChIJD2WVdRJRr4YRZCXh9jMaGMA",
+        "address": "Tourist Corridor, 23537 BCS, Mexico",
+        "name": "Casa Cortez",
+        "locationConfidence": 12.871435,
+        "calibratedProbability": 9.443527
+      }, {
+        "latitudeE7": 230055793,
+        "longitudeE7": -1097167866,
+        "placeId": "ChIJe0IC0KhRr4YR5KP4wcTDFNA",
+        "address": "Tourist Corridor, 23537 Cabo San Lucas, BC, México",
+        "name": "Bahia Rocas",
+        "locationConfidence": 4.6624103,
+        "calibratedProbability": 3.4207215
+      }, {
+        "latitudeE7": 230052798,
+        "longitudeE7": -1097172437,
+        "placeId": "ChIJ4SN6HtxRr4YRfiQZkgLxZro",
+        "address": "⁃ Villa Del Mar #212, Fraccionamiento Palmilla, Tourist Corridor, 23400 San José del Cabo, B.C.S., México",
+        "name": "CasaSirenaCabo.com",
+        "locationConfidence": 2.979835,
+        "calibratedProbability": 2.1862483
+      }, {
+        "latitudeE7": 230073520,
+        "longitudeE7": -1097173250,
+        "placeId": "ChIJB9kCeiZbr4YRzBSmjdYiJWI",
+        "address": "Casa Fryzer, Baja California Sur San José del Cabo - Santa Anita, Transpeninsular Hwy Km 27.5, 23400 San Jose Cabo, B.C.S., México",
+        "name": "Casa Fryzer",
+        "locationConfidence": 2.4259884,
+        "calibratedProbability": 1.7799015
+      }, {
+        "latitudeE7": 230047885,
+        "longitudeE7": -1097175438,
+        "placeId": "ChIJ1fSc21FRr4YRWOwiQAoyOT4",
+        "address": "273J+WX, Tourist Corridor, 23537 Palmilla, B.C.S., México",
+        "name": "Casa Robinson",
+        "locationConfidence": 1.310253,
+        "calibratedProbability": 0.9613077
+      }, {
+        "latitudeE7": 230073071,
+        "longitudeE7": -1097170040,
+        "placeId": "ChIJx-_wNi5Rr4YRdkSpC8SWIsU",
+        "address": "274M+W5, Tourist Corridor, 23537 Palmilla, B.C.S., México",
+        "name": "Casita 47",
+        "locationConfidence": 0.8326744,
+        "calibratedProbability": 0.6109173
+      }, {
+        "latitudeE7": 230041469,
+        "longitudeE7": -1097189777,
+        "placeId": "ChIJBVIIlGdRr4YRCtA4jLXo_dg",
+        "address": "311, Tourist Corridor, Villas Del Mar, 23537 San José del Cabo, B.C.S., Mexico",
+        "name": "311 Villas Del Mar, Oceanfront Rental",
+        "locationConfidence": 0.6253762,
+        "calibratedProbability": 0.45882663
+      }, {
+        "latitudeE7": 230083421,
+        "longitudeE7": -1097167276,
+        "placeId": "ChIJUWKS0CxRr4YRSserE_GAf9Q",
+        "address": "Villas de Montaña, #123 Palmilla, Tourist Corridor, 23406 San José del Cabo, B.C.S., México",
+        "name": "Villas de Montaña, #123",
+        "locationConfidence": 0.581847,
+        "calibratedProbability": 0.42689008
+      }],
+      "editConfirmationStatus": "NOT_CONFIRMED",
+      "locationConfidence": 38,
+      "placeVisitType": "SINGLE_PLACE",
+      "placeVisitImportance": "MAIN"
+    }
+  }]
+}

@@ -1,0 +1,32 @@
+# Xcode
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+.DS_Store
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Build products
+build/
+*.ipa
+*.dSYM.zip
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# Old git repository
+.git.old/
+
+# User-specific files
+*.pages
+*.key
+*.numbers
+
+# Backup files
+*.backup
+*.old

@@ -1,0 +1,54 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "geometry": {
+        "coordinates": [
+          0.0799746,
+          44.6500376
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "Google Maps URL": "https://www.google.com/maps/place//data=!4m2!3m1!1s0x0:0x51a2f70c610f8e85",
+        "Location": {
+          "Address": "18 Pl. Robert Darniche, 33580 Monségur, France",
+          "Business Name": "LA SALLE A MANGER de l'Epicerie Centrale",
+          "Country Code": "FR",
+          "Geo Coordinates": {
+            "Latitude": "44.6500376",
+            "Longitude": "0.0799746"
+          }
+        },
+        "Published": "2022-06-28T10:18:04.171677Z",
+        "Review Comment": "Excellent food and service!  Highly recommend this place.",
+        "Star Rating": 5
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          -104.3114634,
+          37.9089885
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "Google Maps URL": "https://www.google.com/maps/place//data=!4m2!3m1!1s0x0:0xc50450c482728915",
+        "Location": {
+          "Business Name": "Captivate Beauty Services",
+          "Country Code": "US",
+          "Geo Coordinates": {
+            "Latitude": "37.9089885",
+            "Longitude": "-104.3114634"
+          }
+        },
+        "Published": "2019-11-01T17:19:58.413525Z",
+        "Review Comment": "McKinsy did a great job on my haircut!!  Definitely would recommend her.  Everyone was very friendly and place had good vibe!",
+        "Star Rating": 5
+      },
+      "type": "Feature"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{"trips": [
+  {
+    "id": "43AEBB7C71C32BA9",
+    "place_visit": [
+      {"id": ""},
+      {
+        "id": "DESTINATION_ID",
+        "place": {"semantic_type": "TYPE_UNKNOWN"}
+      }
+    ],
+    "transition": [{
+      "origin": {"visit_id": ""},
+      "destination": {"visit_id": "DESTINATION_ID"}
+    }]
+  },
+  {
+    "id": "444545E5FDECBE09",
+    "place_visit": [
+      {"id": ""},
+      {
+        "id": "DESTINATION_ID",
+        "place": {"semantic_type": "TYPE_UNKNOWN"}
+      }
+    ],
+    "transition": [{
+      "origin": {"visit_id": ""},
+      "destination": {"visit_id": "DESTINATION_ID"}
+    }]
+  }
+]}

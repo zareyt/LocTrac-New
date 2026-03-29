@@ -1,0 +1,38 @@
+{
+  "timelineObjects": [{
+    "placeVisit": {
+      "location": {
+        "latitudeE7": 448910155,
+        "longitudeE7": -1550877,
+        "placeId": "ChIJ0bm6bixOVQ0RK7YPq0t4goM",
+        "address": "Rue de la Prte Bouqueyre, 33330 Saint-Émilion, France",
+        "name": "Le Mediéval",
+        "locationConfidence": 100.0,
+        "calibratedProbability": 100.0
+      },
+      "duration": {
+        "startTimestamp": "2022-06-29T10:58:13Z",
+        "endTimestamp": "2022-06-29T10:59:13Z"
+      },
+      "placeConfidence": "USER_CONFIRMED",
+      "visitConfidence": 100,
+      "editConfirmationStatus": "CONFIRMED",
+      "locationConfidence": 100,
+      "placeVisitType": "SINGLE_PLACE",
+      "locationAssertionType": "WITHIN_OR_AT",
+      "lastEditedTimestamp": "2022-06-29T10:59:14.182Z",
+      "placeVisitImportance": "MAIN",
+      "checkin": {
+        "atTime": "2022-06-29T10:59:13Z",
+        "latestKnownLocation": {
+          "location": {
+            "latitudeE7": 448909972,
+            "longitudeE7": -1550673,
+            "accuracyMetres": 5
+          },
+          "detectionTime": "2022-06-29T10:59:12.999Z"
+        }
+      }
+    }
+  }]
+}

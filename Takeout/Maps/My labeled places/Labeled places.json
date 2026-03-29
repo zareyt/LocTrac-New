@@ -1,0 +1,18 @@
+{
+  "features": [
+    {
+      "geometry": {
+        "coordinates": [
+          -110.1491075,
+          23.223223299999997
+        ],
+        "type": "Point"
+      },
+      "properties": {
+        "name": "Surf fishing"
+      },
+      "type": "Feature"
+    }
+  ],
+  "type": "FeatureCollection"
+}

@@ -1,0 +1,6 @@
+// Locations.swift
+struct Location: Identifiable, Hashable, Codable {
+    ...
+    var country: String?  // <-- Must be present!
+    ...
+}
