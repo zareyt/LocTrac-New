@@ -66,6 +66,19 @@ extension Event {
     func getLocationIndex(locations: [Location], location: Location) -> Int? {
         return locations.firstIndex { $0.id == location.id }
     }
+    
+    /// Get effective coordinates based on location type
+    /// - Named locations: Use location's coordinates
+    /// - "Other" location: Use event's own coordinates
+    var effectiveCoordinates: (latitude: Double, longitude: Double) {
+        if location.name == "Other" {
+            // For "Other", use event's own coordinates
+            return (latitude: latitude, longitude: longitude)
+        } else {
+            // For named locations, use the location's coordinates
+            return (latitude: location.latitude, longitude: location.longitude)
+        }
+    }
 }
 
 extension Event {

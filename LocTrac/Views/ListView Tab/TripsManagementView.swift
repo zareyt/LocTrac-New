@@ -13,6 +13,7 @@ struct TripsManagementView: View {
     @State private var selectedYear: String = "All Time"
     @State private var selectedTrip: Trip?
     @State private var showingTripEditor = false
+    @State private var showingRefreshView = false
     @State private var searchText = ""
     
     private var availableYears: [String] {
@@ -67,6 +68,14 @@ struct TripsManagementView: View {
                         dismiss()
                     }
                 }
+                
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showingRefreshView = true
+                    } label: {
+                        Label("Refresh Trips", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                }
             }
             .sheet(item: $selectedTrip) { trip in
                 if let fromEvent = store.events.first(where: { $0.id == trip.fromEventID }),
@@ -74,6 +83,10 @@ struct TripsManagementView: View {
                     TripEditorSheet(trip: trip, fromEvent: fromEvent, toEvent: toEvent)
                         .environmentObject(store)
                 }
+            }
+            .sheet(isPresented: $showingRefreshView) {
+                TripRefreshView()
+                    .environmentObject(store)
             }
         }
     }

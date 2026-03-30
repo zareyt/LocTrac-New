@@ -20,6 +20,9 @@ class DataStore: ObservableObject {
     @Published var movedLocation: Location?
     @Published var tabSelection = 1
     
+    // NEW: Trip confirmation
+    @Published var pendingTrip: (trip: Trip, fromEvent: Event, toEvent: Event)?
+    
     // NEW: Update tracking for infographics optimization
     @Published var dataUpdateToken = UUID()
 
@@ -56,9 +59,15 @@ class DataStore: ObservableObject {
     }
     
     func delete(_ event: Event) {
+        print("🗑️ delete(Event) called for id=\(event.id)")
         if let index = events.firstIndex(where: {$0.id == event.id}) {
             changedEvent = events.remove(at: index)
             invalidateCacheForEvent(event, isDelete: true)
+            
+            // Check if this event's deletion affects any trips
+            checkAndUpdateTripsForDeletedEvent(event)
+        } else {
+            print("⚠️ delete(Event): event not found in store")
         }
         storeData()
     }
@@ -70,8 +79,13 @@ class DataStore: ObservableObject {
     }
 
     func add(_ event: Event) {
+        print("➕ add(Event) called for id=\(event.id), date=\(event.date), location='\(event.location.name)'")
         events.append(event)
         changedEvent = event
+        
+        // Check if this new event creates a trip from the previous day
+        checkAndCreateTripForNewEvent(event)
+        
         storeData()
         invalidateCacheForEvent(event)
     }
@@ -117,8 +131,8 @@ class DataStore: ObservableObject {
 
     func eventPercentByLocation(_ location: Location, events: [Event]) -> (percent: Float, count: Int) {
         let locationEvents = events.filter { $0.location.id == location.id }
-        let totalCount = locationEvents.count
         guard !events.isEmpty else { return (0, 0) }
+        let totalCount = locationEvents.count
         let per = Float(totalCount) / Float(events.count)
         let roundedPer = (per * 100).rounded() / 100
         return (roundedPer, totalCount)
@@ -160,18 +174,18 @@ class DataStore: ObservableObject {
                 do {
                     try encodedData.write(to: filepath)
                     print(filepath)
-                    print("Data saved successfully")
+                    print("💾 Data saved successfully")
                     bumpDataUpdate() // Notify that data has changed
                 } catch {
                     print(error.localizedDescription)
-                    print("Could not save data")
+                    print("❌ Could not save data")
                 }
             } else {
-                print("Could not create filepath")
+                print("❌ Could not create filepath")
             }
         } catch {
             print(error.localizedDescription)
-            print("Could not encode data")
+            print("❌ Could not encode data")
         }
     }
 
@@ -303,6 +317,7 @@ class DataStore: ObservableObject {
     
     /// Add a trip to the data store
     func addTrip(_ trip: Trip) {
+        print("🛫 addTrip called: \(trip.fromEventID) → \(trip.toEventID), mode=\(trip.mode.rawValue), notes='\(trip.notes)'")
         trips.append(trip)
         storeData()
     }
@@ -316,6 +331,159 @@ class DataStore: ObservableObject {
     /// Convenience method to save data (alias for storeData)
     func save() {
         storeData()
+    }
+    
+    // MARK: - Automatic Trip Management
+    
+    /// Check if a new event should create a trip from the previous event
+    private func checkAndCreateTripForNewEvent(_ newEvent: Event) {
+        print("\n🚗 [Auto-Trip] Checking if new event creates a trip...")
+        print("   New event: \(newEvent.city ?? "nil") at location '\(newEvent.location.name)' on \(newEvent.date.formatted(date: .abbreviated, time: .omitted))")
+        print("   New event STORED coords: (\(newEvent.latitude), \(newEvent.longitude))")
+        print("   New event EFFECTIVE coords: (\(newEvent.effectiveCoordinates.latitude), \(newEvent.effectiveCoordinates.longitude))")
+        
+        // Find the chronologically previous event
+        let sortedEvents = events.sorted { $0.date < $1.date }
+        guard let newEventIndex = sortedEvents.firstIndex(where: { $0.id == newEvent.id }),
+              newEventIndex > 0 else {
+            print("   ℹ️ No previous event found - this is the first event")
+            return
+        }
+        
+        let previousEvent = sortedEvents[newEventIndex - 1]
+        print("   Previous event: \(previousEvent.city ?? "nil") at location '\(previousEvent.location.name)' on \(previousEvent.date.formatted(date: .abbreviated, time: .omitted))")
+        print("   Previous event STORED coords: (\(previousEvent.latitude), \(previousEvent.longitude))")
+        print("   Previous event EFFECTIVE coords: (\(previousEvent.effectiveCoordinates.latitude), \(previousEvent.effectiveCoordinates.longitude))")
+        print("   Location comparison: '\(previousEvent.location.id)' vs '\(newEvent.location.id)' (same: \(previousEvent.location.id == newEvent.location.id))")
+        
+        // Check if they're at different locations (would create a trip)
+        if let suggestedTrip = TripMigrationUtility.suggestTrip(from: previousEvent, to: newEvent) {
+            // Check if this trip already exists
+            let tripExists = trips.contains { trip in
+                trip.fromEventID == previousEvent.id && trip.toEventID == newEvent.id
+            }
+            
+            if !tripExists {
+                print("   ✅ Creating new trip: \(previousEvent.location.name) → \(newEvent.location.name)")
+                print("      Distance: \(suggestedTrip.formattedDistance) mi")
+                print("      Mode: \(suggestedTrip.mode.rawValue)")
+                
+                // Set as pending trip for user confirmation
+                pendingTrip = (trip: suggestedTrip, fromEvent: previousEvent, toEvent: newEvent)
+                print("   ⏳ Trip pending user confirmation...")
+            } else {
+                print("   ℹ️ Trip already exists, skipping")
+            }
+        } else {
+            print("   ℹ️ No trip suggested by TripMigrationUtility")
+            print("      Checking why:")
+            
+            // Debug: check coordinates
+            let hasPrevCoords = (previousEvent.latitude != 0.0 || previousEvent.longitude != 0.0) || (previousEvent.location.latitude != 0.0 || previousEvent.location.longitude != 0.0)
+            let hasNewCoords = (newEvent.latitude != 0.0 || newEvent.longitude != 0.0) || (newEvent.location.latitude != 0.0 || newEvent.location.longitude != 0.0)
+            print("      Has prev coords: \(hasPrevCoords), has new coords: \(hasNewCoords)")
+            
+            // Debug: check if same location
+            let sameLocation = previousEvent.location.id == newEvent.location.id
+            print("      Same location ID: \(sameLocation)")
+            
+            // Debug: calculate distance (if possible)
+            let currentCoord = previousEvent.effectiveCoordinates
+            let nextCoord = newEvent.effectiveCoordinates
+            let location1 = CLLocation(latitude: currentCoord.latitude, longitude: currentCoord.longitude)
+            let location2 = CLLocation(latitude: nextCoord.latitude, longitude: nextCoord.longitude)
+            let distanceInMeters = location1.distance(from: location2)
+            let distanceInMiles = distanceInMeters * 0.000621371
+            print("      Calculated distance: \(String(format: "%.2f", distanceInMiles)) miles (minimum: 0.5 mi)")
+        }
+        
+        // Also check if there's a NEXT event that would need a trip TO it
+        if newEventIndex < sortedEvents.count - 1 {
+            let nextEvent = sortedEvents[newEventIndex + 1]
+            print("   Checking forward trip to: \(nextEvent.city ?? "Unknown")")
+            
+            if let suggestedTrip = TripMigrationUtility.suggestTrip(from: newEvent, to: nextEvent) {
+                let tripExists = trips.contains { trip in
+                    trip.fromEventID == newEvent.id && trip.toEventID == nextEvent.id
+                }
+                
+                if !tripExists {
+                    print("   ✅ Creating forward trip: \(newEvent.location.name) → \(nextEvent.location.name)")
+                    print("      Distance: \(suggestedTrip.formattedDistance) mi")
+                    
+                    // Use confirmation flow for forward trip as well
+                    pendingTrip = (trip: suggestedTrip, fromEvent: newEvent, toEvent: nextEvent)
+                    print("   ⏳ Forward trip pending user confirmation...")
+                } else {
+                    print("   ℹ️ Forward trip already exists, skipping")
+                }
+            } else {
+                print("   ℹ️ No forward trip needed")
+            }
+        }
+    }
+    
+    /// Check if deleting an event affects any trips and remove them
+    private func checkAndUpdateTripsForDeletedEvent(_ deletedEvent: Event) {
+        print("\n🗑️ [Auto-Trip] Checking if deleted event affects trips...")
+        print("   Deleted event: \(deletedEvent.city ?? "Unknown") on \(deletedEvent.date.formatted(date: .abbreviated, time: .omitted))")
+        
+        // Find trips that reference this event
+        let affectedTrips = trips.filter { trip in
+            trip.fromEventID == deletedEvent.id || trip.toEventID == deletedEvent.id
+        }
+        
+        if affectedTrips.isEmpty {
+            print("   ℹ️ No trips affected")
+            return
+        }
+        
+        print("   Found \(affectedTrips.count) trip(s) affected:")
+        for trip in affectedTrips {
+            print("   - Trip from \(trip.fromEventID) to \(trip.toEventID)")
+        }
+        
+        // Remove affected trips
+        let removedCount = affectedTrips.count
+        trips.removeAll { trip in
+            trip.fromEventID == deletedEvent.id || trip.toEventID == deletedEvent.id
+        }
+        
+        print("   ✅ Removed \(removedCount) trip(s)")
+        print("   📊 Total trips now: \(trips.count)")
+        
+        // Check if we need to create a NEW trip between the previous and next events
+        // (filling the gap left by the deleted event)
+        let remainingEvents = events.sorted { $0.date < $1.date }
+        
+        // Find events before and after the deleted event's date
+        let eventsBeforeDeleted = remainingEvents.filter { $0.date < deletedEvent.date }
+        let eventsAfterDeleted = remainingEvents.filter { $0.date > deletedEvent.date }
+        
+        if let beforeEvent = eventsBeforeDeleted.last,
+           let afterEvent = eventsAfterDeleted.first {
+            print("   Checking if new trip needed between remaining events:")
+            print("   - Before: \(beforeEvent.city ?? "Unknown")")
+            print("   - After: \(afterEvent.city ?? "Unknown")")
+            
+            if let newTrip = TripMigrationUtility.suggestTrip(from: beforeEvent, to: afterEvent) {
+                let tripExists = trips.contains { trip in
+                    trip.fromEventID == beforeEvent.id && trip.toEventID == afterEvent.id
+                }
+                
+                if !tripExists {
+                    print("   ✅ Creating new trip to fill gap: \(beforeEvent.location.name) → \(afterEvent.location.name)")
+                    trips.append(newTrip)
+                    print("   📊 Total trips now: \(trips.count)")
+                } else {
+                    print("   ℹ️ Trip already exists")
+                }
+            } else {
+                print("   ℹ️ No trip needed - same location or too close")
+            }
+        } else {
+            print("   ℹ️ No surrounding events to create a gap-filling trip")
+        }
     }
 
     // MARK: - Country Migration

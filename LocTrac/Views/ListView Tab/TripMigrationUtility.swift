@@ -68,17 +68,24 @@ struct TripMigrationUtility {
         let currentIsOther = current.location.name == "Other"
         let nextIsOther = next.location.name == "Other"
         
+        print("   [shouldCreateTrip] Current location: '\(current.location.name)' (isOther: \(currentIsOther))")
+        print("   [shouldCreateTrip] Next location: '\(next.location.name)' (isOther: \(nextIsOther))")
+        
         // Check if locations are different
         if currentIsOther && nextIsOther {
             // Both are "Other" - check if coordinates are significantly different
             let distance = calculateDistance(from: current, to: next)
+            print("   [shouldCreateTrip] Both 'Other' - distance: \(String(format: "%.2f", distance)) miles (need > 1.0)")
             return distance > 1.0 // More than 1 mile apart
         } else if currentIsOther || nextIsOther {
             // One is "Other" and one is a named location - always different
+            print("   [shouldCreateTrip] One is 'Other', one is named → CREATE TRIP")
             return true
         } else {
             // Both are named locations - check location IDs
-            return currentLocationID != nextLocationID
+            let different = currentLocationID != nextLocationID
+            print("   [shouldCreateTrip] Both named locations - different IDs: \(different)")
+            return different
         }
     }
     
@@ -96,16 +103,11 @@ struct TripMigrationUtility {
         return distanceInMiles
     }
     
-    /// Get coordinates for an event (from event or location)
+    /// Get coordinates for an event (from event or location based on location type)
     private static func getCoordinates(for event: Event) -> CLLocationCoordinate2D {
-        if event.latitude != 0.0 && event.longitude != 0.0 {
-            return CLLocationCoordinate2D(latitude: event.latitude, longitude: event.longitude)
-        } else {
-            return CLLocationCoordinate2D(
-                latitude: event.location.latitude,
-                longitude: event.location.longitude
-            )
-        }
+        // Use the effective coordinates logic
+        let coords = event.effectiveCoordinates
+        return CLLocationCoordinate2D(latitude: coords.latitude, longitude: coords.longitude)
     }
     
     /// Generate a trip suggestion for a new event

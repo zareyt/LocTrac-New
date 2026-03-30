@@ -81,7 +81,7 @@ struct TravelHistoryView: View {
         if !searchText.isEmpty {
             events = events.filter { event in
                 event.city?.localizedCaseInsensitiveContains(searchText) ?? false ||
-                event.location.country?.localizedCaseInsensitiveContains(searchText) ?? false ||
+                (event.country ?? event.location.country)?.localizedCaseInsensitiveContains(searchText) ?? false ||
                 event.location.name.localizedCaseInsensitiveContains(searchText)
             }
         }
@@ -91,9 +91,9 @@ struct TravelHistoryView: View {
     
     // Group stays by country
     private var staysByCountry: [(country: String, cities: [(city: String, stays: [Event])])] {
-        // Group by country first
+        // Group by country first - prioritize event.country over location.country
         let byCountry = Dictionary(grouping: filteredEvents) { event -> String in
-            event.location.country ?? "Unknown"
+            event.country ?? event.location.country ?? "Unknown"
         }
         
         return byCountry.map { countryName, countryEvents in
@@ -136,7 +136,7 @@ struct TravelHistoryView: View {
     }
     
     private var totalCountries: Int {
-        Set(filteredEvents.compactMap { $0.location.country }).count
+        Set(filteredEvents.compactMap { $0.country ?? $0.location.country }).count
     }
     
     private var totalCities: Int {
@@ -300,7 +300,7 @@ struct TravelHistoryView: View {
             Section {
                 CityRow(
                     city: cityGroup.city,
-                    country: cityGroup.stays.first?.location.country ?? "Unknown",
+                    country: cityGroup.stays.first?.country ?? cityGroup.stays.first?.location.country ?? "Unknown",
                     stayCount: cityGroup.stays.count,
                     mostRecentDate: cityGroup.stays.first?.date,
                     location: cityGroup.stays.first?.location
@@ -496,7 +496,7 @@ struct StayDetailSheet: View {
                     HStack {
                         Text("Country")
                         Spacer()
-                        Text(event.location.country ?? "Unknown")
+                        Text(event.country ?? event.location.country ?? "Unknown")
                             .foregroundColor(.secondary)
                     }
                     

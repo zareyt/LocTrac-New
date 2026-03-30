@@ -28,6 +28,11 @@ struct LocationFormView: View {
     // Simple alert for location errors
     @State private var showLocationError = false
     @State private var locationErrorMessage = ""
+    
+    // Coordinate review for large changes
+    @State private var showCoordinateReview = false
+    @State private var coordinateReviewAnalysis: LocationCoordinateUpdater.UpdateAnalysis?
+    @State private var pendingLocation: Location?
 
     var body: some View {
         // Bindings for coordinate text fields
@@ -144,7 +149,21 @@ struct LocationFormView: View {
                                     country: viewModel.country.isEmpty ? nil : viewModel.country,
                                     theme: viewModel.theme
                                 )
+                                
+                                // DISABLED: Coordinate propagation system
+                                // Use standard update for now
                                 store.update(location)
+                                dismiss()
+                                
+                                // TODO: Re-enable once use case is clarified
+                                // store.updateLocationWithCoordinatePropagation(location) { analysis in
+                                //     coordinateReviewAnalysis = analysis
+                                //     pendingLocation = location
+                                //     showCoordinateReview = true
+                                // }
+                                // if !showCoordinateReview {
+                                //     dismiss()
+                                // }
                             } else {
                                 let newLocation = Location(
                                     name: viewModel.name,
@@ -155,8 +174,8 @@ struct LocationFormView: View {
                                     theme: viewModel.theme
                                 )
                                 store.add(newLocation)
+                                dismiss()
                             }
-                            dismiss()
                         } label: {
                             Text(viewModel.updating ? "Update Location" : "Add Location")
                         }
@@ -230,6 +249,23 @@ struct LocationFormView: View {
                 }
             } message: {
                 Text(locationErrorMessage)
+            }
+            .sheet(isPresented: $showCoordinateReview) {
+                if let analysis = coordinateReviewAnalysis,
+                   let location = pendingLocation {
+                    LocationCoordinateReviewView(
+                        analysis: analysis,
+                        location: location,
+                        onApprove: {
+                            dismiss()
+                        },
+                        onCancel: {
+                            // User chose to keep original coordinates
+                            // Location was already updated, nothing more to do
+                        }
+                    )
+                    .environmentObject(store)
+                }
             }
         }
         .onAppear {

@@ -5,30 +5,12 @@
       location = "self:">
    </FileRef>
    <FileRef
-      location = "group:MANAGE_LOCATIONS_UPDATE.md">
+      location = "group:AUTOMATIC_TRIP_MANAGEMENT.md">
    </FileRef>
    <FileRef
-      location = "group:MANAGE_LOCATIONS_QUICK_REFERENCE.md">
+      location = "group:AUTO_TRIP_ISSUES.md">
    </FileRef>
    <FileRef
-      location = "group:BUILD_ERROR_FIX.md">
-   </FileRef>
-   <FileRef
-      location = "group:BUILD_FIX_SUMMARY.md">
-   </FileRef>
-   <FileRef
-      location = "group:COLOR_PICKER_UPDATE.md">
-   </FileRef>
-   <FileRef
-      location = "group:DEFAULT_LOCATION_INTEGRATION.md">
-   </FileRef>
-   <FileRef
-      location = "group:TravelHistoryView.swift">
-   </FileRef>
-   <FileRef
-      location = "group:TRAVEL_HISTORY_IMPLEMENTATION.md">
-   </FileRef>
-   <FileRef
-      location = "group:TRAVEL_HISTORY_QUICK_REF.md">
+      location = "group:TripConfirmationView.swift">
    </FileRef>
 </Workspace>
