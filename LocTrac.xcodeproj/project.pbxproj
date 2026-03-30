@@ -21,6 +21,8 @@
 		3D1E00192F799914004BC4D3 /* TRAVEL_HISTORY_BUILD_FIX.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D1E00182F799914004BC4D3 /* TRAVEL_HISTORY_BUILD_FIX.md */; };
 		3D1E001B2F799AF9004BC4D3 /* TRAVEL_HISTORY_PERFORMANCE_FIX.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D1E001A2F799AF9004BC4D3 /* TRAVEL_HISTORY_PERFORMANCE_FIX.md */; };
 		3D1E001D2F799F2A004BC4D3 /* TRAVEL_HISTORY_FINAL_FIXES.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D1E001C2F799F2A004BC4D3 /* TRAVEL_HISTORY_FINAL_FIXES.md */; };
+		3D30BB7F2F79EA8D007B058B /* EventCountryUpdaterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D30BB7E2F79EA8D007B058B /* EventCountryUpdaterView.swift */; };
+		3D30BB802F79EABF007B058B /* EventCountryGeocoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D1E001E2F79E00D004BC4D3 /* EventCountryGeocoder.swift */; };
 		3D32CE772F6F112500CEC497 /* ReverseGeocoderHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D32CE762F6F112500CEC497 /* ReverseGeocoderHelper.swift */; };
 		3D32CE7F2F6F270C00CEC497 /* COUNTRY_INITIALIZATION_GUIDE.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D32CE7E2F6F270C00CEC497 /* COUNTRY_INITIALIZATION_GUIDE.md */; };
 		3D32CE812F6F28DD00CEC497 /* DEBUGGING_COUNTRY_LOADING.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D32CE802F6F28DD00CEC497 /* DEBUGGING_COUNTRY_LOADING.md */; };
@@ -63,6 +65,18 @@
 		3D5176C42F73385A00231C27 /* TripsManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D5176C32F73385A00231C27 /* TripsManagementView.swift */; };
 		3D551E9B2F79031F0092B775 /* RELEASE_4.2_CHECKLIST.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D551E9A2F79031F0092B775 /* RELEASE_4.2_CHECKLIST.md */; };
 		3D551E9D2F7903580092B775 /* RELEASE_NOTES_4.2.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D551E9C2F7903580092B775 /* RELEASE_NOTES_4.2.md */; };
+		3D742BDB2F7A15D200DCD5B5 /* TripRefreshView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D742BDA2F7A15D200DCD5B5 /* TripRefreshView.swift */; };
+		3D742BDD2F7A15F700DCD5B5 /* TRIP_REFRESH_IMPLEMENTATION.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D742BDC2F7A15F700DCD5B5 /* TRIP_REFRESH_IMPLEMENTATION.md */; };
+		3D742BDF2F7A1D5100DCD5B5 /* LocationCoordinateUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D742BDE2F7A1D5100DCD5B5 /* LocationCoordinateUpdater.swift */; };
+		3D742BE12F7A1D9D00DCD5B5 /* LocationCoordinateReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D742BE02F7A1D9D00DCD5B5 /* LocationCoordinateReviewView.swift */; };
+		3D742BE32F7A1DDE00DCD5B5 /* LOCATION_COORDINATE_PROPAGATION.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D742BE22F7A1DDE00DCD5B5 /* LOCATION_COORDINATE_PROPAGATION.md */; };
+		3D742BE52F7A1FE400DCD5B5 /* LOCATION_COORDINATE_USER_INFORMED.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D742BE42F7A1FE400DCD5B5 /* LOCATION_COORDINATE_USER_INFORMED.md */; };
+		3D742BE72F7A20E500DCD5B5 /* LocationSyncUtilityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D742BE62F7A20E500DCD5B5 /* LocationSyncUtilityView.swift */; };
+		3D742BE92F7A210D00DCD5B5 /* LOCATION_COORDINATE_COMPLETE_SYSTEM.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D742BE82F7A210D00DCD5B5 /* LOCATION_COORDINATE_COMPLETE_SYSTEM.md */; };
+		3D742BEB2F7A22C800DCD5B5 /* LOCATION_COORDINATE_LOGIC_VALIDATION.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D742BEA2F7A22C800DCD5B5 /* LOCATION_COORDINATE_LOGIC_VALIDATION.md */; };
+		3D742BED2F7A239C00DCD5B5 /* LOCATION_SYNC_DEBUGGING_GUIDE.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D742BEC2F7A239C00DCD5B5 /* LOCATION_SYNC_DEBUGGING_GUIDE.md */; };
+		3D742BEF2F7A246C00DCD5B5 /* COORDINATE_FEATURES_DISABLED.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D742BEE2F7A246C00DCD5B5 /* COORDINATE_FEATURES_DISABLED.md */; };
+		3D742BF12F7AD69100DCD5B5 /* TRIP_REFRESH_IMPROVEMENTS.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D742BF02F7AD69100DCD5B5 /* TRIP_REFRESH_IMPROVEMENTS.md */; };
 		3D918BD429ACFC90004A724C /* Seed.json in Resources */ = {isa = PBXBuildFile; fileRef = 3D918BD329ABFEB5004A724C /* Seed.json */; };
 		3D98EC9C2F742E4700C5B8C0 /* ModernEventsCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D98EC9B2F742E4600C5B8C0 /* ModernEventsCalendarView.swift */; };
 		3D98EC9E2F742E6600C5B8C0 /* MODERN_CALENDAR_GUIDE.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D98EC9D2F742E6600C5B8C0 /* MODERN_CALENDAR_GUIDE.md */; };
@@ -124,6 +138,11 @@
 		3DD4F8A02F7821CB00AD9370 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DD4F89F2F7821CB00AD9370 /* HomeView.swift */; };
 		3DD4F8A22F78250600AD9370 /* VERSION_4_1_NOTES.md in Resources */ = {isa = PBXBuildFile; fileRef = 3DD4F8A12F78250600AD9370 /* VERSION_4_1_NOTES.md */; };
 		3DD6713A29CB897800E54846 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DD6713929CB897800E54846 /* CardView.swift */; };
+		3DD8AB3C2F7AFA6700735A92 /* TripConfirmationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DD8AB3B2F7AFA6700735A92 /* TripConfirmationView.swift */; };
+		3DD8AB3E2F7B0CFF00735A92 /* PendingTripItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DD8AB3D2F7B0CFF00735A92 /* PendingTripItem.swift */; };
+		3DD8AB402F7B10DA00735A92 /* GIT_CHANGELOG_1.2.md in Resources */ = {isa = PBXBuildFile; fileRef = 3DD8AB3F2F7B10DA00735A92 /* GIT_CHANGELOG_1.2.md */; };
+		3DD8AB422F7B10ED00735A92 /* PROJECT_RELEASE_NOTES_1.2.md in Resources */ = {isa = PBXBuildFile; fileRef = 3DD8AB412F7B10ED00735A92 /* PROJECT_RELEASE_NOTES_1.2.md */; };
+		3DD8AB442F7B10F000735A92 /* CHANGELOG.md in Resources */ = {isa = PBXBuildFile; fileRef = 3DD8AB432F7B10F000735A92 /* CHANGELOG.md */; };
 		3DDD0BD82F75AE5700B2E5EB /* GOLFSHOT_IMPORT_FIX.md in Resources */ = {isa = PBXBuildFile; fileRef = 3DDD0BD72F75AE5700B2E5EB /* GOLFSHOT_IMPORT_FIX.md */; };
 		3DDD0BDC2F75B10300B2E5EB /* GOLFSHOT_IMPORT_REVISION.md in Resources */ = {isa = PBXBuildFile; fileRef = 3DDD0BDB2F75B10300B2E5EB /* GOLFSHOT_IMPORT_REVISION.md */; };
 		3DDD0BE02F75B94500B2E5EB /* ImportGolfshotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DDD0BDF2F75B94500B2E5EB /* ImportGolfshotView.swift */; };
@@ -185,6 +204,11 @@
 		3D1E00212F79E0BB004BC4D3 /* CHANGELOG.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
 		3D1E00222F79E0F7004BC4D3 /* VERSION_1.1_SUMMARY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = VERSION_1.1_SUMMARY.md; sourceTree = "<group>"; };
 		3D1E00232F79E0FD004BC4D3 /* V1.1_QUICK_CARD.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = V1.1_QUICK_CARD.md; sourceTree = "<group>"; };
+		3D1E00242F79E655004BC4D3 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		3D1E00252F79E65C004BC4D3 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		3D1E00262F79E68D004BC4D3 /* PROJECT_ANALYSIS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PROJECT_ANALYSIS.md; sourceTree = "<group>"; };
+		3D1E00272F79E6AB004BC4D3 /* README_LICENSE_SUMMARY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README_LICENSE_SUMMARY.md; sourceTree = "<group>"; };
+		3D30BB7E2F79EA8D007B058B /* EventCountryUpdaterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventCountryUpdaterView.swift; sourceTree = "<group>"; };
 		3D32CE762F6F112500CEC497 /* ReverseGeocoderHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReverseGeocoderHelper.swift; sourceTree = "<group>"; };
 		3D32CE7E2F6F270C00CEC497 /* COUNTRY_INITIALIZATION_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = COUNTRY_INITIALIZATION_GUIDE.md; sourceTree = "<group>"; };
 		3D32CE802F6F28DD00CEC497 /* DEBUGGING_COUNTRY_LOADING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DEBUGGING_COUNTRY_LOADING.md; sourceTree = "<group>"; };
@@ -231,6 +255,18 @@
 		3D551E9A2F79031F0092B775 /* RELEASE_4.2_CHECKLIST.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = RELEASE_4.2_CHECKLIST.md; sourceTree = "<group>"; };
 		3D551E9C2F7903580092B775 /* RELEASE_NOTES_4.2.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = RELEASE_NOTES_4.2.md; sourceTree = "<group>"; };
 		3D6E85A82F78F9050090F594 /* InfographicsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfographicsView.swift; sourceTree = "<group>"; };
+		3D742BDA2F7A15D200DCD5B5 /* TripRefreshView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripRefreshView.swift; sourceTree = "<group>"; };
+		3D742BDC2F7A15F700DCD5B5 /* TRIP_REFRESH_IMPLEMENTATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TRIP_REFRESH_IMPLEMENTATION.md; sourceTree = "<group>"; };
+		3D742BDE2F7A1D5100DCD5B5 /* LocationCoordinateUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationCoordinateUpdater.swift; sourceTree = "<group>"; };
+		3D742BE02F7A1D9D00DCD5B5 /* LocationCoordinateReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationCoordinateReviewView.swift; sourceTree = "<group>"; };
+		3D742BE22F7A1DDE00DCD5B5 /* LOCATION_COORDINATE_PROPAGATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LOCATION_COORDINATE_PROPAGATION.md; sourceTree = "<group>"; };
+		3D742BE42F7A1FE400DCD5B5 /* LOCATION_COORDINATE_USER_INFORMED.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LOCATION_COORDINATE_USER_INFORMED.md; sourceTree = "<group>"; };
+		3D742BE62F7A20E500DCD5B5 /* LocationSyncUtilityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSyncUtilityView.swift; sourceTree = "<group>"; };
+		3D742BE82F7A210D00DCD5B5 /* LOCATION_COORDINATE_COMPLETE_SYSTEM.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LOCATION_COORDINATE_COMPLETE_SYSTEM.md; sourceTree = "<group>"; };
+		3D742BEA2F7A22C800DCD5B5 /* LOCATION_COORDINATE_LOGIC_VALIDATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LOCATION_COORDINATE_LOGIC_VALIDATION.md; sourceTree = "<group>"; };
+		3D742BEC2F7A239C00DCD5B5 /* LOCATION_SYNC_DEBUGGING_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LOCATION_SYNC_DEBUGGING_GUIDE.md; sourceTree = "<group>"; };
+		3D742BEE2F7A246C00DCD5B5 /* COORDINATE_FEATURES_DISABLED.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = COORDINATE_FEATURES_DISABLED.md; sourceTree = "<group>"; };
+		3D742BF02F7AD69100DCD5B5 /* TRIP_REFRESH_IMPROVEMENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TRIP_REFRESH_IMPROVEMENTS.md; sourceTree = "<group>"; };
 		3D918BD329ABFEB5004A724C /* Seed.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = Seed.json; sourceTree = "<group>"; };
 		3D98EC9B2F742E4600C5B8C0 /* ModernEventsCalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModernEventsCalendarView.swift; sourceTree = "<group>"; };
 		3D98EC9D2F742E6600C5B8C0 /* MODERN_CALENDAR_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MODERN_CALENDAR_GUIDE.md; sourceTree = "<group>"; };
@@ -298,6 +334,11 @@
 		3DD4F89F2F7821CB00AD9370 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		3DD4F8A12F78250600AD9370 /* VERSION_4_1_NOTES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = VERSION_4_1_NOTES.md; sourceTree = "<group>"; };
 		3DD6713929CB897800E54846 /* CardView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CardView.swift; sourceTree = "<group>"; };
+		3DD8AB3B2F7AFA6700735A92 /* TripConfirmationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripConfirmationView.swift; sourceTree = "<group>"; };
+		3DD8AB3D2F7B0CFF00735A92 /* PendingTripItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingTripItem.swift; sourceTree = "<group>"; };
+		3DD8AB3F2F7B10DA00735A92 /* GIT_CHANGELOG_1.2.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GIT_CHANGELOG_1.2.md; sourceTree = "<group>"; };
+		3DD8AB412F7B10ED00735A92 /* PROJECT_RELEASE_NOTES_1.2.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PROJECT_RELEASE_NOTES_1.2.md; sourceTree = "<group>"; };
+		3DD8AB432F7B10F000735A92 /* CHANGELOG.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
 		3DDD0BD72F75AE5700B2E5EB /* GOLFSHOT_IMPORT_FIX.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GOLFSHOT_IMPORT_FIX.md; sourceTree = "<group>"; };
 		3DDD0BDB2F75B10300B2E5EB /* GOLFSHOT_IMPORT_REVISION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GOLFSHOT_IMPORT_REVISION.md; sourceTree = "<group>"; };
 		3DDD0BDF2F75B94500B2E5EB /* ImportGolfshotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportGolfshotView.swift; sourceTree = "<group>"; };
@@ -456,6 +497,10 @@
 				3D5176A12F71DC6A00231C27 /* INFOPLIST_SETUP_REQUIRED.md */,
 				3D5176A32F71DC9500231C27 /* WIZARD_LOCATION_FIXES.md */,
 				3DEB50242F70A1DC004B6339 /* JOURNEY_INTEGRATION_PROPOSAL.md */,
+				3D1E001F2F79E055004BC4D3 /* VERSION_1.1_RELEASE.md */,
+				3D1E00202F79E089004BC4D3 /* GIT_COMMIT_SUMMARY_V1.1.md */,
+				3D1E00222F79E0F7004BC4D3 /* VERSION_1.1_SUMMARY.md */,
+				3D1E00232F79E0FD004BC4D3 /* V1.1_QUICK_CARD.md */,
 				3DEB50262F70A34A004B6339 /* JOURNEY_INTEGRATION_COMPLETE.md */,
 				3DEB50282F70A544004B6339 /* CONSOLE_WARNINGS_CLEANUP.md */,
 				3DEB502A2F70A5D2004B6339 /* BUILD_WARNINGS_FIX.md */,
@@ -465,6 +510,17 @@
 				3DD4F8A12F78250600AD9370 /* VERSION_4_1_NOTES.md */,
 				3D551E9A2F79031F0092B775 /* RELEASE_4.2_CHECKLIST.md */,
 				3D551E9C2F7903580092B775 /* RELEASE_NOTES_4.2.md */,
+				3D742BDC2F7A15F700DCD5B5 /* TRIP_REFRESH_IMPLEMENTATION.md */,
+				3D742BE22F7A1DDE00DCD5B5 /* LOCATION_COORDINATE_PROPAGATION.md */,
+				3D742BE42F7A1FE400DCD5B5 /* LOCATION_COORDINATE_USER_INFORMED.md */,
+				3D742BE82F7A210D00DCD5B5 /* LOCATION_COORDINATE_COMPLETE_SYSTEM.md */,
+				3D742BEA2F7A22C800DCD5B5 /* LOCATION_COORDINATE_LOGIC_VALIDATION.md */,
+				3D1E00182F799914004BC4D3 /* TRAVEL_HISTORY_BUILD_FIX.md */,
+				3D1E001A2F799AF9004BC4D3 /* TRAVEL_HISTORY_PERFORMANCE_FIX.md */,
+				3D1E001C2F799F2A004BC4D3 /* TRAVEL_HISTORY_FINAL_FIXES.md */,
+				3D742BEC2F7A239C00DCD5B5 /* LOCATION_SYNC_DEBUGGING_GUIDE.md */,
+				3D742BEE2F7A246C00DCD5B5 /* COORDINATE_FEATURES_DISABLED.md */,
+				3D742BF02F7AD69100DCD5B5 /* TRIP_REFRESH_IMPROVEMENTS.md */,
 			);
 			path = Documentation;
 			sourceTree = "<group>";
@@ -474,12 +530,11 @@
 			children = (
 				3DD0AA8729A6EA0C003625C1 /* LocTrac */,
 				3DD0AA8629A6EA0C003625C1 /* Products */,
-				3D1E001E2F79E00D004BC4D3 /* EventCountryGeocoder.swift */,
-				3D1E001F2F79E055004BC4D3 /* VERSION_1.1_RELEASE.md */,
-				3D1E00202F79E089004BC4D3 /* GIT_COMMIT_SUMMARY_V1.1.md */,
 				3D1E00212F79E0BB004BC4D3 /* CHANGELOG.md */,
-				3D1E00222F79E0F7004BC4D3 /* VERSION_1.1_SUMMARY.md */,
-				3D1E00232F79E0FD004BC4D3 /* V1.1_QUICK_CARD.md */,
+				3D1E00242F79E655004BC4D3 /* README.md */,
+				3D1E00252F79E65C004BC4D3 /* LICENSE */,
+				3D1E00262F79E68D004BC4D3 /* PROJECT_ANALYSIS.md */,
+				3D1E00272F79E6AB004BC4D3 /* README_LICENSE_SUMMARY.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -512,6 +567,13 @@
 				3D46AC452F4E59DF001374DE /* ActivitiesMaintenanceView.swift */,
 				3DEB502E2F719217004B6339 /* ViewsBackupExportView.swift */,
 				3D98ECB32F7437F200C5B8C0 /* InfographicsCache.swift */,
+				3D30BB7E2F79EA8D007B058B /* EventCountryUpdaterView.swift */,
+				3D1E001E2F79E00D004BC4D3 /* EventCountryGeocoder.swift */,
+				3DD8AB3B2F7AFA6700735A92 /* TripConfirmationView.swift */,
+				3DD8AB3D2F7B0CFF00735A92 /* PendingTripItem.swift */,
+				3DD8AB3F2F7B10DA00735A92 /* GIT_CHANGELOG_1.2.md */,
+				3DD8AB412F7B10ED00735A92 /* PROJECT_RELEASE_NOTES_1.2.md */,
+				3DD8AB432F7B10F000735A92 /* CHANGELOG.md */,
 			);
 			path = LocTrac;
 			sourceTree = "<group>";
@@ -537,6 +599,10 @@
 				3DA34F7A2EFD9B5100C9255D /* Person.swift */,
 				3D5176872F71CB8B00231C27 /* FirstLaunchWizard.swift */,
 				3D51768B2F71CBC000231C27 /* RootView.swift */,
+				3D742BDA2F7A15D200DCD5B5 /* TripRefreshView.swift */,
+				3D742BDE2F7A1D5100DCD5B5 /* LocationCoordinateUpdater.swift */,
+				3D742BE02F7A1D9D00DCD5B5 /* LocationCoordinateReviewView.swift */,
+				3D742BE62F7A20E500DCD5B5 /* LocationSyncUtilityView.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -556,9 +622,6 @@
 				3DD0AAA629A6EAD1003625C1 /* EditUpdateView */,
 				3DD0AAB129A6EAD1003625C1 /* CalendarViewTab */,
 				3DD0AAB529A6EAD1003625C1 /* ListView Tab */,
-				3D1E00182F799914004BC4D3 /* TRAVEL_HISTORY_BUILD_FIX.md */,
-				3D1E001A2F799AF9004BC4D3 /* TRAVEL_HISTORY_PERFORMANCE_FIX.md */,
-				3D1E001C2F799F2A004BC4D3 /* TRAVEL_HISTORY_FINAL_FIXES.md */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -695,19 +758,25 @@
 				3DB4B33E2F7481E500E0A42C /* LOCATION_MANAGEMENT_SUMMARY.md in Resources */,
 				3D98EC9E2F742E6600C5B8C0 /* MODERN_CALENDAR_GUIDE.md in Resources */,
 				3DEB50072F707BBC004B6339 /* IMPROVED_MAP_INTERACTION.md in Resources */,
+				3D742BE92F7A210D00DCD5B5 /* LOCATION_COORDINATE_COMPLETE_SYSTEM.md in Resources */,
 				3D5176A02F71D65F00231C27 /* QUICK_SETUP_INFOPLIST.md in Resources */,
 				3D32CE832F6F2B9000CEC497 /* EVENT_COUNTRY_IMPLEMENTATION.md in Resources */,
 				3DB4B34A2F74A00000E0A42C /* UI_FIXES_SUMMARY.md in Resources */,
 				3DEB50322F7195B6004B6339 /* BACKUP_FILES_LIST_FEATURE.md in Resources */,
 				3D551E9D2F7903580092B775 /* RELEASE_NOTES_4.2.md in Resources */,
 				3DDD0BD82F75AE5700B2E5EB /* GOLFSHOT_IMPORT_FIX.md in Resources */,
+				3DD8AB402F7B10DA00735A92 /* GIT_CHANGELOG_1.2.md in Resources */,
 				3D551E9B2F79031F0092B775 /* RELEASE_4.2_CHECKLIST.md in Resources */,
+				3D742BE52F7A1FE400DCD5B5 /* LOCATION_COORDINATE_USER_INFORMED.md in Resources */,
 				3DB4B3482F749E3600E0A42C /* CLEANUP_IMPROVEMENTS.md in Resources */,
 				3D98ECAC2F74328900C5B8C0 /* EVENT_FORM_MODERNIZATION.md in Resources */,
 				3D1E001B2F799AF9004BC4D3 /* TRAVEL_HISTORY_PERFORMANCE_FIX.md in Resources */,
 				3DD0AA9029A6EA0E003625C1 /* Preview Assets.xcassets in Resources */,
+				3DD8AB442F7B10F000735A92 /* CHANGELOG.md in Resources */,
 				3D5176A62F71DCBA00231C27 /* QUICK_FIX_SUMMARY.md in Resources */,
 				3D98ECAE2F74343B00C5B8C0 /* EVENT_FORM_UPDATES.md in Resources */,
+				3DD8AB422F7B10ED00735A92 /* PROJECT_RELEASE_NOTES_1.2.md in Resources */,
+				3D742BF12F7AD69100DCD5B5 /* TRIP_REFRESH_IMPROVEMENTS.md in Resources */,
 				3DB4B3442F7482E800E0A42C /* LOCATION_MANAGEMENT_BUILD_FIX.md in Resources */,
 				3DD0AA8D29A6EA0E003625C1 /* Assets.xcassets in Resources */,
 				3DEB50152F7090B2004B6339 /* TRAVEL_JOURNEY_FEATURE.md in Resources */,
@@ -735,6 +804,8 @@
 				3DEB4FF92F7063A9004B6339 /* LOCATIONS_UNIFIED_VIEW_GUIDE.md in Resources */,
 				3DEB50192F7092CD004B6339 /* TRAVEL_JOURNEY_UPDATES.md in Resources */,
 				3DEB50252F70A1DC004B6339 /* JOURNEY_INTEGRATION_PROPOSAL.md in Resources */,
+				3D742BED2F7A239C00DCD5B5 /* LOCATION_SYNC_DEBUGGING_GUIDE.md in Resources */,
+				3D742BDD2F7A15F700DCD5B5 /* TRIP_REFRESH_IMPLEMENTATION.md in Resources */,
 				3DEB501D2F7094A9004B6339 /* TRAVEL_JOURNEY_LOCATIONS_FIX.md in Resources */,
 				3D5176AA2F71E1FF00231C27 /* WIZARD_NOT_LAUNCHING_FIX.md in Resources */,
 				3DDD0BE22F76CA8D00B2E5EB /* DUPLICATE_PREVIEW_FEATURE.md in Resources */,
@@ -742,6 +813,7 @@
 				3D5176962F71CF8800231C27 /* DELETE_IMPORTEXPORTMODELS.md in Resources */,
 				3DDD0BE62F76CE5F00B2E5EB /* SELECTIVE_DELETION_FEATURE.md in Resources */,
 				3D5176902F71CC0000231C27 /* FIRST_LAUNCH_WIZARD_QUICKSTART.md in Resources */,
+				3D742BE32F7A1DDE00DCD5B5 /* LOCATION_COORDINATE_PROPAGATION.md in Resources */,
 				3DEB50272F70A34A004B6339 /* JOURNEY_INTEGRATION_COMPLETE.md in Resources */,
 				3D918BD429ACFC90004A724C /* Seed.json in Resources */,
 				3D51769C2F71D61A00231C27 /* INFO_PLIST_PRIVACY_KEYS.md in Resources */,
@@ -756,11 +828,13 @@
 				3D5176982F71CFB100231C27 /* BUILD_ERROR_FIX.md in Resources */,
 				3D5176942F71CC6700231C27 /* WIZARD_FLOW_DIAGRAM.md in Resources */,
 				3DB4B3542F74A6AD00E0A42C /* VERSION_3.0_RELEASE_NOTES.md in Resources */,
+				3D742BEF2F7A246C00DCD5B5 /* COORDINATE_FEATURES_DISABLED.md in Resources */,
 				3D5176922F71CC2C00231C27 /* INTEGRATION_CHECKLIST.md in Resources */,
 				3DEB500F2F70827A004B6339 /* GIT_COMMIT_SUMMARY.md in Resources */,
 				3D5176B22F71ECB200231C27 /* USER_GUIDE_FIRST_LAUNCH_WIZARD.md in Resources */,
 				3DEB4FFF2F7075D2004B6339 /* MAP_UI_REFINEMENTS.md in Resources */,
 				3D51769E2F71D64400231C27 /* WIZARD_IMPROVEMENTS_COMPLETE.md in Resources */,
+				3D742BEB2F7A22C800DCD5B5 /* LOCATION_COORDINATE_LOGIC_VALIDATION.md in Resources */,
 				3D98ECA22F742EE100C5B8C0 /* CALENDAR_IMPLEMENTATION_GUIDE.md in Resources */,
 				3DD4F8A22F78250600AD9370 /* VERSION_4_1_NOTES.md in Resources */,
 				3DB4B3522F74A59700E0A42C /* STAY_TYPE_EDITOR_FIX.md in Resources */,
@@ -787,6 +861,7 @@
 			files = (
 				3DD0AACE29A6EB13003625C1 /* Date+Extension.swift in Sources */,
 				3D065F4F29DD02200078E77A /* LocationMapAnnotationView.swift in Sources */,
+				3D742BDF2F7A1D5100DCD5B5 /* LocationCoordinateUpdater.swift in Sources */,
 				3DD6713A29CB897800E54846 /* CardView.swift in Sources */,
 				3D5176C02F73348800231C27 /* TripsListView.swift in Sources */,
 				3DD0AABF29A6EAD1003625C1 /* EventFormType.swift in Sources */,
@@ -801,8 +876,11 @@
 				3DEA7F3C29B15BE0004F67EF /* ImportExport.swift in Sources */,
 				3DB4B3582F7522A500E0A42C /* DataStore+InfographicsCache.swift in Sources */,
 				3D09FBD92EF61F89001376B9 /* OtherCitiesListView.swift.swift in Sources */,
+				3DD8AB3C2F7AFA6700735A92 /* TripConfirmationView.swift in Sources */,
 				3DD0AAC229A6EAD1003625C1 /* StartTabView.swift in Sources */,
 				3D98EC9C2F742E4700C5B8C0 /* ModernEventsCalendarView.swift in Sources */,
+				3D30BB7F2F79EA8D007B058B /* EventCountryUpdaterView.swift in Sources */,
+				3D742BE12F7A1D9D00DCD5B5 /* LocationCoordinateReviewView.swift in Sources */,
 				3DD0AABA29A6EAD1003625C1 /* LocationFormViewModel.swift in Sources */,
 				3D5176882F71CB8B00231C27 /* FirstLaunchWizard.swift in Sources */,
 				3D98ECA82F74320300C5B8C0 /* ModernEventFormView.swift in Sources */,
@@ -830,6 +908,7 @@
 				3D065F5029DD02200078E77A /* LocationDetailView.swift in Sources */,
 				3D065F4D29DD02200078E77A /* LocationsView.swift in Sources */,
 				3D481E9429B8DB0E0016C6ED /* ThemePicker.swift in Sources */,
+				3D742BDB2F7A15D200DCD5B5 /* TripRefreshView.swift in Sources */,
 				3D43857B29E5B5D900ED1E6A /* LocationManager.swift in Sources */,
 				3D065F5329DD023D0078E77A /* LocationsMapViewModel.swift in Sources */,
 				3DB4B34C2F74A21700E0A42C /* StateDetector.swift in Sources */,
@@ -843,14 +922,17 @@
 				3DD0AABC29A6EAD1003625C1 /* EventFormView.swift in Sources */,
 				3D481E9229B8D7D00016C6ED /* Theme.swift in Sources */,
 				3DD0AAA029A6EAB8003625C1 /* Locations.swift in Sources */,
+				3D30BB802F79EABF007B058B /* EventCountryGeocoder.swift in Sources */,
 				3DD0AAC329A6EAD1003625C1 /* DaysEvents.swift in Sources */,
 				3DD0AA9929A6EA96003625C1 /* AppEntry.swift in Sources */,
+				3D742BE72F7A20E500DCD5B5 /* LocationSyncUtilityView.swift in Sources */,
 				3D5176BC2F72FA1600231C27 /* TripFormView.swift in Sources */,
 				3DB4B3562F75229900E0A42C /* InfographicsCacheManager.swift in Sources */,
 				3DD0AAC929A6EAD1003625C1 /* EventsListView.swift in Sources */,
 				3DD0AAC629A6EAD1003625C1 /* LocationLiistViewRow.swift in Sources */,
 				3D46AC462F4E59DF001374DE /* ActivitiesMaintenanceView.swift in Sources */,
 				3DD0AAA129A6EAB8003625C1 /* Event.swift in Sources */,
+				3DD8AB3E2F7B0CFF00735A92 /* PendingTripItem.swift in Sources */,
 				3DEB50092F707CE9004B6339 /* OtherCityDetailView.swift in Sources */,
 				3DD0AABB29A6EAD1003625C1 /* EventFormViewModel.swift in Sources */,
 				3DEB50032F707936004B6339 /* OtherEventDetailView.swift in Sources */,
@@ -1009,7 +1091,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = TimOrg.LocTrac;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1046,7 +1128,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = TimOrg.LocTrac;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

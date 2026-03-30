@@ -16,6 +16,11 @@ struct StartTabView: View {
     @State private var showImportGolfshot: Bool = false // For Golfshot CSV import
     @State private var showLocationsManagement: Bool = false // For managing locations
     @State private var showTravelHistory: Bool = false // For comprehensive travel history
+    @State private var showCountryUpdater: Bool = false // For updating event countries
+    @State private var showLocationSync: Bool = false // For syncing event coordinates
+    
+    // Drives TripConfirmationView sheet
+    @State private var pendingItem: PendingTripItem?
     
     var body: some View {
         NavigationStack {
@@ -71,6 +76,15 @@ struct StartTabView: View {
                     showFirstLaunchWizard = true
                 }
             }
+            // Observe pendingTrip (equatable Bool) and map to sheet-driving item
+            .onChange(of: store.pendingTrip != nil) { _, hasPending in
+                print("UI Root (StartTabView): hasPendingTrip? \(hasPending)")
+                if hasPending, let p = store.pendingTrip {
+                    pendingItem = PendingTripItem(trip: p.trip, fromEvent: p.fromEvent, toEvent: p.toEvent)
+                } else {
+                    pendingItem = nil
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Menu {
@@ -108,6 +122,14 @@ struct StartTabView: View {
                             Label("Manage Trips", systemImage: "airplane")
                         }
                         
+                        // DISABLED: Sync Event Coordinates
+                        // TODO: Re-enable once use case is clarified
+                        // Button {
+                        //     showLocationSync = true
+                        // } label: {
+                        //     Label("Sync Event Coordinates", systemImage: "arrow.triangle.2.circlepath")
+                        // }
+                        
                         Divider()
                         
                         // Backup & Import option
@@ -116,6 +138,13 @@ struct StartTabView: View {
                         } label: {
                             Label("Backup & Import", systemImage: "square.and.arrow.up")
                         }
+                        
+                        // Update Event Countries - HIDDEN for now
+                        // Button {
+                        //     showCountryUpdater = true
+                        // } label: {
+                        //     Label("Update Event Countries", systemImage: "globe.americas")
+                        // }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
@@ -155,6 +184,40 @@ struct StartTabView: View {
                 TravelHistoryView()
                     .environmentObject(store)
             }
+            .sheet(isPresented: $showLocationSync) {
+                LocationSyncUtilityView()
+                    .environmentObject(store)
+            }
+            // Trip confirmation sheet
+            .sheet(item: $pendingItem, onDismiss: {
+                store.pendingTrip = nil
+            }) { item in
+                TripConfirmationView(
+                    trip: item.trip,
+                    fromEvent: item.fromEvent,
+                    toEvent: item.toEvent,
+                    onConfirm: { selectedMode, notes in
+                        let trip = item.trip
+                        var updatedTrip = trip
+                        updatedTrip.mode = selectedMode
+                        updatedTrip.notes = notes
+                        updatedTrip.recalculateCO2()
+                        store.addTrip(updatedTrip)
+                        store.pendingTrip = nil
+                        pendingItem = nil
+                    },
+                    onCancel: {
+                        store.pendingTrip = nil
+                        pendingItem = nil
+                    }
+                )
+                .environmentObject(store)
+            }
+            // Country updater sheet - HIDDEN for now
+            // .sheet(isPresented: $showCountryUpdater) {
+            //     EventCountryUpdaterView()
+            //         .environmentObject(store)
+            // }
         }
     }
     
