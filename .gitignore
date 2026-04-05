@@ -30,3 +30,7 @@ build/
 # Backup files
 *.backup
 *.old
+*.xcodeproj/*.swift
+LocTrac.xcodeproj/*.md
+LocTrac.xcodeproj/*OLD*
+LocTrac.xcodeproj/*CORRECTED*

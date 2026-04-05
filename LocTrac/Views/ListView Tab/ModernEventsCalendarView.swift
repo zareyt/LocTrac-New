@@ -28,6 +28,7 @@ struct ModernEventsCalendarView: View {
     @State private var displayEvents = false
     @State private var formType: EventFormType?
     @State private var filterMode: CalendarFilterMode = .location
+    @State private var calendarRefreshTrigger: Int = 0
     
     var body: some View {
         NavigationStack {
@@ -42,7 +43,8 @@ struct ModernEventsCalendarView: View {
                         store: store,
                         dateSelected: $dateSelected,
                         displayEvents: $displayEvents,
-                        filterMode: filterMode
+                        filterMode: filterMode,
+                        refreshTrigger: calendarRefreshTrigger
                     )
                 }
             }
@@ -105,6 +107,8 @@ struct ModernEventsCalendarView: View {
                     Button {
                         withAnimation(.spring(response: 0.3)) {
                             filterMode = mode
+                            // Trigger calendar refresh when filter changes
+                            calendarRefreshTrigger += 1
                         }
                     } label: {
                         HStack(spacing: 6) {
@@ -138,6 +142,7 @@ struct ModernCalendarView: UIViewRepresentable {
     @Binding var dateSelected: DateComponents?
     @Binding var displayEvents: Bool
     let filterMode: CalendarFilterMode
+    let refreshTrigger: Int  // Trigger to force refresh when filter changes
     
     func makeUIView(context: Context) -> some UICalendarView {
         let view = UICalendarView()
@@ -155,7 +160,12 @@ struct ModernCalendarView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: UIViewType, context: Context) {
+        // Detect changes that require a broader decoration reload
+        let filterModeChanged = context.coordinator.filterMode != filterMode
+        let refreshTriggerChanged = context.coordinator.lastRefreshTrigger != refreshTrigger
+        
         context.coordinator.filterMode = filterMode
+        context.coordinator.lastRefreshTrigger = refreshTrigger
         
         // Targeted refreshes for single-day changes
         if let changedEvent = store.changedEvent {
@@ -165,9 +175,15 @@ struct ModernCalendarView: UIViewRepresentable {
             uiView.reloadDecorations(forDateComponents: [movedEvent.dateComponents], animated: true)
         }
         
-        // Full refresh for the visible area
+        // Read the token to participate in SwiftUI update cycles,
+        // but avoid triggering a 3-month reload unless we really need to.
         _ = store.calendarRefreshToken
-        context.coordinator.reloadThreeMonthWindow()
+        
+        // Only reload the visible 3-month window when the filter mode or explicit refresh trigger changes
+        if filterModeChanged || refreshTriggerChanged {
+            print("🔄 [ModernCalendarView] Filter/trigger changed → reloading decorations window")
+            context.coordinator.reloadThreeMonthWindow()
+        }
     }
     
     class Coordinator: NSObject, UICalendarViewDelegate, UICalendarSelectionSingleDateDelegate {
@@ -175,11 +191,13 @@ struct ModernCalendarView: UIViewRepresentable {
         @ObservedObject var store: DataStore
         weak var calendarView: UICalendarView?
         var filterMode: CalendarFilterMode = .location
+        var lastRefreshTrigger: Int = 0
         
         init(parent: ModernCalendarView, store: ObservedObject<DataStore>) {
             self.parent = parent
             self._store = store
             self.filterMode = parent.filterMode
+            self.lastRefreshTrigger = parent.refreshTrigger
         }
         
         @MainActor
@@ -275,7 +293,20 @@ struct ModernCalendarView: UIViewRepresentable {
             guard let view = calendarView else { return }
             let cal = view.calendar
             
-            let anchor = parent.dateSelected?.date ?? Date()
+            // Prefer the visible month from the calendar, fall back to selected or today
+            let anchor: Date
+            let visibleComponents = view.visibleDateComponents
+            if let visibleDate = cal.date(from: visibleComponents) {
+                anchor = visibleDate
+                print("🔍 [Coordinator] Reloading based on visible month: \(visibleDate.formatted(date: .abbreviated, time: .omitted))")
+            } else if let selectedDate = parent.dateSelected?.date {
+                anchor = selectedDate
+                print("🔍 [Coordinator] Reloading based on selected date: \(selectedDate.formatted(date: .abbreviated, time: .omitted))")
+            } else {
+                anchor = Date()
+                print("🔍 [Coordinator] Reloading based on today: \(Date().formatted(date: .abbreviated, time: .omitted))")
+            }
+            
             guard let currentMonth = cal.dateInterval(of: .month, for: anchor),
                   let prevMonthStart = cal.date(byAdding: .month, value: -1, to: currentMonth.start),
                   let prevMonth = cal.dateInterval(of: .month, for: prevMonthStart),
@@ -284,6 +315,8 @@ struct ModernCalendarView: UIViewRepresentable {
             
             let totalStart = prevMonth.start
             let totalEnd = nextMonth.end
+            
+            print("🔄 [Coordinator] Reloading decorations from \(totalStart.formatted(date: .abbreviated, time: .omitted)) to \(totalEnd.formatted(date: .abbreviated, time: .omitted))")
             
             var comps: [DateComponents] = []
             var cursor = totalStart
@@ -535,7 +568,9 @@ struct ModernEventEditorSheet: View {
     @State private var notes: String
     @State private var selectedPeople: [Person]
     @State private var selectedActivityIDs: Set<String>
+    @State private var selectedAffirmationIDs: Set<String>
     @State private var showingContactsPicker = false
+    @State private var showingAffirmationsSelector = false
     
     init(event: Event) {
         self.event = event
@@ -547,6 +582,7 @@ struct ModernEventEditorSheet: View {
         _notes = State(initialValue: event.note)
         _selectedPeople = State(initialValue: event.people)
         _selectedActivityIDs = State(initialValue: Set(event.activityIDs))
+        _selectedAffirmationIDs = State(initialValue: Set(event.affirmationIDs))
     }
     
     var body: some View {
@@ -622,6 +658,68 @@ struct ModernEventEditorSheet: View {
                     Text("\(selectedActivityIDs.count) selected")
                 }
                 
+                // Affirmations Section
+                Section {
+                    if store.affirmations.isEmpty {
+                        Text("No affirmations available")
+                            .foregroundColor(.secondary)
+                            .font(.subheadline)
+                    } else if selectedAffirmationIDs.isEmpty {
+                        Button {
+                            showingAffirmationsSelector = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "sparkles")
+                                    .foregroundColor(.blue)
+                                Text("Add Affirmations")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    } else {
+                        ForEach(Array(selectedAffirmationIDs), id: \.self) { affirmationID in
+                            if let affirmation = store.affirmations.first(where: { $0.id == affirmationID }) {
+                                HStack(spacing: 12) {
+                                    Image(systemName: affirmation.category.icon)
+                                        .foregroundStyle(Color(affirmation.color).gradient)
+                                        .frame(width: 24)
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(affirmation.text)
+                                            .font(.subheadline)
+                                            .lineLimit(2)
+                                        Text(affirmation.category.rawValue)
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Button {
+                                        selectedAffirmationIDs.remove(affirmationID)
+                                    } label: {
+                                        Image(systemName: "minus.circle.fill")
+                                            .foregroundColor(.red)
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                        
+                        Button {
+                            showingAffirmationsSelector = true
+                        } label: {
+                            Label("Manage Affirmations", systemImage: "pencil.circle")
+                        }
+                    }
+                } header: {
+                    Text("Affirmations")
+                } footer: {
+                    Text("\(selectedAffirmationIDs.count) selected")
+                }
+                
                 // People Section
                 Section("People") {
                     ForEach(selectedPeople) { person in
@@ -684,6 +782,13 @@ struct ModernEventEditorSheet: View {
                     selectedPeople = Array(peopleSet)
                 }
             }
+            .sheet(isPresented: $showingAffirmationsSelector) {
+                AffirmationSelectorView(selectedAffirmationIDs: Binding(
+                    get: { Array(selectedAffirmationIDs) },
+                    set: { selectedAffirmationIDs = Set($0) }
+                ))
+                .environmentObject(store)
+            }
         }
     }
     
@@ -698,6 +803,7 @@ struct ModernEventEditorSheet: View {
         updatedEvent.note = notes
         updatedEvent.people = selectedPeople
         updatedEvent.activityIDs = Array(selectedActivityIDs)
+        updatedEvent.affirmationIDs = Array(selectedAffirmationIDs)
         updatedEvent.latitude = selectedLocation.latitude
         updatedEvent.longitude = selectedLocation.longitude
         
@@ -747,3 +853,4 @@ struct ModernEventsCalendarView_Previews: PreviewProvider {
             .environmentObject(DataStore(preview: true))
     }
 }
+

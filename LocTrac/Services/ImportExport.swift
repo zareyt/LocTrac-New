@@ -13,6 +13,7 @@ struct Import: Codable {
         var note: String
         var people: [Person]? // optional for backward compatibility
         var activityIDs: [String]? // NEW: optional for backward compatibility
+        var affirmationIDs: [String]? // NEW: optional for backward compatibility
     }
     
     struct Location: Codable {
@@ -31,6 +32,15 @@ struct Import: Codable {
         let name: String
     }
     
+    struct AffirmationData: Codable {
+        let id: String
+        let text: String
+        let category: String
+        let createdDate: Date
+        let color: String
+        let isFavorite: Bool
+    }
+    
     struct TripData: Codable {
         let id: UUID
         let fromEventID: String  // Event IDs are Strings
@@ -47,6 +57,7 @@ struct Import: Codable {
     let events: [Event]
     let locations: [Location]
     let activities: [ActivityData]? // NEW (optional for old seed files)
+    let affirmations: [AffirmationData]? // NEW (optional for old seed files)
     let trips: [TripData]? // NEW (optional for old seed files)
 }
 
@@ -54,18 +65,20 @@ struct Export: Codable {
     let locations: [LocationData]
     let events: [EventData]
     let activities: [ActivityData] // NEW
+    let affirmations: [AffirmationData] // NEW
     let trips: [TripData] // NEW
     
-    // Tolerant decoder for legacy backups missing activities/trips
+    // Tolerant decoder for legacy backups missing activities/affirmations/trips
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.locations = try container.decode([LocationData].self, forKey: .locations)
         self.events = try container.decode([EventData].self, forKey: .events)
         self.activities = (try? container.decode([ActivityData].self, forKey: .activities)) ?? []
+        self.affirmations = (try? container.decode([AffirmationData].self, forKey: .affirmations)) ?? []
         self.trips = (try? container.decode([TripData].self, forKey: .trips)) ?? []
     }
     
-    init(locations: [Location], events: [Event], activities: [Activity], trips: [Trip]) {
+    init(locations: [Location], events: [Event], activities: [Activity], affirmations: [Affirmation], trips: [Trip]) {
         self.locations = locations.map {
             LocationData(id: $0.id,
                          name: $0.name,
@@ -87,9 +100,20 @@ struct Export: Codable {
                       country: $0.country, // NEW: Export event's country
                       note: $0.note,
                       people: $0.people,
-                      activityIDs: $0.activityIDs)
+                      activityIDs: $0.activityIDs,
+                      affirmationIDs: $0.affirmationIDs)
         }
         self.activities = activities.map { ActivityData(id: $0.id, name: $0.name) }
+        self.affirmations = affirmations.map {
+            AffirmationData(
+                id: $0.id,
+                text: $0.text,
+                category: $0.category.rawValue,
+                createdDate: $0.createdDate,
+                color: $0.color,
+                isFavorite: $0.isFavorite
+            )
+        }
         self.trips = trips.map {
             TripData(
                 id: $0.id,
@@ -129,11 +153,21 @@ struct Export: Codable {
         let note: String
         let people: [Person]? // existing
         let activityIDs: [String] // NEW
+        let affirmationIDs: [String] // NEW
     }
     
     struct ActivityData: Codable {
         let id: String
         let name: String
+    }
+    
+    struct AffirmationData: Codable {
+        let id: String
+        let text: String
+        let category: String
+        let createdDate: Date
+        let color: String
+        let isFavorite: Bool
     }
     
     struct TripData: Codable {

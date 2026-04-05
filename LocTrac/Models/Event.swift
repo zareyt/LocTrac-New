@@ -27,6 +27,7 @@ struct Event: Identifiable {
     var note: String
     var people: [Person] = []
     var activityIDs: [String] = [] // NEW: references Activity.id
+    var affirmationIDs: [String] = [] // NEW: references Affirmation.id
     
     init(id: String = UUID().uuidString,
          eventType: EventType = .unspecified,
@@ -38,7 +39,8 @@ struct Event: Identifiable {
          country: String? = nil, // NEW: Country parameter
          note: String,
          people: [Person] = [],
-         activityIDs: [String] = []) {
+         activityIDs: [String] = [],
+         affirmationIDs: [String] = []) {
         self.eventType = eventType.rawValue
         self.date = date
         self.id = id
@@ -50,6 +52,7 @@ struct Event: Identifiable {
         self.note = note
         self.people = people
         self.activityIDs = activityIDs
+        self.affirmationIDs = affirmationIDs
     }
     
     var dateComponents: DateComponents {
@@ -91,7 +94,8 @@ extension Event {
               longitude: Location.sampleData[0].longitude,
               note: "Note Field ",
               people: [],
-              activityIDs: [])
+              activityIDs: [],
+              affirmationIDs: [])
     ]
 }
 

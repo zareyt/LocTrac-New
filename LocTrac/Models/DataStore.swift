@@ -12,6 +12,7 @@ class DataStore: ObservableObject {
     @Published var locations: [Location] = []
     @Published var events: [Event] = []
     @Published var activities: [Activity] = [] // NEW: global list of activities
+    @Published var affirmations: [Affirmation] = [] // NEW: global list of affirmations
     @Published var trips: [Trip] = [] // NEW: travel trips between locations
     @Published var preview: Bool = false
     @Published var changedEvent: Event?
@@ -164,10 +165,50 @@ class DataStore: ObservableObject {
         invalidateCacheForActivity(activity)
     }
     
+    // MARK: - Affirmations CRUD
+    
+    func addAffirmation(_ affirmation: Affirmation) {
+        affirmations.append(affirmation)
+        storeData()
+    }
+    
+    func updateAffirmation(_ affirmation: Affirmation) {
+        if let idx = affirmations.firstIndex(where: { $0.id == affirmation.id }) {
+            affirmations[idx] = affirmation
+            storeData()
+        }
+    }
+    
+    func deleteAffirmation(_ affirmation: Affirmation) {
+        // Remove affirmation from global list
+        affirmations.removeAll { $0.id == affirmation.id }
+        // Also remove from any events that reference it
+        for i in events.indices {
+            events[i].affirmationIDs.removeAll { $0 == affirmation.id }
+        }
+        storeData()
+    }
+    
+    func toggleFavorite(_ affirmation: Affirmation) {
+        if let idx = affirmations.firstIndex(where: { $0.id == affirmation.id }) {
+            affirmations[idx].isFavorite.toggle()
+            storeData()
+        }
+    }
+    
+    // Load preset affirmations on first launch
+    func seedDefaultAffirmations() {
+        if affirmations.isEmpty {
+            print("🌟 Seeding default affirmations")
+            affirmations = Affirmation.presets
+            storeData()
+        }
+    }
+    
     // MARK: - Persistence
     
     func storeData() -> Void {
-        let export = Export(locations: self.locations, events: self.events, activities: self.activities, trips: self.trips)
+        let export = Export(locations: self.locations, events: self.events, activities: self.activities, affirmations: self.affirmations, trips: self.trips)
         do {
             let encodedData = try JSONEncoder().encode(export)
             if let filepath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("backup.json") {
@@ -200,11 +241,17 @@ class DataStore: ObservableObject {
             self.locations = []
             self.events = []
             self.activities = []
+            self.affirmations = []
+            // Ensure "Other" exists even before wizard completes (for any flows that expect it)
+            ensureOtherLocationExists(saveIfAdded: false) // don't immediately persist; wizard completion will save
             return
         }
         
         print("📂 Loading from backup.json")
         loadFromURL(backupURL)
+        
+        // Repair older backups that might be missing the "Other" location
+        ensureOtherLocationExists(saveIfAdded: true)
     }
     
     private func loadFromURL(_ url: URL) {
@@ -214,6 +261,9 @@ class DataStore: ObservableObject {
             self.locations = []
             self.events = []
             self.activities = []
+            self.affirmations = []
+            // Ensure "Other" exists in empty state
+            ensureOtherLocationExists(saveIfAdded: false)
             return
         }
         
@@ -223,6 +273,9 @@ class DataStore: ObservableObject {
             self.locations = []
             self.events = []
             self.activities = []
+            self.affirmations = []
+            // Ensure "Other" exists in empty state
+            ensureOtherLocationExists(saveIfAdded: false)
             return
         }
         self.locations = decodedImport.locations.map({ location in
@@ -246,13 +299,30 @@ class DataStore: ObservableObject {
                   country: event.country,
                   note: event.note,
                   people: event.people ?? [],
-                  activityIDs: event.activityIDs ?? [])
+                  activityIDs: event.activityIDs ?? [],
+                  affirmationIDs: event.affirmationIDs ?? [])
         })
         // Activities may or may not be present in older seeds; seed defaults if empty
         if let importedActivities = decodedImport.activities {
             self.activities = importedActivities.map { Activity(id: $0.id, name: $0.name) }
         } else {
             self.activities = []
+        }
+        
+        // Affirmations may or may not be present in older backups
+        if let importedAffirmations = decodedImport.affirmations {
+            self.affirmations = importedAffirmations.map {
+                Affirmation(
+                    id: $0.id,
+                    text: $0.text,
+                    category: Affirmation.Category(rawValue: $0.category) ?? .custom,
+                    createdDate: $0.createdDate,
+                    color: $0.color,
+                    isFavorite: $0.isFavorite
+                )
+            }
+        } else {
+            self.affirmations = []
         }
         
         // Trips may or may not be present in older backups
@@ -281,6 +351,10 @@ class DataStore: ObservableObject {
             seedDefaultActivities()
         }
         
+        if self.affirmations.isEmpty {
+            seedDefaultAffirmations()
+        }
+        
         // Run trip migration if no trips exist and we have events
         if self.trips.isEmpty && self.events.count > 1 {
             print("🚗 Running trip migration...")
@@ -290,6 +364,7 @@ class DataStore: ObservableObject {
         print("✅ Loaded Locations: \(locations.count)")
         print("✅ Loaded Events: \(events.count)")
         print("✅ Loaded Activities: \(activities.count)")
+        print("✅ Loaded Affirmations: \(affirmations.count)")
         print("✅ Loaded Trips: \(trips.count)")
         
         // MIGRATION COMMENTED OUT: Country data has been migrated.
@@ -476,7 +551,7 @@ class DataStore: ObservableObject {
                     trips.append(newTrip)
                     print("   📊 Total trips now: \(trips.count)")
                 } else {
-                    print("   ℹ️ Trip already exists")
+                    print("   ℹ️ Trip already exists, skipping")
                 }
             } else {
                 print("   ℹ️ No trip needed - same location or too close")
@@ -670,4 +745,31 @@ class DataStore: ObservableObject {
             return event.location.country
         }
     }
+    
+    // MARK: - Seed "Other" Location
+    
+    /// Ensures a Location named "Other" exists. Returns true if it was added.
+    @discardableResult
+    func ensureOtherLocationExists(saveIfAdded: Bool) -> Bool {
+        let exists = locations.contains { $0.name.caseInsensitiveCompare("Other") == .orderedSame }
+        if exists {
+            return false
+        }
+        let other = Location(
+            name: "Other",
+            city: "None",
+            latitude: 0.0,
+            longitude: 0.0,
+            country: nil,
+            theme: .yellow
+        )
+        locations.append(other)
+        changedLocation = other
+        if saveIfAdded {
+            storeData()
+        }
+        print("✅ Seeded required 'Other' location")
+        return true
+    }
 }
+

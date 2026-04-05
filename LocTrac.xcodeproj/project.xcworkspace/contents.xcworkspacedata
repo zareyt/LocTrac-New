@@ -5,12 +5,15 @@
       location = "self:">
    </FileRef>
    <FileRef
-      location = "group:AUTOMATIC_TRIP_MANAGEMENT.md">
+      location = "group:Affirmation.swift">
    </FileRef>
    <FileRef
-      location = "group:AUTO_TRIP_ISSUES.md">
+      location = "group:AffirmationEditorView.swift">
    </FileRef>
    <FileRef
-      location = "group:TripConfirmationView.swift">
+      location = "group:AffirmationSelectorView.swift">
+   </FileRef>
+   <FileRef
+      location = "group:ManagementView.swift">
    </FileRef>
 </Workspace>

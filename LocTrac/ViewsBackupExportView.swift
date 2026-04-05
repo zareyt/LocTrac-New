@@ -12,6 +12,11 @@ struct BackupExportView: View {
     @EnvironmentObject var store: DataStore
     @Environment(\.dismiss) private var dismiss
     
+    init() {
+        print("📌 [ViewsBackupExportView.swift] File loaded - init called")
+        print("🟢 [BackupExportView] init called")
+    }
+    
     @State private var showShareSheet = false
     @State private var fileURL: URL?
     @State private var showExportSuccess = false
@@ -23,15 +28,16 @@ struct BackupExportView: View {
     @State private var fileToDelete: BackupFileInfo?
     @State private var showDeleteConfirmation = false
     
-    // Present Restore flow pre-seeded with a selected exported backup
-    @State private var showRestoreWithPreselected = false
-    @State private var preselectedRestoreURL: URL?
+    // Present Timeline Restore flow with preselected URL (from list)
+    @State private var showTimelineRestoreWithPreselected = false
+    @State private var preselectedTimelineRestoreURL: URL?
     
-    // Present Restore flow without preselected URL (Files picker path)
-    @State private var showRestoreWithoutPreselected = false
+    // Present Timeline Restore flow without preselected URL (Files picker path)
+    @State private var showTimelineRestoreWithoutPreselected = false
     
     var body: some View {
-        NavigationStack {
+        print("🔄 [BackupExportView] body rendering")
+        return NavigationStack {
             List {
                 infoSection
                 statisticsSection
@@ -75,19 +81,25 @@ struct BackupExportView: View {
                 Text("Are you sure you want to delete \(file.name)? This cannot be undone.")
             }
             .onAppear {
+                print("🟢 [BackupExportView] onAppear called")
                 loadFileInfo()
                 loadBackupFiles()
             }
-            // Present RestoreBackupView with preselected URL (from list)
-            .sheet(isPresented: $showRestoreWithPreselected) {
-                if let url = preselectedRestoreURL {
-                    RestoreBackupView(isPresented: $showRestoreWithPreselected, preselectedURL: url)
-                        .environmentObject(store)
+            // Present TimelineRestoreView with preselected URL (from list)
+            .sheet(isPresented: $showTimelineRestoreWithPreselected) {
+                print("🔷 [BackupExportView] Presenting TimelineRestoreView WITH preselected URL")
+                if let url = preselectedTimelineRestoreURL {
+                    return AnyView(TimelineRestoreView(isPresented: $showTimelineRestoreWithPreselected, preselectedURL: url)
+                        .environmentObject(store))
+                } else {
+                    print("⚠️ [BackupExportView] ERROR: No preselected URL despite sheet trigger!")
+                    return AnyView(Text("Error: No URL selected"))
                 }
             }
-            // Present RestoreBackupView without preselected URL (Files picker path)
-            .sheet(isPresented: $showRestoreWithoutPreselected) {
-                RestoreBackupView(isPresented: $showRestoreWithoutPreselected, preselectedURL: nil)
+            // Present TimelineRestoreView without preselected URL (Files picker path)
+            .sheet(isPresented: $showTimelineRestoreWithoutPreselected) {
+                print("🔷 [BackupExportView] Presenting TimelineRestoreView WITHOUT preselected URL")
+                return TimelineRestoreView(isPresented: $showTimelineRestoreWithoutPreselected, preselectedURL: nil)
                     .environmentObject(store)
             }
         }
@@ -103,9 +115,9 @@ struct BackupExportView: View {
                         .foregroundColor(.blue)
                         .font(.title2)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Backup Your Data")
+                        Text("Backup your Data and Import Data")
                             .font(.headline)
-                        Text("Export all locations, events, and activities")
+                        Text("Export all locations, events, and activities. Import data from your backup, all or selected timeframe")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -164,71 +176,37 @@ struct BackupExportView: View {
     
     private var exportOptionsSection: some View {
         Section {
-            Button {
-                exportAndShare()
-            } label: {
-                HStack {
-                    Image(systemName: "square.and.arrow.up")
-                        .foregroundColor(.blue)
-                        .font(.title3)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Share Backup File")
-                            .font(.headline)
-                        Text("Send via Messages, Email, AirDrop, etc.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .foregroundColor(.secondary)
-                        .font(.caption)
-                }
-                .padding(.vertical, 4)
+            // Share button
+            Button(action: exportAndShare) {
+                BackupOptionRow(
+                    icon: "square.and.arrow.up",
+                    color: .blue,
+                    title: "Share Backup File",
+                    subtitle: "Send via Messages, Email, AirDrop, etc."
+                )
             }
             
-            Button {
-                createBackup()
-            } label: {
-                HStack {
-                    Image(systemName: "arrow.clockwise.circle.fill")
-                        .foregroundColor(.green)
-                        .font(.title3)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Create Fresh Backup")
-                            .font(.headline)
-                        Text("Update backup file with current data")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .foregroundColor(.secondary)
-                        .font(.caption)
-                }
-                .padding(.vertical, 4)
+            // Create backup button
+            Button(action: createBackup) {
+                BackupOptionRow(
+                    icon: "arrow.clockwise.circle.fill",
+                    color: .green,
+                    title: "Create Fresh Backup",
+                    subtitle: "Update backup file with current data"
+                )
             }
             
-            // Open Files-based restore flow
+            // Import button
             Button {
-                showRestoreWithoutPreselected = true
+                print("🔵 [BackupExportView] 'Import from Backup File' button tapped")
+                showTimelineRestoreWithoutPreselected = true
             } label: {
-                HStack {
-                    Image(systemName: "folder")
-                        .foregroundColor(.orange)
-                        .font(.title3)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Select Backup from Files")
-                            .font(.headline)
-                        Text("Browse iCloud Drive or On My iPhone")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .foregroundColor(.secondary)
-                        .font(.caption)
-                }
-                .padding(.vertical, 4)
+                BackupOptionRow(
+                    icon: "clock.arrow.circlepath",
+                    color: .orange,
+                    title: "Import from Backup File",
+                    subtitle: "Select backup file to import"
+                )
             }
         } header: {
             Text("Backup & Import")
@@ -282,7 +260,7 @@ struct BackupExportView: View {
                     .foregroundColor(.secondary)
             }
         } footer: {
-            Text("These are backup files you've exported from this device. Tap the menu button to preview/restore, share, or delete.")
+            Text("These are backup files you've exported from this device. Tap the menu button to import with timeline filtering, share, or delete.")
         }
     }
     
@@ -314,11 +292,12 @@ struct BackupExportView: View {
             
             Menu {
                 Button {
-                    // Preview & Restore directly
-                    preselectedRestoreURL = backupFile.url
-                    showRestoreWithPreselected = true
+                    // Open timeline-based import with this file
+                    print("🔵 [BackupExportView] 'Import from This Backup' menu item tapped for: \(backupFile.name)")
+                    preselectedTimelineRestoreURL = backupFile.url
+                    showTimelineRestoreWithPreselected = true
                 } label: {
-                    Label("Preview & Restore", systemImage: "eye")
+                    Label("Import from This Backup", systemImage: "clock.arrow.circlepath")
                 }
                 
                 Button {
@@ -517,6 +496,35 @@ struct BackupFileInfo: Identifiable {
     let date: Date
     let size: Int64
     let sizeString: String
+}
+
+// MARK: - Backup Option Row
+
+struct BackupOptionRow: View {
+    let icon: String
+    let color: Color
+    let title: String
+    let subtitle: String
+    
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(color)
+                .font(.title3)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.headline)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .foregroundColor(.secondary)
+                .font(.caption)
+        }
+        .padding(.vertical, 4)
+    }
 }
 
 // MARK: - Preview

@@ -224,19 +224,28 @@ struct FirstLaunchWizard: View {
     private func completeWizard() {
         isCompleting = true
         
+        print("🎯 Starting wizard completion...")
+        
         // Create default data
         setupDefaultData()
         
+        // Ensure required "Other" location exists for non-stay events
+        store.ensureOtherLocationExists(saveIfAdded: false)
+        print("📍 Locations after ensureOtherLocationExists: \(store.locations.count)")
+        
         // Mark wizard as completed
         UserDefaults.standard.set(true, forKey: "hasCompletedFirstLaunch")
+        print("✅ Set hasCompletedFirstLaunch flag")
         
         // Save data to create backup.json
         store.storeData()
+        print("💾 Called storeData() - backup.json should now exist")
         
         // Small delay for visual feedback
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             isCompleting = false
             dismiss()
+            print("✅ Wizard completed and dismissed")
         }
     }
     
@@ -997,3 +1006,4 @@ struct FirstLaunchWizard_Previews: PreviewProvider {
             .environmentObject(DataStore())
     }
 }
+

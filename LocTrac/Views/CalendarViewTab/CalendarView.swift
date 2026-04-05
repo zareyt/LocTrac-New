@@ -39,20 +39,24 @@ struct CalendarView: UIViewRepresentable {
             uiView.reloadDecorations(forDateComponents: [movedEvent.dateComponents], animated: true)
         }
         
-        // Full refresh for the visible area (3-month window) after batch updates.
-        // Reading the token ensures updateUIView is called whenever it changes.
-        _ = store.calendarRefreshToken
-        context.coordinator.reloadThreeMonthWindow()
+        // Full refresh for the visible area (3-month window) only when the token actually changes
+        let currentToken = store.calendarRefreshToken
+        if context.coordinator.lastSeenRefreshToken != currentToken {
+            context.coordinator.lastSeenRefreshToken = currentToken
+            context.coordinator.reloadThreeMonthWindow()
+        }
     }
     
     class Coordinator: NSObject, UICalendarViewDelegate, UICalendarSelectionSingleDateDelegate {
         var parent: CalendarView
         @ObservedObject var store: DataStore
         weak var calendarView: UICalendarView?
+        var lastSeenRefreshToken: UUID?
         
         init(parent: CalendarView, store: ObservedObject<DataStore>) {
             self.parent = parent
             self._store = store
+            self.lastSeenRefreshToken = nil
         }
         
         @MainActor
@@ -135,3 +139,4 @@ struct CalendarView: UIViewRepresentable {
         }
     }
 }
+

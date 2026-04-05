@@ -117,7 +117,7 @@ struct HomeView: View {
                 onAddLocation()
             } label: {
                 HStack {
-                    Image(systemName: "mappin.circle.badge.plus")
+                    Image(systemName: "mappin.circle.fill") // CHANGED from "mappin.circle.badge.plus"
                     Text("Add Location")
                 }
                 .frame(maxWidth: .infinity)

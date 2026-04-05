@@ -13,6 +13,7 @@ class EventFormViewModel: ObservableObject {
     
     @Published var people: [Person] = []
     @Published var activityIDs: [String] = [] // NEW
+    @Published var affirmationIDs: [String] = [] // NEW: Affirmations support
 
     var id: String?
     var updating: Bool { id != nil }
@@ -30,6 +31,7 @@ class EventFormViewModel: ObservableObject {
         note = event.note
         people = event.people
         activityIDs = event.activityIDs // NEW
+        affirmationIDs = event.affirmationIDs // NEW: Load affirmations
     }
 
     init(date: Date? = nil,

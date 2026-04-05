@@ -71,8 +71,17 @@ struct StartTabView: View {
             // Centralized title based on selected tab
             .navigationTitle(navigationTitleForSelection(selection))
             .onAppear {
+                print("🚀 StartTabView appeared")
+                print("📝 isFirstLaunch: \(store.isFirstLaunch)")
+                print("📦 Locations count: \(store.locations.count)")
+                print("✅ hasCompletedFirstLaunch: \(UserDefaults.standard.bool(forKey: "hasCompletedFirstLaunch"))")
+                
+                let backupURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("backup.json")
+                print("📄 backup.json exists: \(FileManager.default.fileExists(atPath: backupURL.path))")
+                
                 // First launch wizard
                 if store.isFirstLaunch {
+                    print("🎉 Showing First Launch Wizard!")
                     showFirstLaunchWizard = true
                 }
             }
@@ -113,7 +122,7 @@ struct StartTabView: View {
                         Button {
                             showActivitiesManager = true
                         } label: {
-                            Label("Manage Activities", systemImage: "list.bullet")
+                            Label("Manage Activites & Affirmations", systemImage: "slider.horizontal.3")
                         }
                         
                         Button {
@@ -160,7 +169,7 @@ struct StartTabView: View {
             }
             .sheet(item: $lformType) { $0 } // Presents LocationFormView via LocationFormType
             .sheet(isPresented: $showActivitiesManager) {
-                ActivitiesMaintenanceView()
+                ManagementView()
                     .environmentObject(store)
             }
             .sheet(isPresented: $showLocationsManagement) {
@@ -172,8 +181,9 @@ struct StartTabView: View {
                     .environmentObject(store)
             }
             .sheet(isPresented: $showBackupExport) {
+                print("🔷 [StartTabView] Presenting BackupExportView sheet")
                 // Present Backup & Import view (renamed)
-                BackupExportView()
+                return BackupExportView()
                     .environmentObject(store)
             }
             .sheet(isPresented: $showImportGolfshot) {
@@ -197,8 +207,7 @@ struct StartTabView: View {
                     fromEvent: item.fromEvent,
                     toEvent: item.toEvent,
                     onConfirm: { selectedMode, notes in
-                        let trip = item.trip
-                        var updatedTrip = trip
+                        var updatedTrip = item.trip
                         updatedTrip.mode = selectedMode
                         updatedTrip.notes = notes
                         updatedTrip.recalculateCO2()

@@ -19,6 +19,7 @@ struct ModernEventFormView: View {
     @State private var latitudeText = ""
     @State private var longitudeText = ""
     @State private var showContactsSearch = false
+    @State private var showAffirmationsSelector = false
     @StateObject var locationManager = LocationManager()
     @State private var geocodeError: String?
     
@@ -47,6 +48,9 @@ struct ModernEventFormView: View {
                 // Activities Section (moved below people)
                 activitiesSection
                 
+                // Affirmations Section (NEW)
+                affirmationsSection
+                
                 // Coordinates Section (only for "Other" location)
                 if isOtherSelected {
                     coordinatesSection
@@ -74,6 +78,10 @@ struct ModernEventFormView: View {
                 ContactsSearchPicker { contacts in
                     addPeopleFromContacts(contacts)
                 }
+            }
+            .sheet(isPresented: $showAffirmationsSelector) {
+                AffirmationSelectorView(selectedAffirmationIDs: $viewModel.affirmationIDs)
+                    .environmentObject(store)
             }
         }
     }
@@ -259,6 +267,94 @@ struct ModernEventFormView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+        }
+    }
+    
+    // MARK: - Affirmations Section
+    private var affirmationsSection: some View {
+        Section {
+            if viewModel.affirmationIDs.isEmpty {
+                // Empty state - show button to add affirmations
+                Button {
+                    showAffirmationsSelector = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles")
+                            .foregroundColor(.blue)
+                        Text("Add Affirmations")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            } else {
+                // Display selected affirmations
+                ForEach(selectedAffirmations) { affirmation in
+                    HStack(spacing: 12) {
+                        Image(systemName: affirmation.category.icon)
+                            .foregroundStyle(Color(affirmation.color).gradient)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(affirmation.text)
+                                .font(.subheadline)
+                                .lineLimit(2)
+                            Text(affirmation.category.rawValue)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        if affirmation.isFavorite {
+                            Image(systemName: "star.fill")
+                                .font(.caption2)
+                                .foregroundColor(.yellow)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .onDelete { indexSet in
+                    for index in indexSet {
+                        let affirmation = selectedAffirmations[index]
+                        viewModel.affirmationIDs.removeAll { $0 == affirmation.id }
+                    }
+                }
+                
+                // Add more button
+                Button {
+                    showAffirmationsSelector = true
+                } label: {
+                    Label("Manage Affirmations", systemImage: "pencil.circle")
+                }
+                
+                if !viewModel.affirmationIDs.isEmpty {
+                    Button(role: .destructive) {
+                        viewModel.affirmationIDs.removeAll()
+                    } label: {
+                        Label("Clear All Affirmations", systemImage: "xmark.circle")
+                    }
+                }
+            }
+        } header: {
+            HStack {
+                Label("Affirmations", systemImage: "sparkles")
+                Spacer()
+                Text("\(viewModel.affirmationIDs.count) selected")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        } footer: {
+            Text("Add positive affirmations to set your intentions for this stay")
+                .font(.caption)
+        }
+    }
+    
+    private var selectedAffirmations: [Affirmation] {
+        viewModel.affirmationIDs.compactMap { id in
+            store.affirmations.first(where: { $0.id == id })
         }
     }
     
@@ -604,7 +700,8 @@ struct ModernEventFormView: View {
             country: country,
             note: viewModel.note,
             people: viewModel.people,
-            activityIDs: viewModel.activityIDs
+            activityIDs: viewModel.activityIDs,
+            affirmationIDs: viewModel.affirmationIDs
         )
         
         store.update(event)
@@ -640,7 +737,8 @@ struct ModernEventFormView: View {
                 country: country,
                 note: viewModel.note,
                 people: viewModel.people,
-                activityIDs: viewModel.activityIDs
+                activityIDs: viewModel.activityIDs,
+                affirmationIDs: viewModel.affirmationIDs
             )
             store.add(newEvent)
         }
