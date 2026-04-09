@@ -34,6 +34,13 @@ class DataStore: ObservableObject {
     // Bump data update token when relevant data changes
     func bumpDataUpdate() { dataUpdateToken = UUID() }
     
+    // NEW: Update stay reminders when events change
+    func updateStayReminders() {
+        Task {
+            await NotificationManager.shared.scheduleStayReminder(for: self)
+        }
+    }
+    
     // Check if this is the first launch
     var isFirstLaunch: Bool {
         let hasCompleted = UserDefaults.standard.bool(forKey: "hasCompletedFirstLaunch")
@@ -71,6 +78,12 @@ class DataStore: ObservableObject {
             print("⚠️ delete(Event): event not found in store")
         }
         storeData()
+        
+        // NEW: Force calendar refresh after deleting event
+        bumpCalendarRefresh()
+        
+        // NEW: Update stay reminders after deleting event
+        updateStayReminders()
     }
     
     func add(_ location: Location) {
@@ -89,6 +102,12 @@ class DataStore: ObservableObject {
         
         storeData()
         invalidateCacheForEvent(event)
+        
+        // NEW: Force calendar refresh after adding event
+        bumpCalendarRefresh()
+        
+        // NEW: Update stay reminders after adding event
+        updateStayReminders()
     }
 
     func update(_ location: Location) {
@@ -101,6 +120,7 @@ class DataStore: ObservableObject {
             locations[index].country = location.country
             locations[index].theme = location.theme
             locations[index].imageIDs = location.imageIDs
+            locations[index].customColorHex = location.customColorHex // NEW: Update custom color
             changedLocation = location
             invalidateCacheForLocation(location)
         }
@@ -123,6 +143,12 @@ class DataStore: ObservableObject {
             changedEvent = event
             storeData()
             invalidateCacheForEvent(event)
+            
+            // NEW: Force calendar refresh after updating event
+            bumpCalendarRefresh()
+            
+            // NEW: Update stay reminders after updating event
+            updateStayReminders()
         }
     }
 
@@ -209,6 +235,14 @@ class DataStore: ObservableObject {
     
     func storeData() -> Void {
         let export = Export(locations: self.locations, events: self.events, activities: self.activities, affirmations: self.affirmations, trips: self.trips)
+        
+        // Debug: Check affirmation IDs in events before export
+        let eventsWithAffirmations = self.events.filter { !$0.affirmationIDs.isEmpty }
+        print("💾 [storeData] Events with affirmations: \(eventsWithAffirmations.count) out of \(self.events.count) total")
+        if let firstWithAffirmations = eventsWithAffirmations.first {
+            print("   Example: Event '\(firstWithAffirmations.location.name)' has \(firstWithAffirmations.affirmationIDs.count) affirmation IDs: \(firstWithAffirmations.affirmationIDs)")
+        }
+        
         do {
             let encodedData = try JSONEncoder().encode(export)
             if let filepath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("backup.json") {
@@ -286,7 +320,8 @@ class DataStore: ObservableObject {
                      longitude: location.longitude,
                      country: location.country,
                      theme: Theme(rawValue: location.theme) ?? .purple,
-                     imageIDs: location.imageIDs)
+                     imageIDs: location.imageIDs,
+                     customColorHex: location.customColorHex) // NEW: Load custom color
         })
         self.events = decodedImport.events.map({ event in
             Event(id: event.id,

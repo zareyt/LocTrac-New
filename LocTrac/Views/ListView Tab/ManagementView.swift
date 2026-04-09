@@ -525,7 +525,20 @@ struct AffirmationManagementRow: View {
     let affirmation: Affirmation
     
     private var color: Color {
-        Color(affirmation.color)
+        // Convert string color name to SwiftUI Color
+        switch affirmation.color {
+        case "blue": return .blue
+        case "purple": return .purple
+        case "pink": return .pink
+        case "red": return .red
+        case "orange": return .orange
+        case "yellow": return .yellow
+        case "green": return .green
+        case "indigo": return .indigo
+        case "teal": return .teal
+        case "gray": return .gray
+        default: return .blue
+        }
     }
     
     private var usageCount: Int {
@@ -789,22 +802,36 @@ struct CategorySelectionPill: View {
     let isSelected: Bool
     let action: () -> Void
     
+    private var color: Color {
+        switch category.defaultColor {
+        case "green": return .green
+        case "yellow": return .yellow
+        case "pink": return .pink
+        case "orange": return .orange
+        case "purple": return .purple
+        case "blue": return .blue
+        case "indigo": return .indigo
+        case "gray": return .gray
+        default: return .blue
+        }
+    }
+    
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {
                 Image(systemName: category.icon)
                     .font(.title2)
-                    .foregroundColor(isSelected ? .white : Color(category.defaultColor))
+                    .foregroundColor(isSelected ? .white : color)
                     .frame(width: 50, height: 50)
                     .background(
                         Circle()
-                            .fill(isSelected ? Color(category.defaultColor) : Color(category.defaultColor).opacity(0.15))
+                            .fill(isSelected ? color : color.opacity(0.15))
                     )
                 
                 Text(category.rawValue.components(separatedBy: " ").first ?? category.rawValue)
                     .font(.caption)
                     .fontWeight(isSelected ? .semibold : .regular)
-                    .foregroundColor(isSelected ? Color(category.defaultColor) : .primary)
+                    .foregroundColor(isSelected ? color : .primary)
                     .lineLimit(1)
                     .fixedSize()
             }
@@ -812,11 +839,11 @@ struct CategorySelectionPill: View {
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? Color(category.defaultColor).opacity(0.1) : Color.clear)
+                    .fill(isSelected ? color.opacity(0.1) : Color.clear)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(isSelected ? Color(category.defaultColor) : Color.clear, lineWidth: 2)
+                    .strokeBorder(isSelected ? color : Color.clear, lineWidth: 2)
             )
         }
         .buttonStyle(.plain)
@@ -828,10 +855,25 @@ struct ColorCircle: View {
     let isSelected: Bool
     let action: () -> Void
     
+    private var color: Color {
+        switch colorName {
+        case "blue": return .blue
+        case "purple": return .purple
+        case "pink": return .pink
+        case "red": return .red
+        case "orange": return .orange
+        case "yellow": return .yellow
+        case "green": return .green
+        case "indigo": return .indigo
+        case "teal": return .teal
+        default: return .blue
+        }
+    }
+    
     var body: some View {
         Button(action: action) {
             Circle()
-                .fill(Color(colorName).gradient)
+                .fill(color.gradient)
                 .frame(width: 44, height: 44)
                 .overlay(
                     Circle()
@@ -840,9 +882,9 @@ struct ColorCircle: View {
                 )
                 .overlay(
                     Circle()
-                        .strokeBorder(Color(colorName), lineWidth: 2)
+                        .strokeBorder(color, lineWidth: 2)
                 )
-                .shadow(color: Color(colorName).opacity(0.4), radius: isSelected ? 8 : 4)
+                .shadow(color: color.opacity(0.4), radius: isSelected ? 8 : 4)
                 .scaleEffect(isSelected ? 1.1 : 1.0)
                 .animation(.spring(response: 0.3), value: isSelected)
         }

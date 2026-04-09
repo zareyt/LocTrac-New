@@ -12,17 +12,19 @@ struct TravelHistoryView: View {
     @EnvironmentObject var store: DataStore
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
-    @State private var locationFilter: LocationFilter = .all
+    @State private var locationFilter: LocationFilter = .locations
     @State private var sortOrder: SortOrder = .country
     @State private var selectedStay: Event?
+    @State private var shareText: String = ""
+    @State private var expandedSections: Set<String> = []  // Track expanded sections by ID
     
     enum LocationFilter: String, CaseIterable {
-        case all = "All"
+        case locations = "Locations"
         case other = "Other"
         
         var icon: String {
             switch self {
-            case .all: return "map"
+            case .locations: return "map"
             case .other: return "mappin.and.ellipse"
             }
         }
@@ -69,9 +71,9 @@ struct TravelHistoryView: View {
         
         // Apply location filter
         switch locationFilter {
-        case .all:
-            // Show all events
-            break
+        case .locations:
+            // Show only user-added locations (exclude "Other")
+            events = events.filter { $0.location.name != "Other" }
         case .other:
             // Show only "Other" location events
             events = events.filter { $0.location.name == "Other" }
@@ -87,6 +89,32 @@ struct TravelHistoryView: View {
         }
         
         return events
+    }
+    
+    // Group stays by location (for "Locations" filter)
+    private var staysByLocation: [(location: Location, stays: [Event])] {
+        let byLocation: [String: [Event]] = Dictionary(grouping: filteredEvents) { event in
+            event.location.id
+        }
+        
+        var result = byLocation.compactMap { (locationID: String, events: [Event]) -> (location: Location, stays: [Event])? in
+            guard let location = events.first?.location else { return nil }
+            return (location: location, stays: events.sorted { $0.date > $1.date })
+        }
+        
+        // Sort based on sortOrder
+        switch sortOrder {
+        case .country:
+            result.sort { ($0.location.country ?? "") < ($1.location.country ?? "") }
+        case .city:
+            result.sort { ($0.location.city ?? "") < ($1.location.city ?? "") }
+        case .mostVisited:
+            result.sort { $0.stays.count > $1.stays.count }
+        case .recent:
+            result.sort { ($0.stays.first?.date ?? Date.distantPast) > ($1.stays.first?.date ?? Date.distantPast) }
+        }
+        
+        return result
     }
     
     // Group stays by country
@@ -147,6 +175,18 @@ struct TravelHistoryView: View {
         Set(filteredEvents.map { $0.location.id }).count
     }
     
+    private var totalActivities: Int {
+        Set(filteredEvents.flatMap { $0.activityIDs }).count
+    }
+    
+    private var totalPeople: Int {
+        Set(filteredEvents.flatMap { $0.people.map { $0.id } }).count
+    }
+    
+    private var totalAffirmations: Int {
+        Set(filteredEvents.flatMap { $0.affirmationIDs }).count
+    }
+    
     var body: some View {
         NavigationStack {
             List {
@@ -186,9 +226,7 @@ struct TravelHistoryView: View {
                 }
                 
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        shareHistory()
-                    } label: {
+                    ShareLink(item: generateShareText()) {
                         Image(systemName: "square.and.arrow.up")
                     }
                 }
@@ -202,11 +240,19 @@ struct TravelHistoryView: View {
     
     // MARK: - Stats Section
     private var statsSection: some View {
-        HStack(spacing: 12) {
-            StatBox(title: "Stays", value: "\(totalStays)", color: .blue)
-            StatBox(title: "Cities", value: "\(totalCities)", color: .green)
-            StatBox(title: "Countries", value: "\(totalCountries)", color: .orange)
-            StatBox(title: "Locations", value: "\(totalLocations)", color: .purple)
+        VStack(spacing: 8) {
+            HStack(spacing: 12) {
+                StatBox(title: "Stays", value: "\(totalStays)", color: .blue)
+                StatBox(title: "Cities", value: "\(totalCities)", color: .green)
+                StatBox(title: "Countries", value: "\(totalCountries)", color: .orange)
+                StatBox(title: "Locations", value: "\(totalLocations)", color: .purple)
+            }
+            
+            HStack(spacing: 12) {
+                StatBox(title: "Activities", value: "\(totalActivities)", color: .orange)
+                StatBox(title: "People", value: "\(totalPeople)", color: .purple)
+                StatBox(title: "Affirmations", value: "\(totalAffirmations)", color: .green)
+            }
         }
     }
     
@@ -255,34 +301,114 @@ struct TravelHistoryView: View {
     // MARK: - Content Sections
     @ViewBuilder
     private var contentSections: some View {
-        switch sortOrder {
-        case .country:
-            countryGroupedView
-        case .city, .mostVisited, .recent:
-            cityGroupedView
+        // For "Locations" filter, group by location
+        if locationFilter == .locations {
+            locationGroupedView
+        } else {
+            // For "Other" filter, group by country/city as before
+            switch sortOrder {
+            case .country:
+                countryGroupedView
+            case .city, .mostVisited, .recent:
+                cityGroupedView
+            }
         }
     }
     
-    // Country-grouped view (optimized)
+    // Location-grouped view (for user-added locations)
+    private var locationGroupedView: some View {
+        ForEach(staysByLocation, id: \.location.id) { locationGroup in
+            let sectionID: String = locationGroup.location.id
+            let isExpanded = expandedSections.contains(sectionID)
+            
+            Section {
+                // Header row - always visible, tap to expand/collapse
+                Button {
+                    withAnimation {
+                        if isExpanded {
+                            expandedSections.remove(sectionID)
+                        } else {
+                            expandedSections.insert(sectionID)
+                        }
+                    }
+                } label: {
+                    LocationHeaderRow(
+                        location: locationGroup.location,
+                        stayCount: locationGroup.stays.count,
+                        activityCount: countActivities(in: locationGroup.stays),
+                        peopleCount: countPeople(in: locationGroup.stays),
+                        affirmationCount: countAffirmations(in: locationGroup.stays),
+                        mostRecentDate: locationGroup.stays.first?.date,
+                        isExpanded: isExpanded
+                    )
+                }
+                .buttonStyle(.plain)
+                
+                // Individual stays - only shown when expanded
+                if isExpanded {
+                    ForEach(locationGroup.stays) { stay in
+                        StayRow(
+                            event: stay,
+                            activityCount: stay.activityIDs.count,
+                            peopleCount: stay.people.count,
+                            affirmationCount: stay.affirmationIDs.count
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            selectedStay = stay
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Country-grouped view (optimized) - for "Other" filter
     private var countryGroupedView: some View {
         ForEach(Array(staysByCountry.enumerated()), id: \.offset) { index, countryGroup in
             Section {
                 ForEach(Array(countryGroup.cities.enumerated()), id: \.offset) { cityIndex, cityGroup in
-                    CityRow(
-                        city: cityGroup.city,
-                        country: countryGroup.country,
-                        stayCount: cityGroup.stays.count,
-                        mostRecentDate: cityGroup.stays.first?.date,
-                        location: cityGroup.stays.first?.location
-                    )
+                    let sectionID = "\(countryGroup.country)-\(cityGroup.city)"
+                    let isExpanded = expandedSections.contains(sectionID)
                     
-                    // Show individual stays
-                    ForEach(cityGroup.stays) { stay in
-                        StayRow(event: stay)
+                    // City header - collapsible
+                    Button {
+                        withAnimation {
+                            if isExpanded {
+                                expandedSections.remove(sectionID)
+                            } else {
+                                expandedSections.insert(sectionID)
+                            }
+                        }
+                    } label: {
+                        CityRow(
+                            city: cityGroup.city,
+                            country: countryGroup.country,
+                            stayCount: cityGroup.stays.count,
+                            activityCount: countActivities(in: cityGroup.stays),
+                            peopleCount: countPeople(in: cityGroup.stays),
+                            affirmationCount: countAffirmations(in: cityGroup.stays),
+                            mostRecentDate: cityGroup.stays.first?.date,
+                            location: cityGroup.stays.first?.location,
+                            isExpanded: isExpanded
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    
+                    // Show individual stays when expanded
+                    if isExpanded {
+                        ForEach(cityGroup.stays) { stay in
+                            StayRow(
+                                event: stay,
+                                activityCount: stay.activityIDs.count,
+                                peopleCount: stay.people.count,
+                                affirmationCount: stay.affirmationIDs.count
+                            )
                             .contentShape(Rectangle())
                             .onTapGesture {
                                 selectedStay = stay
                             }
+                        }
                     }
                 }
             } header: {
@@ -294,28 +420,67 @@ struct TravelHistoryView: View {
         }
     }
     
-    // City-grouped view (optimized)
+    // City-grouped view (optimized) - for "Other" filter
     private var cityGroupedView: some View {
         ForEach(Array(staysByCity.enumerated()), id: \.offset) { index, cityGroup in
+            let sectionID = cityGroup.city
+            let isExpanded = expandedSections.contains(sectionID)
+            
             Section {
-                CityRow(
-                    city: cityGroup.city,
-                    country: cityGroup.stays.first?.country ?? cityGroup.stays.first?.location.country ?? "Unknown",
-                    stayCount: cityGroup.stays.count,
-                    mostRecentDate: cityGroup.stays.first?.date,
-                    location: cityGroup.stays.first?.location
-                )
+                // City header - collapsible
+                Button {
+                    withAnimation {
+                        if isExpanded {
+                            expandedSections.remove(sectionID)
+                        } else {
+                            expandedSections.insert(sectionID)
+                        }
+                    }
+                } label: {
+                    CityRow(
+                        city: cityGroup.city,
+                        country: cityGroup.stays.first?.country ?? cityGroup.stays.first?.location.country ?? "Unknown",
+                        stayCount: cityGroup.stays.count,
+                        activityCount: countActivities(in: cityGroup.stays),
+                        peopleCount: countPeople(in: cityGroup.stays),
+                        affirmationCount: countAffirmations(in: cityGroup.stays),
+                        mostRecentDate: cityGroup.stays.first?.date,
+                        location: cityGroup.stays.first?.location,
+                        isExpanded: isExpanded
+                    )
+                }
+                .buttonStyle(.plain)
                 
-                // Show individual stays
-                ForEach(cityGroup.stays) { stay in
-                    StayRow(event: stay)
+                // Show individual stays when expanded
+                if isExpanded {
+                    ForEach(cityGroup.stays) { stay in
+                        StayRow(
+                            event: stay,
+                            activityCount: stay.activityIDs.count,
+                            peopleCount: stay.people.count,
+                            affirmationCount: stay.affirmationIDs.count
+                        )
                         .contentShape(Rectangle())
                         .onTapGesture {
                             selectedStay = stay
                         }
+                    }
                 }
             }
         }
+    }
+    
+    // MARK: - Helper Functions
+    private func countActivities(in events: [Event]) -> Int {
+        Set(events.flatMap { $0.activityIDs }).count
+    }
+    
+    private func countPeople(in events: [Event]) -> Int {
+        Set(events.flatMap { $0.people.map { $0.id } }).count
+    }
+    
+    private func countAffirmations(in events: [Event]) -> Int {
+        Set(events.flatMap { $0.affirmationIDs }).count
     }
     
     // MARK: - Empty State
@@ -342,36 +507,166 @@ struct TravelHistoryView: View {
     }
     
     // MARK: - Share Function
-    private func shareHistory() {
-        // Generate a simple text summary
-        var text = "Travel History\n\n"
+    private func generateShareText() -> String {
+        // Generate a text summary respecting current filter and search
+        var text = "📍 Travel History"
+        
+        // Add filter context
+        switch locationFilter {
+        case .locations:
+            text += " (Locations)"
+        case .other:
+            text += " (Other)"
+        }
+        
+        if !searchText.isEmpty {
+            text += " - Search: \"\(searchText)\""
+        }
+        
+        text += "\n\n"
         text += "📊 Statistics:\n"
         text += "• Total Stays: \(totalStays)\n"
         text += "• Cities Visited: \(totalCities)\n"
         text += "• Countries Visited: \(totalCountries)\n"
-        text += "• Locations: \(totalLocations)\n\n"
+        text += "• Locations: \(totalLocations)\n"
+        text += "• Activities: \(totalActivities)\n"
+        text += "• People: \(totalPeople)\n"
+        text += "• Affirmations: \(totalAffirmations)\n\n"
         
-        text += "🌍 By Country:\n"
-        for countryGroup in staysByCountry {
-            text += "\n\(countryGroup.country)\n"
-            for cityGroup in countryGroup.cities {
-                text += "  • \(cityGroup.city): \(cityGroup.stays.count) stay(s)\n"
+        // Different format based on filter
+        if locationFilter == .locations {
+            // Group by location for Locations filter
+            text += "📍 By Location:\n"
+            for locationGroup in staysByLocation {
+                let loc = locationGroup.location
+                let stays = locationGroup.stays
+                let activities = countActivities(in: stays)
+                let people = countPeople(in: stays)
+                let affirmations = countAffirmations(in: stays)
+                
+                text += "\n\(loc.name)\n"
+                if let city = loc.city, let country = loc.country {
+                    text += "  \(city), \(country)\n"
+                } else if let city = loc.city {
+                    text += "  \(city)\n"
+                } else if let country = loc.country {
+                    text += "  \(country)\n"
+                }
+                text += "  • \(stays.count) stay(s)"
+                if activities > 0 { text += " • 🏃 \(activities)" }
+                if people > 0 { text += " • 👥 \(people)" }
+                if affirmations > 0 { text += " • 💬 \(affirmations)" }
+                text += "\n"
+            }
+        } else {
+            // Group by country/city for Other filter
+            text += "🌍 By Country:\n"
+            for countryGroup in staysByCountry {
+                text += "\n\(countryGroup.country)\n"
+                for cityGroup in countryGroup.cities {
+                    let activities = countActivities(in: cityGroup.stays)
+                    let people = countPeople(in: cityGroup.stays)
+                    let affirmations = countAffirmations(in: cityGroup.stays)
+                    
+                    text += "  • \(cityGroup.city): \(cityGroup.stays.count) stay(s)"
+                    if activities > 0 { text += " • 🏃 \(activities)" }
+                    if people > 0 { text += " • 👥 \(people)" }
+                    if affirmations > 0 { text += " • 💬 \(affirmations)" }
+                    text += "\n"
+                }
             }
         }
         
-        let activityVC = UIActivityViewController(activityItems: [text], applicationActivities: nil)
-        
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let window = windowScene.windows.first(where: { $0.isKeyWindow }) {
-            activityVC.popoverPresentationController?.sourceView = window
-            activityVC.popoverPresentationController?.sourceRect = CGRect(
-                x: window.bounds.midX,
-                y: window.safeAreaInsets.top + 44,
-                width: 1,
-                height: 1
-            )
-            window.rootViewController?.present(activityVC, animated: true)
+        text += "\n\nGenerated by LocTrac"
+        return text
+    }
+}
+
+// MARK: - Location Header Row (for Locations filter)
+struct LocationHeaderRow: View {
+    let location: Location
+    let stayCount: Int
+    let activityCount: Int
+    let peopleCount: Int
+    let affirmationCount: Int
+    let mostRecentDate: Date?
+    let isExpanded: Bool
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Location color indicator
+            Circle()
+                .fill(location.theme.mainColor)
+                .frame(width: 44, height: 44)
+                .overlay(
+                    Image(systemName: "mappin.circle.fill")
+                        .foregroundColor(.white)
+                        .font(.system(size: 20))
+                )
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(location.name)
+                    .font(.headline)
+                
+                HStack(spacing: 4) {
+                    if let city = location.city {
+                        Text(city)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    if let country = location.country {
+                        if location.city != nil {
+                            Text("•")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Text(country)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                // Counts row
+                HStack(spacing: 8) {
+                    if activityCount > 0 {
+                        Label("\(activityCount)", systemImage: "figure.walk")
+                            .font(.caption2)
+                            .foregroundColor(.orange)
+                    }
+                    if peopleCount > 0 {
+                        Label("\(peopleCount)", systemImage: "person.2")
+                            .font(.caption2)
+                            .foregroundColor(.purple)
+                    }
+                    if affirmationCount > 0 {
+                        Label("\(affirmationCount)", systemImage: "quote.bubble")
+                            .font(.caption2)
+                            .foregroundColor(.green)
+                    }
+                }
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 4) {
+                HStack(spacing: 4) {
+                    Text("\(stayCount)")
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .foregroundColor(.blue)
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                if let date = mostRecentDate {
+                    Text(TravelHistoryView.dateFormatter.string(from: date))
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
         }
+        .padding(.vertical, 4)
     }
 }
 
@@ -380,8 +675,12 @@ struct CityRow: View {
     let city: String
     let country: String
     let stayCount: Int
+    let activityCount: Int
+    let peopleCount: Int
+    let affirmationCount: Int
     let mostRecentDate: Date?
     let location: Location?
+    let isExpanded: Bool
     
     var body: some View {
         HStack(spacing: 12) {
@@ -419,15 +718,39 @@ struct CityRow: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+                
+                // Counts row
+                HStack(spacing: 8) {
+                    if activityCount > 0 {
+                        Label("\(activityCount)", systemImage: "figure.walk")
+                            .font(.caption2)
+                            .foregroundColor(.orange)
+                    }
+                    if peopleCount > 0 {
+                        Label("\(peopleCount)", systemImage: "person.2")
+                            .font(.caption2)
+                            .foregroundColor(.purple)
+                    }
+                    if affirmationCount > 0 {
+                        Label("\(affirmationCount)", systemImage: "quote.bubble")
+                            .font(.caption2)
+                            .foregroundColor(.green)
+                    }
+                }
             }
             
             Spacer()
             
             VStack(alignment: .trailing, spacing: 4) {
-                Text("\(stayCount) stay\(stayCount == 1 ? "" : "s")")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.blue)
+                HStack(spacing: 4) {
+                    Text("\(stayCount)")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.blue)
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
                 
                 if let date = mostRecentDate {
                     Text(TravelHistoryView.dateFormatter.string(from: date))
@@ -443,6 +766,9 @@ struct CityRow: View {
 // MARK: - Stay Row
 struct StayRow: View {
     let event: Event
+    let activityCount: Int
+    let peopleCount: Int
+    let affirmationCount: Int
     
     var body: some View {
         HStack(spacing: 12) {
@@ -458,10 +784,51 @@ struct StayRow: View {
                 Text(TravelHistoryView.dateFormatter.string(from: event.date))
                     .font(.subheadline)
                 
-                if !event.eventType.isEmpty {
-                    Text(event.eventType.capitalized)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                HStack(spacing: 4) {
+                    if !event.eventType.isEmpty {
+                        Text(event.eventType.capitalized)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Counts inline
+                    if activityCount > 0 || peopleCount > 0 || affirmationCount > 0 {
+                        if !event.eventType.isEmpty {
+                            Text("•")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        HStack(spacing: 6) {
+                            if activityCount > 0 {
+                                HStack(spacing: 2) {
+                                    Image(systemName: "figure.walk")
+                                        .font(.system(size: 10))
+                                    Text("\(activityCount)")
+                                        .font(.caption2)
+                                }
+                                .foregroundColor(.orange)
+                            }
+                            if peopleCount > 0 {
+                                HStack(spacing: 2) {
+                                    Image(systemName: "person.2")
+                                        .font(.system(size: 10))
+                                    Text("\(peopleCount)")
+                                        .font(.caption2)
+                                }
+                                .foregroundColor(.purple)
+                            }
+                            if affirmationCount > 0 {
+                                HStack(spacing: 2) {
+                                    Image(systemName: "quote.bubble")
+                                        .font(.system(size: 10))
+                                    Text("\(affirmationCount)")
+                                        .font(.caption2)
+                                }
+                                .foregroundColor(.green)
+                            }
+                        }
+                    }
                 }
             }
             
@@ -481,6 +848,19 @@ struct StayDetailSheet: View {
     @EnvironmentObject var store: DataStore
     @Environment(\.dismiss) private var dismiss
     let event: Event
+    
+    // Computed properties for related data
+    private var activities: [Activity] {
+        event.activityIDs.compactMap { id in
+            store.activities.first(where: { $0.id == id })
+        }
+    }
+    
+    private var affirmations: [Affirmation] {
+        event.affirmationIDs.compactMap { id in
+            store.affirmations.first(where: { $0.id == id })
+        }
+    }
     
     var body: some View {
         NavigationStack {
@@ -537,6 +917,87 @@ struct StayDetailSheet: View {
                             Text(String(format: "%.4f, %.4f", event.latitude, event.longitude))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                
+                // Notes section
+                if !event.note.isEmpty {
+                    Section("Notes") {
+                        Text(event.note)
+                            .font(.body)
+                            .foregroundColor(.primary)
+                    }
+                }
+                
+                // Activities section
+                if !activities.isEmpty {
+                    Section {
+                        ForEach(activities) { activity in
+                            Label {
+                                Text(activity.name)
+                            } icon: {
+                                Image(systemName: "figure.walk")
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                    } header: {
+                        HStack {
+                            Image(systemName: "figure.walk")
+                            Text("Activities (\(activities.count))")
+                        }
+                    }
+                }
+                
+                // People section
+                if !event.people.isEmpty {
+                    Section {
+                        ForEach(event.people) { person in
+                            Label {
+                                Text(person.displayName)
+                            } icon: {
+                                Image(systemName: "person.fill")
+                                    .foregroundColor(.purple)
+                            }
+                        }
+                    } header: {
+                        HStack {
+                            Image(systemName: "person.2")
+                            Text("People (\(event.people.count))")
+                        }
+                    }
+                }
+                
+                // Affirmations section
+                if !affirmations.isEmpty {
+                    Section {
+                        ForEach(affirmations) { affirmation in
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Image(systemName: "quote.bubble.fill")
+                                        .foregroundColor(.green)
+                                    Text(affirmation.category.rawValue)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    if affirmation.isFavorite {
+                                        Image(systemName: "star.fill")
+                                            .font(.caption)
+                                            .foregroundColor(.yellow)
+                                    }
+                                }
+                                
+                                Text(affirmation.text)
+                                    .font(.body)
+                                    .foregroundColor(.primary)
+                                    .padding(.leading, 24)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    } header: {
+                        HStack {
+                            Image(systemName: "quote.bubble")
+                            Text("Affirmations (\(affirmations.count))")
                         }
                     }
                 }

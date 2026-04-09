@@ -56,13 +56,11 @@ struct LocationFormView: View {
             }
         )
 
-        // Bridge Theme <-> Color for the ColorPicker
+        // NEW: Direct color binding for custom colors (no theme snapping)
         let colorBinding = Binding<Color>(
-            get: { viewModel.theme.mainColor },
+            get: { viewModel.effectiveColor },
             set: { newColor in
-                if let nearest = nearestTheme(to: newColor) {
-                    viewModel.theme = nearest
-                }
+                viewModel.customColorHex = newColor.toHex()
             }
         )
 
@@ -121,7 +119,7 @@ struct LocationFormView: View {
                     }
                 }
 
-                // MARK: - Theme (Color Picker bridged to Theme)
+                // MARK: - Theme (Color Picker with custom colors)
                 Section(header: Text("Theme Color")) {
                     ColorPicker("Color", selection: colorBinding, supportsOpacity: false)
 
@@ -129,7 +127,7 @@ struct LocationFormView: View {
                         Text("Preview")
                         Spacer()
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(viewModel.theme.mainColor)
+                            .fill(viewModel.effectiveColor)
                             .frame(width: 30, height: 30)
                     }
                 }
@@ -147,7 +145,9 @@ struct LocationFormView: View {
                                     latitude: viewModel.latitude,
                                     longitude: viewModel.longitude,
                                     country: viewModel.country.isEmpty ? nil : viewModel.country,
-                                    theme: viewModel.theme
+                                    theme: viewModel.theme,
+                                    imageIDs: nil,
+                                    customColorHex: viewModel.customColorHex // NEW: Save custom color
                                 )
                                 
                                 // DISABLED: Coordinate propagation system
@@ -171,7 +171,9 @@ struct LocationFormView: View {
                                     latitude: viewModel.latitude,
                                     longitude: viewModel.longitude,
                                     country: viewModel.country.isEmpty ? nil : viewModel.country,
-                                    theme: viewModel.theme
+                                    theme: viewModel.theme,
+                                    imageIDs: nil,
+                                    customColorHex: viewModel.customColorHex // NEW: Save custom color
                                 )
                                 store.add(newLocation)
                                 dismiss()

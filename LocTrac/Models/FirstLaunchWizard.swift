@@ -134,7 +134,7 @@ struct FirstLaunchWizard: View {
     @State private var currentStep = 0
     @State private var isCompleting = false
     
-    let totalSteps = 4 // Updated to 4 steps (added permissions)
+    let totalSteps = 5 // Updated to 5 steps (Welcome, Permissions, Locations, Activities, Affirmations)
     
     var body: some View {
         NavigationStack {
@@ -165,6 +165,9 @@ struct FirstLaunchWizard: View {
                         
                         ActivitiesStepView()
                             .tag(3)
+                        
+                        AffirmationsStepView()
+                            .tag(4)
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
                     .disabled(isCompleting)
@@ -995,6 +998,264 @@ struct ActivitiesStepView: View {
     private func deleteActivity(_ activity: Activity) {
         selectedDefaultActivities.remove(activity.name)
         store.deleteActivity(activity)
+    }
+}
+
+// MARK: - Affirmations Step
+
+struct AffirmationsStepView: View {
+    @EnvironmentObject var store: DataStore
+    @State private var newAffirmationText = ""
+    @State private var selectedCategory: Affirmation.Category = .custom
+    @State private var selectedPresetIDs: Set<String> = []
+    
+    // Group preset affirmations by category
+    var groupedPresets: [(category: Affirmation.Category, affirmations: [Affirmation])] {
+        let grouped = Dictionary(grouping: Affirmation.presets) { $0.category }
+        return Affirmation.Category.allCases.compactMap { category in
+            guard let affirmations = grouped[category], !affirmations.isEmpty else { return nil }
+            return (category, affirmations)
+        }
+    }
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Header
+                    VStack(spacing: 12) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 60))
+                            .foregroundStyle(.blue.gradient)
+                        
+                        Text("Set Up Affirmations")
+                            .font(.title)
+                            .fontWeight(.bold)
+                        
+                        Text("Choose positive affirmations to inspire your travels or create your own. These help you set intentions for your stays.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                    
+                    // Preset affirmations grouped by category
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Select from preset affirmations:")
+                            .font(.headline)
+                            .padding(.horizontal)
+                        
+                        ForEach(groupedPresets, id: \.category) { group in
+                            VStack(alignment: .leading, spacing: 8) {
+                                // Category header
+                                HStack(spacing: 8) {
+                                    Image(systemName: group.category.icon)
+                                        .foregroundColor(categoryColor(group.category))
+                                    Text(group.category.rawValue)
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(categoryColor(group.category))
+                                }
+                                .padding(.horizontal)
+                                
+                                // Affirmations in this category
+                                VStack(spacing: 8) {
+                                    ForEach(group.affirmations) { affirmation in
+                                        Button(action: { togglePresetAffirmation(affirmation) }) {
+                                            HStack(alignment: .top, spacing: 12) {
+                                                Image(systemName: selectedPresetIDs.contains(affirmation.id) ? "checkmark.circle.fill" : "circle")
+                                                    .font(.title3)
+                                                    .foregroundColor(selectedPresetIDs.contains(affirmation.id) ? .blue : .gray)
+                                                
+                                                VStack(alignment: .leading, spacing: 4) {
+                                                    Text(affirmation.text)
+                                                        .font(.body)
+                                                        .fontWeight(.medium)
+                                                        .foregroundColor(.primary)
+                                                        .multilineTextAlignment(.leading)
+                                                    
+                                                    if affirmation.isFavorite {
+                                                        HStack(spacing: 4) {
+                                                            Image(systemName: "star.fill")
+                                                                .font(.caption2)
+                                                                .foregroundColor(.yellow)
+                                                            Text("Popular")
+                                                                .font(.caption)
+                                                                .foregroundColor(.secondary)
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                Spacer()
+                                            }
+                                            .padding()
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .fill(selectedPresetIDs.contains(affirmation.id) ? categoryColor(affirmation.category).opacity(0.1) : Color(.systemBackground))
+                                            )
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .strokeBorder(selectedPresetIDs.contains(affirmation.id) ? categoryColor(affirmation.category).opacity(0.3) : Color.clear, lineWidth: 1)
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
+                    }
+                    
+                    // Add custom affirmation section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Or create your own:")
+                            .font(.headline)
+                            .padding(.horizontal)
+                        
+                        VStack(spacing: 12) {
+                            // Category picker
+                            Picker("Category", selection: $selectedCategory) {
+                                ForEach(Affirmation.Category.allCases, id: \.self) { category in
+                                    HStack {
+                                        Image(systemName: category.icon)
+                                        Text(category.rawValue)
+                                    }
+                                    .tag(category)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .padding(.horizontal)
+                            
+                            // Text input
+                            HStack {
+                                TextField("Enter your affirmation...", text: $newAffirmationText, axis: .vertical)
+                                    .textFieldStyle(.roundedBorder)
+                                    .lineLimit(2...4)
+                                
+                                Button(action: addCustomAffirmation) {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.title2)
+                                        .foregroundColor(.blue)
+                                }
+                                .disabled(newAffirmationText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+                    .padding(.top)
+                    
+                    // Current affirmations list
+                    if !store.affirmations.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Your affirmations (\(store.affirmations.count)):")
+                                .font(.headline)
+                                .padding(.horizontal)
+                            
+                            ForEach(store.affirmations) { affirmation in
+                                HStack(spacing: 12) {
+                                    Image(systemName: affirmation.category.icon)
+                                        .foregroundColor(categoryColor(affirmation.category))
+                                        .frame(width: 24)
+                                    
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(affirmation.text)
+                                            .font(.body)
+                                        Text(affirmation.category.rawValue)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Button(action: { deleteAffirmation(affirmation) }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundColor(.red)
+                                    }
+                                }
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color(.systemBackground))
+                                )
+                                .padding(.horizontal)
+                            }
+                        }
+                        .padding(.top)
+                    }
+                    
+                    Text("Tip: You can skip this and add affirmations later from Activities & Affirmations")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding()
+                }
+            }
+        }
+        .onAppear {
+            // Sync selectedPresetIDs with what's already in the store
+            for affirmation in store.affirmations {
+                if let preset = Affirmation.presets.first(where: { $0.text == affirmation.text }) {
+                    selectedPresetIDs.insert(preset.id)
+                }
+            }
+            
+            // If store is empty, pre-select popular (favorited) affirmations
+            if store.affirmations.isEmpty {
+                let popularAffirmations = Affirmation.presets.filter { $0.isFavorite }
+                for affirmation in popularAffirmations {
+                    selectedPresetIDs.insert(affirmation.id)
+                    store.addAffirmation(affirmation)
+                }
+            }
+        }
+    }
+    
+    private func categoryColor(_ category: Affirmation.Category) -> Color {
+        switch category.defaultColor {
+        case "green": return .green
+        case "yellow": return .yellow
+        case "pink": return .pink
+        case "orange": return .orange
+        case "purple": return .purple
+        case "blue": return .blue
+        case "indigo": return .indigo
+        case "gray": return .gray
+        default: return .blue
+        }
+    }
+    
+    private func togglePresetAffirmation(_ affirmation: Affirmation) {
+        if selectedPresetIDs.contains(affirmation.id) {
+            selectedPresetIDs.remove(affirmation.id)
+            // Remove from store
+            if let existing = store.affirmations.first(where: { $0.text == affirmation.text }) {
+                store.deleteAffirmation(existing)
+            }
+        } else {
+            selectedPresetIDs.insert(affirmation.id)
+            // Add to store
+            store.addAffirmation(affirmation)
+        }
+    }
+    
+    private func addCustomAffirmation() {
+        let trimmed = newAffirmationText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        
+        let affirmation = Affirmation(
+            text: trimmed,
+            category: selectedCategory,
+            color: selectedCategory.defaultColor
+        )
+        store.addAffirmation(affirmation)
+        newAffirmationText = ""
+    }
+    
+    private func deleteAffirmation(_ affirmation: Affirmation) {
+        // Remove from selected presets if it's a preset
+        if let preset = Affirmation.presets.first(where: { $0.text == affirmation.text }) {
+            selectedPresetIDs.remove(preset.id)
+        }
+        store.deleteAffirmation(affirmation)
     }
 }
 

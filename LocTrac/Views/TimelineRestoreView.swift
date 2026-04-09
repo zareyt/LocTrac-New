@@ -35,6 +35,7 @@ struct TimelineRestoreView: View {
         let locations: [Location]
         let events: [Event]
         let activities: [Activity]
+        let affirmations: [Affirmation]
         let trips: [Trip]
     }
     
@@ -66,7 +67,9 @@ struct TimelineRestoreView: View {
     // Filtered counts
     @State private var filteredLocationsCount = 0
     @State private var filteredEventsCount = 0
+    @State private var filteredEventsWithAffirmationsCount = 0 // NEW: Events that have affirmations
     @State private var filteredActivitiesCount = 0
+    @State private var filteredAffirmationsCount = 0
     @State private var filteredTripsCount = 0
     @State private var filteredPeopleCount = 0
     
@@ -77,6 +80,8 @@ struct TimelineRestoreView: View {
     @State private var importEvents = true
     @State private var importLocations = true
     @State private var importActivities = true
+    @State private var importAffirmations = true
+    @State private var importAffirmationEvents = true // NEW: Separate toggle for events with affirmations
     @State private var importTrips = true
     @State private var importPeople = true
     
@@ -522,6 +527,11 @@ struct TimelineRestoreView: View {
                         Text("\(filteredEventsCount) events in date range")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                        if filteredEventsWithAffirmationsCount > 0 {
+                            Text("(\(filteredEventsWithAffirmationsCount) with affirmations)")
+                                .font(.caption2)
+                                .foregroundColor(.purple)
+                        }
                     }
                 }
             }
@@ -586,6 +596,56 @@ struct TimelineRestoreView: View {
                 updateFilteredCounts()
             }
             
+            Toggle(isOn: $importAffirmations) {
+                HStack {
+                    Image(systemName: "sparkles")
+                        .foregroundColor(.purple)
+                        .frame(width: 30)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Affirmations")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        Text("\(filteredAffirmationsCount) \(importMode == .replace ? "total affirmations" : "unique affirmations")")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        if filteredEventsWithAffirmationsCount > 0 {
+                            Text("(used in \(filteredEventsWithAffirmationsCount) event\(filteredEventsWithAffirmationsCount == 1 ? "" : "s"))")
+                                .font(.caption2)
+                                .foregroundColor(.purple)
+                        }
+                    }
+                }
+            }
+            .onChange(of: importAffirmations) { _, newValue in
+                // If affirmations are disabled, also disable affirmation events
+                if !newValue {
+                    importAffirmationEvents = false
+                }
+                updateFilteredCounts()
+            }
+            
+            // NEW: Affirmation Events toggle (indented/sub-option)
+            Toggle(isOn: $importAffirmationEvents) {
+                HStack {
+                    Image(systemName: "calendar.badge.clock")
+                        .foregroundColor(.purple)
+                        .frame(width: 30)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("  Affirmation Events")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        Text("  Keep affirmations on imported events")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .disabled(!importAffirmations) // Can't import affirmation events without affirmations
+            .opacity(importAffirmations ? 1.0 : 0.5)
+            .onChange(of: importAffirmationEvents) { _, _ in
+                updateFilteredCounts()
+            }
+            
             Toggle(isOn: $importPeople) {
                 HStack {
                     Image(systemName: "person.2.fill")
@@ -612,6 +672,8 @@ struct TimelineRestoreView: View {
                     importTrips = true
                     importLocations = true
                     importActivities = true
+                    importAffirmations = true
+                    importAffirmationEvents = true
                     importPeople = true
                     updateFilteredCounts()
                 }
@@ -625,6 +687,8 @@ struct TimelineRestoreView: View {
                     importTrips = false
                     importLocations = false
                     importActivities = false
+                    importAffirmations = false
+                    importAffirmationEvents = false
                     importPeople = false
                     updateFilteredCounts()
                 }
@@ -674,6 +738,22 @@ struct TimelineRestoreView: View {
             }
             
             HStack {
+                Label("\(filteredAffirmationsCount)", systemImage: "sparkles")
+                    .foregroundColor(.purple)
+                Spacer()
+                Text("Affirmations" + (importMode == .replace ? " (all)" : " (referenced)"))
+                    .foregroundColor(.secondary)
+            }
+            
+            HStack {
+                Label("\(filteredEventsWithAffirmationsCount)", systemImage: "calendar.badge.checkmark")
+                    .foregroundColor(.indigo)
+                Spacer()
+                Text("Events with affirmations")
+                    .foregroundColor(.secondary)
+            }
+            
+            HStack {
                 Label("\(filteredPeopleCount)", systemImage: "person.2.fill")
                     .foregroundColor(.orange)
                 Spacer()
@@ -704,12 +784,12 @@ struct TimelineRestoreView: View {
                 }
                 .padding(.vertical, 8)
             }
-            .disabled(isImporting || (!importEvents && !importTrips && !importLocations && !importActivities && !importPeople))
+            .disabled(isImporting || (!importEvents && !importTrips && !importLocations && !importActivities && !importAffirmations && !importPeople))
             .buttonStyle(.borderedProminent)
             .tint(importMode == .replace ? .red : .blue)
             .listRowBackground(Color.clear)
         } footer: {
-            if !importEvents && !importTrips && !importLocations && !importActivities && !importPeople {
+            if !importEvents && !importTrips && !importLocations && !importActivities && !importAffirmations && !importPeople {
                 Text("Please select at least one data type to import")
                     .font(.caption)
                     .foregroundColor(.orange)
@@ -848,14 +928,40 @@ struct TimelineRestoreView: View {
                     country: eventData.country,
                     note: eventData.note,
                     people: eventData.people ?? [],
-                    activityIDs: eventData.activityIDs ?? []
+                    activityIDs: eventData.activityIDs ?? [],
+                    affirmationIDs: eventData.affirmationIDs ?? []
                 )
+            }
+            
+            // Debug: Check affirmation IDs in loaded events
+            let eventsWithAffirmations = events.filter { !$0.affirmationIDs.isEmpty }
+            print("📂 [loadBackupFile] Events with affirmations: \(eventsWithAffirmations.count) out of \(events.count) total")
+            if let firstWithAffirmations = eventsWithAffirmations.first {
+                print("   Example: Event '\(firstWithAffirmations.location.name)' has \(firstWithAffirmations.affirmationIDs.count) affirmation IDs: \(firstWithAffirmations.affirmationIDs)")
             }
             
             // Convert Import.ActivityData → Activity
             let activities = importData.activities?.map { activityData in
                 Activity(id: activityData.id, name: activityData.name)
             } ?? []
+            
+            // Convert Import.AffirmationData → Affirmation
+            let affirmations = importData.affirmations?.map { affirmationData in
+                Affirmation(
+                    id: affirmationData.id,
+                    text: affirmationData.text,
+                    category: Affirmation.Category(rawValue: affirmationData.category) ?? .custom,
+                    createdDate: affirmationData.createdDate,
+                    color: affirmationData.color,
+                    isFavorite: affirmationData.isFavorite
+                )
+            } ?? []
+            
+            print("📊 [loadBackupFile] Decoded affirmations:")
+            print("   Total affirmations in backup: \(affirmations.count)")
+            for (index, affirmation) in affirmations.enumerated() {
+                print("   [\(index)] ID: \(affirmation.id), Text: '\(affirmation.text)', Category: \(affirmation.category.rawValue)")
+            }
             
             // Convert Import.TripData → Trip
             let trips = importData.trips?.map { tripData in
@@ -878,6 +984,7 @@ struct TimelineRestoreView: View {
                 locations: locations,
                 events: events,
                 activities: activities,
+                affirmations: affirmations,
                 trips: trips
             )
             
@@ -928,14 +1035,18 @@ struct TimelineRestoreView: View {
         let filteredEvents = backup.events.filter { event in
             event.date >= startDate && event.date < endDate
         }
-        filteredEventsCount = filteredEvents.count
+        filteredEventsCount = importEvents ? filteredEvents.count : 0
         
-        // Count unique people in filtered events
+        // Count events that have affirmations (only if the toggle is on)
+        filteredEventsWithAffirmationsCount = importAffirmationEvents ? filteredEvents.filter { !$0.affirmationIDs.isEmpty }.count : 0
+        
+        // Count unique people in filtered events (only if the toggle is on)
         let allPeople = Set(filteredEvents.flatMap { $0.people })
-        filteredPeopleCount = allPeople.count
+        filteredPeopleCount = importPeople ? allPeople.count : 0
         
         print("📊 [TimelineRestoreView] updateFilteredCounts:")
         print("   Events: \(filteredEventsCount)")
+        print("   Events with affirmations: \(filteredEventsWithAffirmationsCount)")
         print("   People: \(filteredPeopleCount) unique people from \(filteredEvents.flatMap { $0.people }.count) total people entries")
         
         // Filter trips by date range (using associated event dates)
@@ -951,21 +1062,25 @@ struct TimelineRestoreView: View {
             }
             return false
         }
-        filteredTripsCount = filteredTrips.count
+        filteredTripsCount = importTrips ? filteredTrips.count : 0
         
         if importMode == .replace {
-            // Replace mode imports all locations and activities
-            filteredLocationsCount = backup.locations.count
-            filteredActivitiesCount = backup.activities.count
-            print("   Mode: REPLACE - showing all locations (\(filteredLocationsCount)) and activities (\(filteredActivitiesCount))")
+            // Replace mode imports all locations, activities, and affirmations (but only if toggles are on)
+            filteredLocationsCount = importLocations ? backup.locations.count : 0
+            filteredActivitiesCount = importActivities ? backup.activities.count : 0
+            filteredAffirmationsCount = importAffirmations ? backup.affirmations.count : 0
+            print("   Mode: REPLACE - showing all locations (\(filteredLocationsCount)), activities (\(filteredActivitiesCount)), and affirmations (\(filteredAffirmationsCount))")
         } else {
-            // Merge mode only imports referenced locations and activities
+            // Merge mode only imports referenced locations, activities, and affirmations (but only if toggles are on)
             let referencedLocationIDs = Set(filteredEvents.map { $0.location.id })
-            filteredLocationsCount = backup.locations.filter { referencedLocationIDs.contains($0.id) }.count
+            filteredLocationsCount = importLocations ? backup.locations.filter { referencedLocationIDs.contains($0.id) }.count : 0
             
             let referencedActivityIDs = Set(filteredEvents.flatMap { $0.activityIDs })
-            filteredActivitiesCount = backup.activities.filter { referencedActivityIDs.contains($0.id) }.count
-            print("   Mode: MERGE - showing referenced locations (\(filteredLocationsCount)) and activities (\(filteredActivitiesCount))")
+            filteredActivitiesCount = importActivities ? backup.activities.filter { referencedActivityIDs.contains($0.id) }.count : 0
+            
+            let referencedAffirmationIDs = Set(filteredEvents.flatMap { $0.affirmationIDs })
+            filteredAffirmationsCount = importAffirmations ? backup.affirmations.filter { referencedAffirmationIDs.contains($0.id) }.count : 0
+            print("   Mode: MERGE - showing referenced locations (\(filteredLocationsCount)), activities (\(filteredActivitiesCount)), and affirmations (\(filteredAffirmationsCount))")
         }
     }
     
@@ -977,9 +1092,11 @@ struct TimelineRestoreView: View {
         showResults = false
         
         var importedEventsCount = 0
+        var importedEventsWithAffirmationsCount = 0 // NEW: Track events that have affirmations
         var importedTripsCount = 0
         var importedLocationsCount = 0
         var importedActivitiesCount = 0
+        var importedAffirmationsCount = 0
         var importedPeopleCount = 0
         
         defer {
@@ -988,7 +1105,7 @@ struct TimelineRestoreView: View {
         }
         
         print("📥 [TimelineRestoreView] performImport starting:")
-        print("   Import toggles - Events: \(importEvents), Trips: \(importTrips), Locations: \(importLocations), Activities: \(importActivities), People: \(importPeople)")
+        print("   Import toggles - Events: \(importEvents), Trips: \(importTrips), Locations: \(importLocations), Activities: \(importActivities), Affirmations: \(importAffirmations), AffirmationEvents: \(importAffirmationEvents), People: \(importPeople)")
         print("   Import mode: \(importMode.rawValue)")
         
         let startDate = sliderStartDate
@@ -1005,6 +1122,9 @@ struct TimelineRestoreView: View {
             if importActivities {
                 store.activities.removeAll()
             }
+            if importAffirmations {
+                store.affirmations.removeAll()
+            }
             if importTrips {
                 store.trips.removeAll()
             }
@@ -1018,6 +1138,11 @@ struct TimelineRestoreView: View {
                 store.activities = backup.activities
                 importedActivitiesCount = backup.activities.count
             }
+            if importAffirmations {
+                store.affirmations = backup.affirmations
+                importedAffirmationsCount = backup.affirmations.count
+                print("📝 [performImport] Replace mode - Imported all affirmations: \(importedAffirmationsCount)")
+            }
         } else {
             // Merge mode: import only referenced data (only if toggles are ON)
             // Get filtered events
@@ -1028,12 +1153,32 @@ struct TimelineRestoreView: View {
                 let referencedLocationIDs = Set(filteredEvents.map { $0.location.id })
                 let locationsToImport = backup.locations.filter { referencedLocationIDs.contains($0.id) }
                 
+                print("📍 [performImport] Locations import (Merge mode):")
+                print("   Locations to import: \(locationsToImport.count)")
+                
                 for location in locationsToImport {
-                    if !store.locations.contains(where: { $0.id == location.id }) {
+                    // Skip "Other" location if one already exists (prevents duplicates)
+                    let isOtherLocation = location.name.caseInsensitiveCompare("Other") == .orderedSame
+                    let otherAlreadyExists = store.locations.contains { $0.name.caseInsensitiveCompare("Other") == .orderedSame }
+                    
+                    if isOtherLocation && otherAlreadyExists {
+                        print("   ⏭️ Skipped 'Other' location (already exists)")
+                        continue
+                    }
+                    
+                    // Check for duplicate by ID
+                    let alreadyExistsByID = store.locations.contains(where: { $0.id == location.id })
+                    
+                    if !alreadyExistsByID {
                         store.locations.append(location)
                         importedLocationsCount += 1
+                        print("   ✅ Imported location: '\(location.name)'")
+                    } else {
+                        print("   ⏭️ Skipped '\(location.name)' (ID already exists)")
                     }
                 }
+                
+                print("   Final imported count: \(importedLocationsCount)")
             }
             
             // Import activities if selected
@@ -1048,6 +1193,36 @@ struct TimelineRestoreView: View {
                     }
                 }
             }
+            
+            // Import affirmations if selected
+            if importAffirmations {
+                let referencedAffirmationIDs = Set(filteredEvents.flatMap { $0.affirmationIDs })
+                let affirmationsToImport = backup.affirmations.filter { referencedAffirmationIDs.contains($0.id) }
+                
+                print("📝 [performImport] Affirmations import (Merge mode):")
+                print("   Filtered events count: \(filteredEvents.count)")
+                print("   Referenced affirmation IDs: \(referencedAffirmationIDs.count)")
+                print("   IDs: \(Array(referencedAffirmationIDs))")
+                print("   Affirmations to import: \(affirmationsToImport.count)")
+                print("   Current store.affirmations count: \(store.affirmations.count)")
+                
+                for affirmation in affirmationsToImport {
+                    let alreadyExists = store.affirmations.contains(where: { $0.id == affirmation.id })
+                    print("   Checking '\(affirmation.text)' (ID: \(affirmation.id)) - Already exists: \(alreadyExists)")
+                    
+                    if !alreadyExists {
+                        store.affirmations.append(affirmation)
+                        importedAffirmationsCount += 1
+                        print("   ✅ Imported: '\(affirmation.text)'")
+                    } else {
+                        print("   ⏭️ Skipped (already exists): '\(affirmation.text)'")
+                    }
+                }
+                
+                print("   Final imported count: \(importedAffirmationsCount)")
+            } else {
+                print("📝 [performImport] Affirmations import DISABLED by toggle")
+            }
         }
         
         // Import filtered events if selected
@@ -1055,12 +1230,13 @@ struct TimelineRestoreView: View {
             let filteredEvents = backup.events.filter { $0.date >= startDate && $0.date < endDate }
             
             if importMode == .replace {
-                // Replace mode: import all or clear people/activities based on toggles
+                // Replace mode: import all or clear people/activities/affirmations based on toggles
                 var eventsToStore = filteredEvents
                 
                 // Clean up events based on what's NOT being imported
-                if !importPeople || !importActivities {
+                if !importPeople || !importActivities || !importAffirmationEvents {
                     let originalActivityCount = filteredEvents.flatMap { $0.activityIDs }.count
+                    let originalAffirmationCount = filteredEvents.flatMap { $0.affirmationIDs }.count
                     let originalPeopleCount = filteredEvents.flatMap { $0.people }.count
                     
                     eventsToStore = filteredEvents.map { event in
@@ -1071,11 +1247,17 @@ struct TimelineRestoreView: View {
                         if !importActivities {
                             modifiedEvent.activityIDs = []
                         }
+                        if !importAffirmationEvents {
+                            modifiedEvent.affirmationIDs = []
+                        }
                         return modifiedEvent
                     }
                     
                     if !importActivities && originalActivityCount > 0 {
                         print("   🧹 Stripped \(originalActivityCount) activity references from events (Activities toggle OFF)")
+                    }
+                    if !importAffirmationEvents && originalAffirmationCount > 0 {
+                        print("   🧹 Stripped \(originalAffirmationCount) affirmation references from events (Affirmation Events toggle OFF)")
                     }
                     if !importPeople && originalPeopleCount > 0 {
                         print("   🧹 Stripped \(originalPeopleCount) people from events (People toggle OFF)")
@@ -1105,6 +1287,12 @@ struct TimelineRestoreView: View {
                                 print("   🧹 Stripping \(modifiedEvent.activityIDs.count) activity IDs from event '\(modifiedEvent.location.name)' on \(modifiedEvent.date.formatted(date: .abbreviated, time: .omitted))")
                             }
                             modifiedEvent.activityIDs = []
+                        }
+                        if !importAffirmationEvents {
+                            if !modifiedEvent.affirmationIDs.isEmpty {
+                                print("   🧹 Stripping \(modifiedEvent.affirmationIDs.count) affirmation IDs from event '\(modifiedEvent.location.name)' on \(modifiedEvent.date.formatted(date: .abbreviated, time: .omitted))")
+                            }
+                            modifiedEvent.affirmationIDs = []
                         }
                         
                         store.events.append(modifiedEvent)
@@ -1171,6 +1359,9 @@ struct TimelineRestoreView: View {
         }
         if importActivities && importedActivitiesCount > 0 {
             parts.append("\(importedActivitiesCount) activit\(importedActivitiesCount == 1 ? "y" : "ies")")
+        }
+        if importAffirmations && importedAffirmationsCount > 0 {
+            parts.append("\(importedAffirmationsCount) affirmation\(importedAffirmationsCount == 1 ? "" : "s")")
         }
         if importPeople && importedPeopleCount > 0 {
             parts.append("\(importedPeopleCount) people")

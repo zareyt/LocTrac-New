@@ -91,6 +91,11 @@ struct ModernEventsCalendarView: View {
                     }
                 }
             }
+            // NEW: Listen for calendar refresh token changes
+            .onChange(of: store.calendarRefreshToken) { _, _ in
+                print("🔄 Calendar refresh token changed - forcing calendar update")
+                calendarRefreshTrigger += 1
+            }
         }
     }
     

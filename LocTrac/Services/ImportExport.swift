@@ -25,6 +25,7 @@ struct Import: Codable {
         var country: String?  // <-- Country support
         var theme: String
         var imageIDs: [String]? // existing
+        var customColorHex: String? // NEW: optional custom color (backward compatible)
     }
     
     struct ActivityData: Codable {
@@ -87,7 +88,8 @@ struct Export: Codable {
                          longitude: $0.longitude,
                          country: $0.country,
                          theme: $0.theme.rawValue,
-                         imageIDs: $0.imageIDs)
+                         imageIDs: $0.imageIDs,
+                         customColorHex: $0.customColorHex)
         }
         self.events = events.map {
             EventData(locationID: $0.location.id,
@@ -139,6 +141,7 @@ struct Export: Codable {
         let country: String?  // <-- Country support
         let theme: String
         let imageIDs: [String]?
+        let customColorHex: String? // NEW: optional custom color
     }
     
     struct EventData: Codable {

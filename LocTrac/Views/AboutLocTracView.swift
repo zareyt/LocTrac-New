@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct AboutLocTracView: View {
+struct AboutLocTracViewSimple: View {
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
     }

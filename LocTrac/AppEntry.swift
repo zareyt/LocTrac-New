@@ -8,15 +8,29 @@
 //
 
 import SwiftUI
+import UserNotifications
 
 @main
 struct AppEntry: App {
     var store = DataStore()
+    
+    init() {
+        // Register notification categories on app launch
+        NotificationManager.shared.registerNotificationCategories()
+        print("✅ Notification categories registered")
+    }
    
     var body: some Scene {
         WindowGroup {
             StartTabView()
                 .environmentObject(store)
+                .onAppear {
+                    // Check notification authorization status
+                    NotificationManager.shared.checkAuthorizationStatus()
+                    
+                    // Clear badge when app opens
+                    UIApplication.shared.applicationIconBadgeNumber = 0
+                }
         }
     }
 }

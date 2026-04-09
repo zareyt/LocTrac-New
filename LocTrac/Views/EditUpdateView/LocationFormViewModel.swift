@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 class LocationFormViewModel: ObservableObject {
     @Published var name: String = ""
@@ -15,6 +16,7 @@ class LocationFormViewModel: ObservableObject {
     @Published var country: String = "" // NEW: Country field
     @Published var date: [Date] = []
     @Published var theme: Theme = .navy
+    @Published var customColorHex: String? // NEW: optional custom color
 
     var id: String?
     var updating: Bool { id != nil }
@@ -31,6 +33,14 @@ class LocationFormViewModel: ObservableObject {
         country = location.country ?? "" // NEW: Load country
         id = location.id
         theme = location.theme
+        customColorHex = location.customColorHex // NEW: Load custom color
     }
-
+    
+    // NEW: Computed property for effective display color
+    var effectiveColor: Color {
+        if let hex = customColorHex {
+            return Color(hex: hex)
+        }
+        return theme.mainColor
+    }
 }

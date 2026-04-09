@@ -3,6 +3,7 @@
 //  LocTrac
 //
 //  View for selecting multiple affirmations for events
+//  Enhanced with category filtering and full text display
 //
 
 import SwiftUI
@@ -30,26 +31,28 @@ struct AffirmationSelectorView: View {
             }
     }
     
+    var selectedAffirmations: [Affirmation] {
+        selectedAffirmationIDs.compactMap { id in
+            store.affirmations.first(where: { $0.id == id })
+        }
+    }
+    
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Selected affirmations preview
+                // Category filter pills (same as Manage Affirmations)
+                categoryFilterSection
+                
+                // Selected count header
                 if !selectedAffirmationIDs.isEmpty {
-                    selectedAffirmationsSection
+                    selectedCountHeader
                 }
                 
-                // Available affirmations
-                List {
-                    ForEach(filteredAffirmations) { affirmation in
-                        AffirmationSelectionRow(
-                            affirmation: affirmation,
-                            isSelected: selectedAffirmationIDs.contains(affirmation.id)
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            toggleSelection(affirmation)
-                        }
-                    }
+                // Affirmations list
+                if filteredAffirmations.isEmpty {
+                    emptyState
+                } else {
+                    affirmationsList
                 }
             }
             .navigationTitle("Select Affirmations")
@@ -66,119 +69,195 @@ struct AffirmationSelectorView: View {
                     Button("Done") {
                         dismiss()
                     }
+                    .fontWeight(.semibold)
                 }
             }
         }
     }
     
-    private var selectedAffirmationsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Selected")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .textCase(.uppercase)
+    // MARK: - Subviews
+    
+    private var categoryFilterSection: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                // "All" button
+                categoryPill(title: "All", icon: "sparkles", isSelected: selectedCategory == nil) {
+                    selectedCategory = nil
+                }
                 
-                Spacer()
-                
-                Text("\(selectedAffirmationIDs.count)")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.blue)
-            }
-            .padding(.horizontal)
-            .padding(.top, 8)
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(selectedAffirmations) { affirmation in
-                        SelectedAffirmationChip(affirmation: affirmation) {
-                            toggleSelection(affirmation)
-                        }
+                ForEach(Affirmation.Category.allCases, id: \.self) { category in
+                    categoryPill(
+                        title: category.rawValue.components(separatedBy: " ").first ?? category.rawValue,
+                        icon: category.icon,
+                        isSelected: selectedCategory == category
+                    ) {
+                        selectedCategory = category == selectedCategory ? nil : category
                     }
                 }
-                .padding(.horizontal)
             }
-            .padding(.bottom, 8)
+            .padding(.horizontal)
+            .padding(.vertical, 12)
         }
         .background(Color(.secondarySystemBackground))
     }
     
-    private var selectedAffirmations: [Affirmation] {
-        selectedAffirmationIDs.compactMap { id in
-            store.affirmations.first(where: { $0.id == id })
+    private func categoryPill(title: String, icon: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                Text(title)
+            }
+            .font(.subheadline)
+            .fontWeight(isSelected ? .semibold : .regular)
+            .foregroundColor(isSelected ? .white : .primary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(isSelected ? Color.blue : Color(.tertiarySystemBackground))
+            )
         }
     }
     
-    private func toggleSelection(_ affirmation: Affirmation) {
-        if let index = selectedAffirmationIDs.firstIndex(of: affirmation.id) {
-            selectedAffirmationIDs.remove(at: index)
-        } else {
-            selectedAffirmationIDs.append(affirmation.id)
-        }
-    }
-}
-
-struct AffirmationSelectionRow: View {
-    let affirmation: Affirmation
-    let isSelected: Bool
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            // Selection indicator
-            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                .foregroundColor(isSelected ? .blue : .gray)
-                .font(.title3)
-            
-            // Category icon
-            Image(systemName: affirmation.category.icon)
-                .foregroundStyle(Color(affirmation.color).gradient)
-                .frame(width: 24)
-            
-            // Text
-            Text(affirmation.text)
-                .font(.body)
-                .lineLimit(2)
+    private var selectedCountHeader: some View {
+        HStack {
+            Text("\(selectedAffirmationIDs.count) Selected")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(.blue)
             
             Spacer()
             
-            if affirmation.isFavorite {
-                Image(systemName: "star.fill")
-                    .font(.caption)
-                    .foregroundColor(.yellow)
+            if !selectedAffirmationIDs.isEmpty {
+                Button("Clear All") {
+                    withAnimation {
+                        selectedAffirmationIDs.removeAll()
+                    }
+                }
+                .font(.subheadline)
+                .foregroundColor(.red)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(Color(.tertiarySystemBackground))
+    }
+    
+    private var affirmationsList: some View {
+        List {
+            ForEach(filteredAffirmations) { affirmation in
+                ImprovedAffirmationSelectionRow(
+                    affirmation: affirmation,
+                    isSelected: selectedAffirmationIDs.contains(affirmation.id)
+                )
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    toggleSelection(affirmation)
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+    }
+    
+    private var emptyState: some View {
+        VStack(spacing: 24) {
+            Image(systemName: searchText.isEmpty ? "sparkles" : "magnifyingglass")
+                .font(.system(size: 60))
+                .foregroundStyle(.blue.gradient)
+            
+            Text(searchText.isEmpty ? "No Affirmations Yet" : "No Results")
+                .font(.title2)
+                .fontWeight(.bold)
+            
+            Text(searchText.isEmpty
+                ? "Create affirmations in Manage Activities & Affirmations"
+                : "Try a different search term or category")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    private func toggleSelection(_ affirmation: Affirmation) {
+        withAnimation(.spring(response: 0.3)) {
+            if let index = selectedAffirmationIDs.firstIndex(of: affirmation.id) {
+                selectedAffirmationIDs.remove(at: index)
+            } else {
+                selectedAffirmationIDs.append(affirmation.id)
+            }
+        }
     }
 }
 
-struct SelectedAffirmationChip: View {
+// MARK: - Improved Selection Row
+
+struct ImprovedAffirmationSelectionRow: View {
     let affirmation: Affirmation
-    let onRemove: () -> Void
+    let isSelected: Bool
+    
+    private var color: Color {
+        switch affirmation.color {
+        case "blue": return .blue
+        case "purple": return .purple
+        case "pink": return .pink
+        case "red": return .red
+        case "orange": return .orange
+        case "yellow": return .yellow
+        case "green": return .green
+        case "indigo": return .indigo
+        case "teal": return .teal
+        case "gray": return .gray
+        default: return .blue
+        }
+    }
     
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 12) {
+            // Selection indicator with animation
+            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                .foregroundColor(isSelected ? .blue : .gray)
+                .font(.title2)
+                .scaleEffect(isSelected ? 1.1 : 1.0)
+                .animation(.spring(response: 0.3), value: isSelected)
+            
+            // Category icon with colored background (same as Manage Affirmations)
             Image(systemName: affirmation.category.icon)
-                .font(.caption2)
+                .font(.title3)
+                .foregroundStyle(color.gradient)
+                .frame(width: 36, height: 36)
+                .background(
+                    Circle()
+                        .fill(color.opacity(0.15))
+                )
             
-            Text(affirmation.text)
-                .font(.caption)
-                .lineLimit(1)
-            
-            Button {
-                onRemove()
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.caption)
+            // Text content with full display
+            VStack(alignment: .leading, spacing: 4) {
+                Text(affirmation.text)
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .lineLimit(nil) // Show full text, no truncation
+                    .fixedSize(horizontal: false, vertical: true)
+                
+                HStack(spacing: 4) {
+                    Text(affirmation.category.rawValue)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    if affirmation.isFavorite {
+                        Image(systemName: "star.fill")
+                            .font(.caption2)
+                            .foregroundColor(.yellow)
+                    }
+                }
             }
+            
+            Spacer()
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(affirmation.color).opacity(0.2))
-        )
-        .foregroundColor(Color(affirmation.color))
+        .padding(.vertical, 8)
+        .background(isSelected ? color.opacity(0.05) : Color.clear)
+        .cornerRadius(8)
     }
 }
 

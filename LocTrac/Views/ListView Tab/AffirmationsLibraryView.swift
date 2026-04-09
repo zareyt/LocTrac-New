@@ -159,7 +159,19 @@ struct AffirmationRow: View {
     let affirmation: Affirmation
     
     private var color: Color {
-        Color(affirmation.color)
+        switch affirmation.color {
+        case "blue": return .blue
+        case "purple": return .purple
+        case "pink": return .pink
+        case "red": return .red
+        case "orange": return .orange
+        case "yellow": return .yellow
+        case "green": return .green
+        case "indigo": return .indigo
+        case "teal": return .teal
+        case "gray": return .gray
+        default: return .blue
+        }
     }
     
     var body: some View {

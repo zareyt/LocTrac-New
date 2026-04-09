@@ -1,7 +1,75 @@
 # LocTrac Changelog
 
+# Changelog
+
 All notable changes to LocTrac are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+---
+
+## [1.4] – 2026-04-08
+
+### Added
+
+- **Daily Affirmation Widget** (`LocTracWidget.swift`, `LocTracWidgetBundle.swift`)
+  - Home screen widget displaying one affirmation per day
+  - Small (square) and Medium (rectangular) widget families
+  - Automatic midnight updates using WidgetKit Timeline API
+  - Day-of-year rotation algorithm for consistent daily affirmations
+  - Color-coded by affirmation category with soft gradient backgrounds
+  - Minimal, calming design with category icons and day names
+  - Widget Extension target added to project structure
+
+- **Daily Notifications** (`NotificationManager.swift`)
+  - Optional daily notification system for affirmations and stay reminders
+  - Sends same affirmation as home screen widget
+  - Notification time customizable between 12:00 AM - 12:00 PM
+  - Stay reminder checks for missing days in past 7 days
+  - Badge count shows number of missing stays
+  - Calm, supportive notification tone
+  - Notification actions: "View in App", "Add Stay", "Dismiss"
+  - Settings view for enabling/disabling and time selection
+  - Respects system Do Not Disturb settings
+
+- **Custom Location Colors** (`Locations.swift`, `ImportExport.swift`)
+  - Full spectrum color picker without theme snapping
+  - New `customColorHex: String?` optional field in Location model
+  - New `effectiveColor` computed property (custom or theme fallback)
+  - Color ↔ Hex conversion helpers using UIColor bridge
+  - Custom colors persist in backup.json with backward compatibility
+  - All location displays updated to use `effectiveColor`
+
+### Changed
+
+- **LocationsManagementView.swift**
+  - ColorPicker now allows full spectrum selection
+  - Location editor sheet updated to write custom colors
+  - All location circles, map pins, and previews use custom colors
+
+- **LocationFormView.swift**
+  - Add/Update location forms support custom color selection
+  - Preview fills show custom colors when set
+
+- **LocationFormViewModel.swift** & **LocationSheetEditorModel.swift**
+  - Added `customColorHex` published property
+  - Added `effectiveColor` computed property for UI binding
+
+- **DataStore.swift**
+  - `update(_:Location)` now saves `customColorHex`
+  - Import mapping includes `customColorHex` from backup files
+
+- **CLAUDE.md**
+  - Updated project structure with Widget Extension target
+  - Added widget-specific coding conventions (tip #15)
+  - Updated version history to 1.4
+  - Added widget documentation references
+
+### Documentation
+
+- **WIDGET_IMPLEMENTATION.md** — Complete widget setup guide with Xcode instructions
+- **WIDGET_QUICK_START.md** — Quick setup checklist for developers
+- **RELEASE_NOTES_v1.4.md** — User-facing release notes with feature highlights
+- **WIDGET_SUMMARY_v1.4.md** — Technical implementation summary and architecture decisions
 
 ---
 

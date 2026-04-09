@@ -112,10 +112,10 @@ struct DefaultLocationSettingsView: View {
                             .fontWeight(.semibold)
                             .foregroundColor(.orange)
                         
-                        InfoRow(icon: "bolt.fill", text: "Faster event creation", color: .blue)
-                        InfoRow(icon: "checkmark.circle.fill", text: "Consistent data entry", color: .green)
-                        InfoRow(icon: "house.fill", text: "Home location always ready", color: .purple)
-                        InfoRow(icon: "square.and.arrow.up.fill", text: "Can override when traveling", color: .orange)
+                        LocationInfoRow(icon: "bolt.fill", text: "Faster event creation", color: .blue)
+                        LocationInfoRow(icon: "checkmark.circle.fill", text: "Consistent data entry", color: .green)
+                        LocationInfoRow(icon: "house.fill", text: "Home location always ready", color: .purple)
+                        LocationInfoRow(icon: "square.and.arrow.up.fill", text: "Can override when traveling", color: .orange)
                     }
                     .padding(.vertical, 8)
                 } header: {
@@ -136,7 +136,7 @@ struct DefaultLocationSettingsView: View {
 }
 
 // MARK: - Info Row
-struct InfoRow: View {
+struct LocationInfoRow: View {
     let icon: String
     let text: String
     let color: Color

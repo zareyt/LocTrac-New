@@ -135,7 +135,7 @@ struct LocationsManagementView: View {
                 ForEach(store.locations.filter { $0.name != "Other" }) { location in
                     HStack {
                         Circle()
-                            .fill(location.theme.mainColor)
+                            .fill(location.effectiveColor)
                             .frame(width: 12, height: 12)
                         Text(location.name)
                     }
@@ -149,7 +149,7 @@ struct LocationsManagementView: View {
                 // Current Default
                 HStack(spacing: 16) {
                     Circle()
-                        .fill(defaultLocation.theme.mainColor)
+                        .fill(defaultLocation.effectiveColor)
                         .frame(width: 50, height: 50)
                         .overlay(
                             Image(systemName: "mappin.circle.fill")
@@ -211,10 +211,10 @@ struct LocationsManagementView: View {
                     .fontWeight(.semibold)
                     .foregroundColor(.orange)
                 
-                InfoRow(icon: "bolt.fill", text: "Faster event creation", color: .blue)
-                InfoRow(icon: "checkmark.circle.fill", text: "Consistent data entry", color: .green)
-                InfoRow(icon: "house.fill", text: "Home location always ready", color: .purple)
-                InfoRow(icon: "square.and.arrow.up.fill", text: "Can override when traveling", color: .orange)
+                LocationInfoRow(icon: "bolt.fill", text: "Faster event creation", color: .blue)
+                LocationInfoRow(icon: "checkmark.circle.fill", text: "Consistent data entry", color: .green)
+                LocationInfoRow(icon: "house.fill", text: "Home location always ready", color: .purple)
+                LocationInfoRow(icon: "square.and.arrow.up.fill", text: "Can override when traveling", color: .orange)
             }
             .padding(.vertical, 8)
         } header: {
@@ -379,7 +379,7 @@ struct LocationManagementRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
                         Circle()
-                            .fill(location.theme.mainColor)
+                            .fill(location.effectiveColor)
                             .frame(width: 12, height: 12)
                         
                         Text(location.name)
@@ -412,7 +412,7 @@ struct LocationManagementRow: View {
             ))) {
                 Annotation("", coordinate: coordinate) {
                     Circle()
-                        .fill(location.theme.mainColor)
+                        .fill(location.effectiveColor)
                         .frame(width: 12, height: 12)
                         .overlay(Circle().stroke(Color.white, lineWidth: 2))
                 }
@@ -460,13 +460,11 @@ struct LocationEditorSheet: View {
     }
     
     var body: some View {
-        // Bridge Theme <-> Color for the ColorPicker (same as Add Location view)
+        // NEW: Direct color binding for custom colors (no theme snapping)
         let colorBinding = Binding<Color>(
-            get: { editor.selectedTheme.mainColor },
+            get: { editor.effectiveColor },
             set: { newColor in
-                if let nearest = nearestTheme(to: newColor) {
-                    editor.selectedTheme = nearest
-                }
+                editor.customColorHex = newColor.toHex()
             }
         )
         
@@ -506,7 +504,7 @@ struct LocationEditorSheet: View {
                     ))) {
                         Annotation("", coordinate: CLLocationCoordinate2D(latitude: editor.latitude, longitude: editor.longitude)) {
                             Circle()
-                                .fill(editor.selectedTheme.mainColor)
+                                .fill(editor.effectiveColor)
                                 .frame(width: 16, height: 16)
                                 .overlay(Circle().stroke(Color.white, lineWidth: 2))
                         }
@@ -515,7 +513,7 @@ struct LocationEditorSheet: View {
                     .cornerRadius(8)
                 }
                 
-                // Theme (using ColorPicker like Add Location view)
+                // Theme (NEW: full spectrum color picker, no theme snapping)
                 Section("Theme Color") {
                     ColorPicker("Color", selection: colorBinding, supportsOpacity: false)
                     
@@ -523,7 +521,7 @@ struct LocationEditorSheet: View {
                         Text("Preview")
                         Spacer()
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(editor.selectedTheme.mainColor)
+                            .fill(editor.effectiveColor)
                             .frame(width: 30, height: 30)
                     }
                 }
@@ -576,7 +574,8 @@ struct LocationEditorSheet: View {
             longitude: editor.longitude,
             country: editor.country.isEmpty ? nil : editor.country,
             theme: editor.selectedTheme,
-            imageIDs: location.imageIDs
+            imageIDs: location.imageIDs,
+            customColorHex: editor.customColorHex // NEW: Save custom color
         )
         
         store.update(updatedLocation)

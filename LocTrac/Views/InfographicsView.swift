@@ -31,13 +31,26 @@ struct Derived {
     let uniquePeopleCount: Int
     let tripsCount: Int
     let dateRange: String?
+    
+    // Vacation-specific data (from "Other" location)
+    let vacationStats: VacationStats
+}
+
+// MARK: - Vacation Statistics Model
+struct VacationStats {
+    let totalVacationDays: Int
+    let uniqueVacationCities: Set<String>
+    let vacationCountries: Set<String>
+    let topVacationCities: [(city: String, days: Int)]
+    let topVacationCountries: [(country: String, days: Int)]
+    let longestVacation: (city: String?, days: Int)?
+    let averageVacationLength: Double
+    let vacationTripsCount: Int
 }
 
 struct InfographicsView: View {
     @EnvironmentObject var store: DataStore
     @State private var selectedYear: String = "All Time"
-    @State private var showShareSheet = false
-    @State private var pdfData: Data?
     
     // MEMOIZATION: Store derived data per year
     @State private var derivedByYear: [String: Derived] = [:]
@@ -53,69 +66,64 @@ struct InfographicsView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Year filter picker
-                    yearFilterSection
+        // ⚠️ NO NavigationStack - this view is embedded in StartTabView's NavigationStack
+        ScrollView {
+            VStack(spacing: 24) {
+                // Year filter picker
+                yearFilterSection
+                
+                // Show content if derived data is ready
+                if let derived = derivedByYear[selectedYear] {
+                    // Header with year selector
+                    headerSection(derived: derived)
                     
-                    // Show content if derived data is ready
-                    if let derived = derivedByYear[selectedYear] {
-                        // Header with year selector
-                        headerSection(derived: derived)
-                        
-                        // Overview stats cards
-                        overviewStatsSection(derived: derived)
-                        
-                        // Event type breakdown chart
-                        eventTypeSection(derived: derived)
-                        
-                        // Location statistics
-                        locationStatsSection(derived: derived)
-                        
-                        // Travel reach (countries & states)
-                        travelReachSection(derived: derived)
-                        
-                        // Activities breakdown
-                        activitiesSection(derived: derived)
-                        
-                        // People connections
-                        peopleSection(derived: derived)
-                        
-                        // Journey map
-                        journeyMapSection(derived: derived)
-                        
-                        // Environmental impact
-                        environmentalImpactSection(derived: derived)
-                    } else {
-                        // Loading state
-                        VStack(spacing: 16) {
-                            ProgressView()
-                            Text("Calculating statistics for \(selectedYear)...")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: 300)
+                    // Overview stats cards
+                    overviewStatsSection(derived: derived)
+                    
+                    // Event type breakdown chart
+                    eventTypeSection(derived: derived)
+                    
+                    // Location statistics
+                    locationStatsSection(derived: derived)
+                    
+                    // Travel reach (countries & states)
+                    travelReachSection(derived: derived)
+                    
+                    // Vacation highlights
+                    vacationSection(derived: derived)
+                    
+                    // Activities breakdown
+                    activitiesSection(derived: derived)
+                    
+                    // People connections
+                    peopleSection(derived: derived)
+                    
+                    // Journey map
+                    journeyMapSection(derived: derived)
+                    
+                    // Environmental impact
+                    environmentalImpactSection(derived: derived)
+                } else {
+                    // Loading state
+                    VStack(spacing: 16) {
+                        ProgressView()
+                        Text("Calculating statistics for \(selectedYear)...")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                     }
-                }
-                .padding()
-            }
-            .navigationTitle("Travel Infographic")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        generatePDF()
-                    } label: {
-                        Label("Export PDF", systemImage: "square.and.arrow.up")
-                    }
+                    .frame(maxWidth: .infinity, maxHeight: 300)
                 }
             }
-            .sheet(isPresented: $showShareSheet) {
-                if let pdfData = pdfData {
-                    ShareSheet(activityItems: [pdfData])
-                }
-            }
+            .padding()
+        }
+        // Listen for share button taps from StartTabView toolbar
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("GeneratePDF"))) { _ in
+            print("📨 Received GeneratePDF notification")
+            generatePDF()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ShareScreenshot"))) { _ in
+            print("📨 Received ShareScreenshot notification")
+            shareScreenshot()
         }
         .task(id: selectedYear) {
             // Check if we already have derived data for this year
@@ -193,11 +201,16 @@ struct InfographicsView: View {
         // State detection (async, may take time)
         let detectedStates = await detectStates(from: filtered, for: year)
         
+        // Vacation statistics (from "Other" location)
+        let vacationStats = await computeVacationStats(from: filtered)
+        
         // Overview stats
         let totalStays = filtered.count
-        let uniqueLocationsCount = Set(filtered.map { $0.location.id }).count
+        // Exclude "Other" location from unique locations count
+        let uniqueLocationsCount = Set(filtered.filter { $0.location.name != "Other" }.map { $0.location.id }).count
         let totalDaysCount = filtered.count
         let uniqueActivitiesCount = Set(filtered.flatMap { $0.activityIDs }).count
+        // Ensure people are unique by displayName
         let uniquePeopleCount = Set(filtered.flatMap { $0.people.map { $0.displayName } }).count
         
         // Get trips count for this year
@@ -253,7 +266,8 @@ struct InfographicsView: View {
             uniqueActivitiesCount: uniqueActivitiesCount,
             uniquePeopleCount: uniquePeopleCount,
             tripsCount: tripsCount,
-            dateRange: dateRange
+            dateRange: dateRange,
+            vacationStats: vacationStats
         )
         
         // Store in state
@@ -465,6 +479,84 @@ struct InfographicsView: View {
         await cache.updateStates(states, for: year)
         
         return states
+    }
+    
+    // Compute vacation statistics from "Other" location events
+    private func computeVacationStats(from events: [Event]) async -> VacationStats {
+        // Filter only "Other" location events (vacations)
+        let vacationEvents = events.filter { $0.location.name == "Other" }
+        
+        guard !vacationEvents.isEmpty else {
+            return VacationStats(
+                totalVacationDays: 0,
+                uniqueVacationCities: [],
+                vacationCountries: [],
+                topVacationCities: [],
+                topVacationCountries: [],
+                longestVacation: nil,
+                averageVacationLength: 0,
+                vacationTripsCount: 0
+            )
+        }
+        
+        let totalVacationDays = vacationEvents.count
+        
+        // Unique cities and countries
+        let uniqueCities = Set(vacationEvents.compactMap { $0.city }.filter { !$0.isEmpty })
+        let uniqueCountries = Set(vacationEvents.compactMap { $0.country }.filter { !$0.isEmpty })
+        
+        // Top vacation cities by days
+        let cityGroups = Dictionary(grouping: vacationEvents) { $0.city ?? "Unknown" }
+        let topCities = cityGroups.map { (city: $0.key, days: $0.value.count) }
+            .sorted { $0.days > $1.days }
+        
+        // Top vacation countries by days
+        let countryGroups = Dictionary(grouping: vacationEvents) { $0.country ?? "Unknown" }
+        let topCountries = countryGroups.map { (country: $0.key, days: $0.value.count) }
+            .sorted { $0.days > $1.days }
+        
+        // Find longest vacation (consecutive days in same city)
+        var longestVacation: (city: String?, days: Int)? = nil
+        var currentCity: String? = nil
+        var currentStreak = 0
+        
+        let sortedVacations = vacationEvents.sorted { $0.date < $1.date }
+        for event in sortedVacations {
+            if event.city == currentCity {
+                currentStreak += 1
+            } else {
+                if let longest = longestVacation, currentStreak > longest.days {
+                    longestVacation = (city: currentCity, days: currentStreak)
+                } else if longestVacation == nil && currentStreak > 0 {
+                    longestVacation = (city: currentCity, days: currentStreak)
+                }
+                currentCity = event.city
+                currentStreak = 1
+            }
+        }
+        // Check final streak
+        if let longest = longestVacation, currentStreak > longest.days {
+            longestVacation = (city: currentCity, days: currentStreak)
+        } else if longestVacation == nil && currentStreak > 0 {
+            longestVacation = (city: currentCity, days: currentStreak)
+        }
+        
+        // Count vacation trips (number of unique city visits)
+        let vacationTripsCount = uniqueCities.count
+        
+        // Average vacation length
+        let averageLength = vacationTripsCount > 0 ? Double(totalVacationDays) / Double(vacationTripsCount) : 0
+        
+        return VacationStats(
+            totalVacationDays: totalVacationDays,
+            uniqueVacationCities: uniqueCities,
+            vacationCountries: uniqueCountries,
+            topVacationCities: Array(topCities.prefix(10)),
+            topVacationCountries: Array(topCountries.prefix(10)),
+            longestVacation: longestVacation,
+            averageVacationLength: averageLength,
+            vacationTripsCount: vacationTripsCount
+        )
     }
 }
 
@@ -680,6 +772,12 @@ extension InfographicsView {
                     )
                     .foregroundStyle(by: .value("Type", item.type))
                     .cornerRadius(4)
+                    .annotation(position: .overlay) {
+                        Text("\(item.count)")
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                    }
                 }
                 .frame(height: 250)
                 .chartLegend(position: .bottom, alignment: .center)
@@ -734,7 +832,12 @@ extension InfographicsView {
                     
                     Spacer()
                     
-                    Text("\(item.count) days")
+                    Text("\(item.count)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    Text("days")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
@@ -869,6 +972,189 @@ extension InfographicsView {
     }
 }
 
+// MARK: - Vacation Section
+extension InfographicsView {
+    @ViewBuilder
+    private func vacationSection(derived: Derived) -> some View {
+        let stats = derived.vacationStats
+        
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "airplane.departure")
+                    .foregroundColor(.orange)
+                Text("Vacation Highlights")
+                    .font(.headline)
+            }
+            
+            if stats.totalVacationDays > 0 {
+                // Vacation overview stats
+                HStack(spacing: 12) {
+                    VStack {
+                        Text("\(stats.totalVacationDays)")
+                            .font(.system(size: 36, weight: .bold))
+                            .foregroundColor(.orange)
+                        Text("Vacation Days")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color(.tertiarySystemBackground))
+                    .cornerRadius(12)
+                    
+                    VStack {
+                        Text("\(stats.uniqueVacationCities.count)")
+                            .font(.system(size: 36, weight: .bold))
+                            .foregroundColor(.blue)
+                        Text("Destinations")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color(.tertiarySystemBackground))
+                    .cornerRadius(12)
+                }
+                
+                // Country count and average length
+                HStack(spacing: 12) {
+                    VStack {
+                        Text("\(stats.vacationCountries.count)")
+                            .font(.system(size: 32, weight: .bold))
+                            .foregroundColor(.purple)
+                        Text("Countries")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color(.tertiarySystemBackground))
+                    .cornerRadius(12)
+                    
+                    VStack {
+                        Text(String(format: "%.1f", stats.averageVacationLength))
+                            .font(.system(size: 32, weight: .bold))
+                            .foregroundColor(.green)
+                        Text("Avg Days/Trip")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color(.tertiarySystemBackground))
+                    .cornerRadius(12)
+                }
+                
+                // Longest vacation
+                if let longest = stats.longestVacation, longest.days > 0 {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Image(systemName: "trophy.fill")
+                                .foregroundColor(.yellow)
+                            Text("Longest Vacation")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                        }
+                        
+                        HStack {
+                            Text(longest.city ?? "Unknown")
+                                .font(.body)
+                                .fontWeight(.medium)
+                            Spacer()
+                            Text("\(longest.days) days")
+                                .font(.body)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.orange)
+                        }
+                    }
+                    .padding()
+                    .background(Color.yellow.opacity(0.1))
+                    .cornerRadius(12)
+                }
+                
+                // Top vacation cities
+                if !stats.topVacationCities.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Top Vacation Destinations")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        
+                        let maxDays = stats.topVacationCities.first?.days ?? 1
+                        ForEach(stats.topVacationCities.prefix(8), id: \.city) { item in
+                            HStack {
+                                Image(systemName: "mappin.circle.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                                
+                                Text(item.city)
+                                    .font(.subheadline)
+                                
+                                Spacer()
+                                
+                                Text("\(item.days)")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.primary)
+                                
+                                Text("days")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Rectangle()
+                                    .fill(Color.orange.opacity(0.3))
+                                    .frame(width: CGFloat(item.days) / CGFloat(maxDays) * 60, height: 16)
+                                    .cornerRadius(4)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .padding()
+                    .background(Color(.tertiarySystemBackground))
+                    .cornerRadius(12)
+                }
+                
+                // Vacation countries visited
+                if !stats.vacationCountries.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Vacation Countries:")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        
+                        FlowLayout(spacing: 8) {
+                            ForEach(Array(stats.vacationCountries.sorted()), id: \.self) { country in
+                                HStack(spacing: 4) {
+                                    Image(systemName: "globe.americas.fill")
+                                        .font(.caption2)
+                                        .foregroundColor(.purple)
+                                    Text(country)
+                                        .font(.caption)
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color.purple.opacity(0.2))
+                                .foregroundColor(.purple)
+                                .cornerRadius(8)
+                            }
+                        }
+                    }
+                }
+                
+            } else {
+                Text("No vacation data available")
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(16)
+    }
+}
+
 // MARK: - Activities Section
 extension InfographicsView {
     @ViewBuilder
@@ -885,6 +1171,12 @@ extension InfographicsView {
                     )
                     .foregroundStyle(.purple.gradient)
                     .cornerRadius(4)
+                    .annotation(position: .trailing) {
+                        Text("\(item.count)")
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 .frame(height: CGFloat(min(derived.topActivities.count, 10)) * 40)
                 .chartXAxis {
@@ -922,7 +1214,7 @@ extension InfographicsView {
                         
                         Spacer()
                         
-                        Text("\(item.count) days")
+                        Text("\(item.count) visit\(item.count == 1 ? "" : "s")")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -1311,157 +1603,841 @@ extension InfographicsView {
             return
         }
         
-        let renderer = ImageRenderer(content: pdfContentView(derived: derived))
-        renderer.scale = 2.0 // High resolution
+        print("📄 Starting PDF generation for \(selectedYear)...")
         
-        // 8.5 x 11 inches at 72 DPI
-        let pageWidth: CGFloat = 8.5 * 72
-        let pageHeight: CGFloat = 11 * 72
-        renderer.proposedSize = ProposedViewSize(width: pageWidth, height: pageHeight)
+        // Check if we need to generate a map snapshot first
+        if !derived.eventsWithCoordinates.isEmpty {
+            Task {
+                await generatePDFWithMapSnapshot(derived: derived)
+            }
+        } else {
+            // No map needed, generate PDF directly
+            createPDFContent(derived: derived, mapSnapshot: nil)
+        }
+    }
+    
+    /// Generate PDF with an actual MapKit snapshot
+    private func generatePDFWithMapSnapshot(derived: Derived) async {
+        print("🗺️ Generating map snapshot...")
         
-        if let image = renderer.uiImage {
-            if let pdfData = createPDFFromImage(image, pageSize: CGSize(width: pageWidth, height: pageHeight)) {
-                self.pdfData = pdfData
-                self.showShareSheet = true
+        // Calculate map region from coordinates
+        let coordinates = derived.polylineCoordinates
+        guard !coordinates.isEmpty else {
+            createPDFContent(derived: derived, mapSnapshot: nil)
+            return
+        }
+        
+        let lats = coordinates.map { $0.latitude }
+        let lons = coordinates.map { $0.longitude }
+        let minLat = lats.min() ?? 0
+        let maxLat = lats.max() ?? 0
+        let minLon = lons.min() ?? 0
+        let maxLon = lons.max() ?? 0
+        
+        let centerLat = (minLat + maxLat) / 2
+        let centerLon = (minLon + maxLon) / 2
+        let latDelta = (maxLat - minLat) * 1.3  // 30% padding
+        let lonDelta = (maxLon - minLon) * 1.3
+        
+        let center = CLLocationCoordinate2D(latitude: centerLat, longitude: centerLon)
+        let span = MKCoordinateSpan(latitudeDelta: max(latDelta, 0.1), longitudeDelta: max(lonDelta, 0.1))
+        let region = MKCoordinateRegion(center: center, span: span)
+        
+        // Create snapshot options
+        let options = MKMapSnapshotter.Options()
+        options.region = region
+        options.size = CGSize(width: 600, height: 400)  // High resolution
+        options.mapType = .standard
+        
+        // Create snapshotter
+        let snapshotter = MKMapSnapshotter(options: options)
+        
+        do {
+            let snapshot = try await snapshotter.start()
+            print("✅ Map snapshot generated")
+            
+            // Draw route and markers on the snapshot
+            let image = await drawRouteOnSnapshot(snapshot: snapshot, derived: derived)
+            
+            // Continue with PDF generation on main thread
+            await MainActor.run {
+                createPDFContent(derived: derived, mapSnapshot: image)
+            }
+        } catch {
+            print("❌ Map snapshot failed: \(error.localizedDescription)")
+            await MainActor.run {
+                createPDFContent(derived: derived, mapSnapshot: nil)
             }
         }
     }
     
-    @ViewBuilder
-    private func pdfContentView(derived: Derived) -> some View {
-        VStack(spacing: 16) {
-            // Header
-            VStack(spacing: 4) {
+    /// Draw the route and markers on top of the map snapshot
+    private func drawRouteOnSnapshot(snapshot: MKMapSnapshotter.Snapshot, derived: Derived) async -> UIImage {
+        let image = snapshot.image
+        
+        return await Task.detached {
+            let renderer = UIGraphicsImageRenderer(size: image.size)
+            
+            return renderer.image { context in
+                // Draw the base map
+                image.draw(at: .zero)
+                
+                let ctx = context.cgContext
+                
+                // Draw route line
+                if derived.polylineCoordinates.count > 1 {
+                    ctx.setStrokeColor(UIColor.systemBlue.cgColor)
+                    ctx.setLineWidth(4)
+                    ctx.setLineCap(.round)
+                    ctx.setLineJoin(.round)
+                    
+                    for (index, coordinate) in derived.polylineCoordinates.enumerated() {
+                        let point = snapshot.point(for: coordinate)
+                        
+                        if index == 0 {
+                            ctx.move(to: point)
+                        } else {
+                            ctx.addLine(to: point)
+                        }
+                    }
+                    
+                    ctx.strokePath()
+                }
+                
+                // Draw markers
+                for (index, event) in derived.eventsWithCoordinates.enumerated() {
+                    let coordinate = derived.polylineCoordinates[index]
+                    let point = snapshot.point(for: coordinate)
+                    
+                    let isFirst = index == 0
+                    let isLast = index == derived.eventsWithCoordinates.count - 1
+                    let isOther = event.location.name == "Other"
+                    
+                    // Marker circle
+                    let markerSize: CGFloat = isFirst || isLast ? 20 : 12
+                    let markerRect = CGRect(
+                        x: point.x - markerSize / 2,
+                        y: point.y - markerSize / 2,
+                        width: markerSize,
+                        height: markerSize
+                    )
+                    
+                    // Fill color
+                    let color = isOther ? UIColor.systemBlue : UIColor(event.location.theme.mainColor)
+                    ctx.setFillColor(color.cgColor)
+                    ctx.fillEllipse(in: markerRect)
+                    
+                    // White border
+                    ctx.setStrokeColor(UIColor.white.cgColor)
+                    ctx.setLineWidth(3)
+                    ctx.strokeEllipse(in: markerRect)
+                }
+            }
+        }.value
+    }
+    
+    /// Create the actual PDF content with optional map snapshot
+    private func createPDFContent(derived: Derived, mapSnapshot: UIImage?) {
+        let pdfContent = VStack(spacing: 20) {
+            // Header with branding and year
+            VStack(spacing: 8) {
                 Text("LocTrac Travel Infographic")
-                    .font(.system(size: 24, weight: .bold))
-                Text(selectedYear)
-                    .font(.system(size: 18))
-                    .foregroundColor(.blue)
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(.primary)
+                
+                HStack(spacing: 6) {
+                    Image(systemName: selectedYear == "All Time" ? "calendar" : "calendar.badge.clock")
+                        .foregroundColor(.blue)
+                        .font(.title2)
+                    Text(selectedYear)
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundColor(.blue)
+                }
+                
                 if let dateRange = derived.dateRange {
                     Text(dateRange)
-                        .font(.system(size: 12))
+                        .font(.caption)
                         .foregroundColor(.secondary)
                 }
             }
-            .padding(.top, 20)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity)
+            .background(
+                LinearGradient(
+                    colors: [.blue.opacity(0.15), .purple.opacity(0.15)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .cornerRadius(12)
             
-            // Stats grid
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                PDFStatCard(title: "Total Stays", value: "\(derived.totalStays)", icon: "calendar", color: .blue)
-                PDFStatCard(title: "Locations", value: "\(derived.uniqueLocationsCount)", icon: "mappin.circle.fill", color: .green)
-                PDFStatCard(title: "Countries", value: "\(derived.countriesVisited.count)", icon: "globe", color: .orange)
-                PDFStatCard(title: "Activities", value: "\(derived.uniqueActivitiesCount)", icon: "figure.run", color: .purple)
+            // All content sections
+            overviewStatsSection(derived: derived)
+            eventTypeSection(derived: derived)
+            locationStatsSection(derived: derived)
+            travelReachSection(derived: derived)
+            
+            // Only include vacation section if there's vacation data
+            if derived.vacationStats.totalVacationDays > 0 {
+                vacationSection(derived: derived)
             }
-            .padding(.horizontal, 20)
             
-            // Event types
-            let data = derived.eventTypeData
-            if !data.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Event Types")
-                        .font(.system(size: 16, weight: .semibold))
-                    
-                    ForEach(data.sorted(by: { $0.count > $1.count }).prefix(5), id: \.type) { item in
-                        HStack {
-                            Text(item.icon)
-                            Text(item.type)
-                                .font(.system(size: 14))
-                            Spacer()
-                            Text("\(item.count) (\(item.percentage)%)")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                        }
-                    }
+            // Only include if there are activities
+            if !derived.topActivities.isEmpty {
+                activitiesSection(derived: derived)
+            }
+            
+            // Only include if there are people
+            if !derived.topPeople.isEmpty {
+                peopleSection(derived: derived)
+            }
+            
+            // Journey map - use actual snapshot if available
+            if !derived.eventsWithCoordinates.isEmpty {
+                if let mapImage = mapSnapshot {
+                    journeyMapWithSnapshot(derived: derived, mapImage: mapImage)
+                } else {
+                    journeyMapSectionForExport(derived: derived)
                 }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-                .padding(.horizontal, 20)
             }
             
-            // Top locations
-            if !derived.topLocations.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Top Locations")
-                        .font(.system(size: 16, weight: .semibold))
-                    
-                    ForEach(derived.topLocations.prefix(8), id: \.name) { item in
-                        HStack {
-                            Circle()
-                                .fill(item.color)
-                                .frame(width: 6, height: 6)
-                            Text(item.name)
-                                .font(.system(size: 14))
-                            Spacer()
-                            Text("\(item.count)")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-                .padding(.horizontal, 20)
-            }
-            
-            // Environmental Impact
+            // Environmental impact (if travel data exists)
             if derived.eventsWithCoordinates.count > 1 && derived.travelStats.totalMiles > 0 {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Image(systemName: "leaf.fill")
-                            .foregroundColor(.green)
-                        Text("Environmental Impact")
-                            .font(.system(size: 16, weight: .semibold))
-                    }
-                    
-                    HStack(spacing: 16) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(Int(derived.travelStats.totalMiles)) miles")
-                                .font(.system(size: 14, weight: .semibold))
-                            Text("Total traveled")
-                                .font(.system(size: 10))
+                environmentalImpactSection(derived: derived)
+            }
+            
+            // Footer with generation timestamp
+            VStack(spacing: 4) {
+                Divider()
+                    .padding(.horizontal, 40)
+                    .padding(.top, 12)
+                
+                Text("Generated by LocTrac")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary)
+                
+                Text(Date().formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.top, 8)
+            .padding(.bottom, 16)
+        }
+        .padding(24)
+        .frame(width: 8.5 * 72) // Standard US Letter width in points
+        .background(Color.white)
+        
+        // Render to image
+        let renderer = ImageRenderer(content: pdfContent)
+        renderer.scale = 2.0 // Retina quality
+        
+        // Use automatic height to accommodate all content
+        renderer.proposedSize = ProposedViewSize(width: 8.5 * 72, height: .infinity)
+        
+        guard let image = renderer.uiImage else {
+            print("❌ Failed to render PDF content to image")
+            return
+        }
+        
+        print("✅ Image rendered: \(Int(image.size.width)) x \(Int(image.size.height)) pixels")
+        
+        // Convert image to PDF
+        guard let pdfData = createPDFFromImage(image, pageSize: image.size) else {
+            print("❌ Failed to create PDF from image")
+            return
+        }
+        
+        print("✅ PDF created: \(pdfData.count / 1024) KB")
+        
+        // Save to temporary location
+        let fileName = "LocTrac_Infographic_\(selectedYear.replacingOccurrences(of: " ", with: "_")).pdf"
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+        
+        do {
+            try pdfData.write(to: tempURL)
+            print("✅ PDF saved to: \(tempURL.path)")
+            
+            // Present share sheet
+            presentShareSheet(for: tempURL, fileType: "PDF")
+            
+        } catch {
+            print("❌ Error saving PDF: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Journey map section with actual map snapshot
+    @ViewBuilder
+    private func journeyMapWithSnapshot(derived: Derived, mapImage: UIImage) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Journey Map")
+                    .font(.headline)
+                Spacer()
+                Text("\(derived.eventsWithCoordinates.count) locations")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            // Display the map snapshot
+            Image(uiImage: mapImage)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(height: 320)
+                .cornerRadius(12)
+                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+            
+            // Journey summary
+            VStack(spacing: 12) {
+                Divider()
+                
+                HStack(spacing: 16) {
+                    if let firstEvent = derived.eventsWithCoordinates.first {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "location.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.green)
+                                Text("Start")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Text(firstEvent.location.name == "Other" ? (firstEvent.city ?? "Other") : firstEvent.location.name)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .lineLimit(1)
+                            Text(firstEvent.date.formatted(.dateTime.month().year()))
+                                .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
-                        
-                        Spacer()
-                        
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text("\(Int(derived.travelStats.totalCO2)) lbs CO₂")
-                                .font(.system(size: 14, weight: .semibold))
-                            Text("\(Int(derived.travelStats.treesNeeded)) trees to offset")
-                                .font(.system(size: 10))
+                    }
+                    
+                    Spacer()
+                    
+                    if let lastEvent = derived.eventsWithCoordinates.last {
+                        VStack(alignment: .trailing, spacing: 4) {
+                            HStack(spacing: 4) {
+                                Text("End")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Image(systemName: "flag.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
+                            Text(lastEvent.location.name == "Other" ? (lastEvent.city ?? "Other") : lastEvent.location.name)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .lineLimit(1)
+                            Text(lastEvent.date.formatted(.dateTime.month().year()))
+                                .font(.caption2)
                                 .foregroundColor(.secondary)
                         }
                     }
                 }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-                .padding(.horizontal, 20)
+                
+                if let duration = journeyDuration(from: derived.eventsWithCoordinates) {
+                    HStack {
+                        Image(systemName: "calendar")
+                            .foregroundColor(.blue)
+                            .font(.caption)
+                        Text("Journey Duration: \(duration)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(16)
+    }
+    
+    /// Journey map section optimized for PDF/screenshot export
+    /// Uses static map representation instead of interactive Map view
+    @ViewBuilder
+    private func journeyMapSectionForExport(derived: Derived) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Journey Map")
+                    .font(.headline)
+                Spacer()
+                Text("\(derived.eventsWithCoordinates.count) locations")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            // Visual route map with map-style overlay
+            GeometryReader { geometry in
+                ZStack {
+                    // Map-style background with terrain feel
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.95, green: 0.96, blue: 0.93),  // Light tan
+                            Color(red: 0.92, green: 0.94, blue: 0.90),  // Light green-gray
+                            Color(red: 0.90, green: 0.92, blue: 0.88)   // Slightly darker
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    
+                    // Fine grid overlay (map coordinates feel)
+                    Path { path in
+                        let gridSpacing: CGFloat = 30
+                        // Vertical lines
+                        for i in stride(from: 0, through: geometry.size.width, by: gridSpacing) {
+                            path.move(to: CGPoint(x: i, y: 0))
+                            path.addLine(to: CGPoint(x: i, y: geometry.size.height))
+                        }
+                        // Horizontal lines
+                        for i in stride(from: 0, through: geometry.size.height, by: gridSpacing) {
+                            path.move(to: CGPoint(x: 0, y: i))
+                            path.addLine(to: CGPoint(x: geometry.size.width, y: i))
+                        }
+                    }
+                    .stroke(Color.gray.opacity(0.08), lineWidth: 0.5)
+                    
+                    // Random "terrain" features for map realism
+                    ForEach(0..<8, id: \.self) { i in
+                        Circle()
+                            .fill(Color.green.opacity(0.03))
+                            .frame(width: CGFloat.random(in: 60...120), height: CGFloat.random(in: 60...120))
+                            .position(
+                                x: CGFloat.random(in: 0...geometry.size.width),
+                                y: CGFloat.random(in: 0...geometry.size.height)
+                            )
+                    }
+                    
+                    // Plot coordinates on the map
+                    if !derived.polylineCoordinates.isEmpty {
+                        // Calculate bounds
+                        let lats = derived.polylineCoordinates.map { $0.latitude }
+                        let lons = derived.polylineCoordinates.map { $0.longitude }
+                        let minLat = lats.min() ?? 0
+                        let maxLat = lats.max() ?? 0
+                        let minLon = lons.min() ?? 0
+                        let maxLon = lons.max() ?? 0
+                        
+                        let latRange = max(maxLat - minLat, 0.0001)
+                        let lonRange = max(maxLon - minLon, 0.0001)
+                        
+                        // Add padding (15% on each side for better framing)
+                        let padding: CGFloat = 0.15
+                        
+                        // Draw journey route path with glow effect
+                        let routePath = Path { path in
+                            for (index, coord) in derived.polylineCoordinates.enumerated() {
+                                // Normalize coordinates to canvas
+                                let x = ((coord.longitude - minLon) / lonRange) * geometry.size.width * (1 - padding * 2) + geometry.size.width * padding
+                                let y = geometry.size.height - ((coord.latitude - minLat) / latRange) * geometry.size.height * (1 - padding * 2) - geometry.size.height * padding
+                                
+                                let point = CGPoint(x: x, y: y)
+                                
+                                if index == 0 {
+                                    path.move(to: point)
+                                } else {
+                                    path.addLine(to: point)
+                                }
+                            }
+                        }
+                        
+                        // Route glow (outer)
+                        routePath
+                            .stroke(Color.blue.opacity(0.2), style: StrokeStyle(lineWidth: 8, lineCap: .round, lineJoin: .round))
+                        
+                        // Main route line
+                        routePath
+                            .stroke(
+                                LinearGradient(
+                                    colors: [.blue, .cyan, .blue],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                ),
+                                style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round)
+                            )
+                        
+                        // Draw location markers
+                        ForEach(Array(derived.eventsWithCoordinates.enumerated()), id: \.element.id) { index, event in
+                            let coord = derived.polylineCoordinates[index]
+                            let x = ((coord.longitude - minLon) / lonRange) * geometry.size.width * (1 - padding * 2) + geometry.size.width * padding
+                            let y = geometry.size.height - ((coord.latitude - minLat) / latRange) * geometry.size.height * (1 - padding * 2) - geometry.size.height * padding
+                            
+                            let isOtherEvent = event.location.name == "Other"
+                            let isFirst = index == 0
+                            let isLast = index == derived.eventsWithCoordinates.count - 1
+                            let markerColor = isOtherEvent ? Color.blue : event.location.theme.mainColor
+                            
+                            // Glow effect for markers
+                            Circle()
+                                .fill(markerColor.opacity(0.3))
+                                .frame(width: isFirst || isLast ? 24 : 14, height: isFirst || isLast ? 24 : 14)
+                                .position(x: x, y: y)
+                            
+                            // Marker dot
+                            Circle()
+                                .fill(
+                                    RadialGradient(
+                                        colors: [markerColor.opacity(0.9), markerColor],
+                                        center: .topLeading,
+                                        startRadius: 2,
+                                        endRadius: 10
+                                    )
+                                )
+                                .frame(width: isFirst || isLast ? 18 : 10, height: isFirst || isLast ? 18 : 10)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.white, lineWidth: 2.5)
+                                )
+                                .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 2)
+                                .position(x: x, y: y)
+                            
+                            // Start/End icons
+                            if isFirst {
+                                Image(systemName: "location.fill")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .position(x: x, y: y)
+                            } else if isLast {
+                                Image(systemName: "flag.fill")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .position(x: x, y: y)
+                            }
+                        }
+                    }
+                    
+                    // Map chrome - compass rose
+                    VStack(spacing: 3) {
+                        Image(systemName: "location.north.fill")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(.black.opacity(0.7))
+                        Text("N")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.black.opacity(0.7))
+                    }
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.white.opacity(0.95))
+                            .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 1)
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    .padding(16)
+                    
+                    // Map info overlay
+                    HStack(spacing: 8) {
+                        Image(systemName: "map.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.blue)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Travel Route")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.primary)
+                            Text("\(derived.eventsWithCoordinates.count) waypoints")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.white.opacity(0.95))
+                            .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 1)
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(16)
+                    
+                    // Scale bar (bottom left)
+                    HStack(spacing: 4) {
+                        Rectangle()
+                            .fill(Color.black)
+                            .frame(width: 40, height: 3)
+                        Rectangle()
+                            .fill(Color.white)
+                            .frame(width: 40, height: 3)
+                        Rectangle()
+                            .fill(Color.black)
+                            .frame(width: 40, height: 3)
+                    }
+                    .overlay(
+                        HStack(spacing: 0) {
+                            Text("0")
+                                .font(.system(size: 8))
+                            Spacer()
+                            Text("mi")
+                                .font(.system(size: 8))
+                        }
+                        .padding(.horizontal, 2)
+                        .frame(width: 120)
+                        .offset(y: -8)
+                    )
+                    .frame(width: 120)
+                    .background(Color.white.opacity(0.8))
+                    .cornerRadius(4)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                    .padding(16)
+                }
+            }
+            .frame(height: 320)
+            .background(Color(.systemBackground))
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+            
+            // Journey summary only
+            VStack(spacing: 12) {
+                Divider()
+                
+                HStack(spacing: 16) {
+                    if let firstEvent = derived.eventsWithCoordinates.first {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "location.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.green)
+                                Text("Start")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Text(firstEvent.location.name == "Other" ? (firstEvent.city ?? "Other") : firstEvent.location.name)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .lineLimit(1)
+                            Text(firstEvent.date.formatted(.dateTime.month().year()))
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    if let lastEvent = derived.eventsWithCoordinates.last {
+                        VStack(alignment: .trailing, spacing: 4) {
+                            HStack(spacing: 4) {
+                                Text("End")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Image(systemName: "flag.fill")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
+                            Text(lastEvent.location.name == "Other" ? (lastEvent.city ?? "Other") : lastEvent.location.name)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .lineLimit(1)
+                            Text(lastEvent.date.formatted(.dateTime.month().year()))
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                
+                if let duration = journeyDuration(from: derived.eventsWithCoordinates) {
+                    HStack {
+                        Image(systemName: "calendar")
+                            .foregroundColor(.blue)
+                            .font(.caption)
+                        Text("Journey Duration: \(duration)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(16)
+    }
+    
+    private func shareScreenshot() {
+        guard let derived = derivedByYear[selectedYear] else {
+            print("⚠️ No derived data for screenshot")
+            return
+        }
+        
+        print("📸 Generating screenshot for \(selectedYear)...")
+        
+        // Render comprehensive infographic as high-resolution image
+        let screenshotContent = VStack(spacing: 20) {
+            // Header with branding
+            VStack(spacing: 8) {
+                Text("LocTrac Travel Infographic")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundColor(.primary)
+                
+                HStack(spacing: 8) {
+                    Image(systemName: selectedYear == "All Time" ? "calendar" : "calendar.badge.clock")
+                        .foregroundColor(.blue)
+                        .font(.system(size: 24))
+                    Text(selectedYear)
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundColor(.blue)
+                }
+                
+                if let dateRange = derived.dateRange {
+                    Text(dateRange)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 20)
+            .background(
+                LinearGradient(
+                    colors: [.blue.opacity(0.2), .purple.opacity(0.2)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .cornerRadius(16)
+            
+            // All infographic sections
+            overviewStatsSection(derived: derived)
+            eventTypeSection(derived: derived)
+            locationStatsSection(derived: derived)
+            travelReachSection(derived: derived)
+            
+            // Conditional sections
+            if derived.vacationStats.totalVacationDays > 0 {
+                vacationSection(derived: derived)
+            }
+            
+            if !derived.topActivities.isEmpty {
+                activitiesSection(derived: derived)
+            }
+            
+            if !derived.topPeople.isEmpty {
+                peopleSection(derived: derived)
+            }
+            
+            // Journey map - use export-friendly version
+            if !derived.eventsWithCoordinates.isEmpty {
+                journeyMapSectionForExport(derived: derived)
+            }
+            
+            if derived.eventsWithCoordinates.count > 1 && derived.travelStats.totalMiles > 0 {
+                environmentalImpactSection(derived: derived)
             }
             
             // Footer
-            Text("Generated by LocTrac • \(Date().formatted(date: .abbreviated, time: .omitted))")
-                .font(.system(size: 10))
-                .foregroundColor(.secondary)
-                .padding(.bottom, 20)
-            
-            Spacer()
+            VStack(spacing: 4) {
+                Divider()
+                    .padding(.horizontal, 40)
+                    .padding(.top, 12)
+                
+                Text("Generated by LocTrac")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary)
+                
+                Text(Date().formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.top, 8)
+            .padding(.bottom, 20)
         }
-        .frame(width: 8.5 * 72, height: 11 * 72)
-        .background(Color.white)
+        .padding(28)
+        .background(Color(.systemBackground))
+        
+        // Render at high resolution
+        let renderer = ImageRenderer(content: screenshotContent)
+        renderer.scale = 3.0 // Super high resolution for social media sharing
+        
+        guard let image = renderer.uiImage else {
+            print("❌ Failed to render screenshot image")
+            return
+        }
+        
+        print("✅ Screenshot rendered: \(Int(image.size.width)) x \(Int(image.size.height)) pixels")
+        
+        // Present share sheet with descriptive text
+        let shareText = "My \(selectedYear) travel statistics from LocTrac"
+        presentShareSheet(for: [shareText, image], fileType: "Image")
     }
     
+    /// Unified share sheet presentation for both PDF and images
+    private func presentShareSheet(for items: Any, fileType: String) {
+        let activityItems: [Any]
+        if let url = items as? URL {
+            activityItems = [url]
+        } else if let array = items as? [Any] {
+            activityItems = array
+        } else {
+            activityItems = [items]
+        }
+        
+        let activityVC = UIActivityViewController(
+            activityItems: activityItems,
+            applicationActivities: nil
+        )
+        
+        // Exclude activities that don't make sense for this content
+        activityVC.excludedActivityTypes = [
+            .addToReadingList,
+            .assignToContact,
+            .openInIBooks,
+            .markupAsPDF
+        ]
+        
+        // Set completion handler for debugging
+        activityVC.completionWithItemsHandler = { activityType, completed, returnedItems, error in
+            if let error = error {
+                print("❌ Share error: \(error.localizedDescription)")
+            } else if completed {
+                print("✅ \(fileType) shared successfully via \(activityType?.rawValue ?? "unknown")")
+            } else {
+                print("ℹ️ Share cancelled")
+            }
+        }
+        
+        // Find the top-most view controller to present from
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootViewController = windowScene.windows.first?.rootViewController else {
+            print("❌ Could not find root view controller")
+            return
+        }
+        
+        var topController = rootViewController
+        while let presentedViewController = topController.presentedViewController {
+            topController = presentedViewController
+        }
+        
+        // Configure for iPad popover presentation
+        if let popover = activityVC.popoverPresentationController {
+            popover.sourceView = topController.view
+            popover.sourceRect = CGRect(
+                x: topController.view.bounds.midX,
+                y: topController.view.bounds.midY,
+                width: 0,
+                height: 0
+            )
+            popover.permittedArrowDirections = []
+        }
+        
+        print("✅ Presenting share sheet for \(fileType)...")
+        topController.present(activityVC, animated: true)
+    }
+    
+    /// Convert UIImage to PDF data
     private func createPDFFromImage(_ image: UIImage, pageSize: CGSize) -> Data? {
         let pdfRenderer = UIGraphicsPDFRenderer(bounds: CGRect(origin: .zero, size: pageSize))
         
-        return pdfRenderer.pdfData { context in
+        let data = pdfRenderer.pdfData { context in
             context.beginPage()
+            
+            // Draw the image to fill the page
             image.draw(in: CGRect(origin: .zero, size: pageSize))
         }
+        
+        return data
     }
 }
+
 
 // MARK: - Supporting Views
 
@@ -1488,32 +2464,6 @@ struct StatCard: View {
         .padding()
         .background(Color(.tertiarySystemBackground))
         .cornerRadius(12)
-    }
-}
-
-struct PDFStatCard: View {
-    let title: String
-    let value: String
-    let icon: String
-    let color: Color
-    
-    var body: some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 20))
-                .foregroundColor(color)
-            
-            Text(value)
-                .font(.system(size: 24, weight: .bold))
-            
-            Text(title)
-                .font(.system(size: 10))
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(12)
-        .background(Color(.systemGray6))
-        .cornerRadius(8)
     }
 }
 

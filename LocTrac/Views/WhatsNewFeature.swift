@@ -53,8 +53,66 @@ struct WhatsNewFeature: Identifiable {
                 ),
             ]
 
+        case "1.4":
+            return [
+                WhatsNewFeature(
+                    symbolName: "airplane.departure",
+                    symbolColor: .blue,
+                    title: "Travel History",
+                    description: "Explore all your stays organized by country and city. Search, filter, and sort to find exactly where you've been — replacing the old 'Other Cities' view with a richer experience."
+                ),
+                WhatsNewFeature(
+                    symbolName: "map.fill",
+                    symbolColor: .green,
+                    title: "Unified Locations Tab",
+                    description: "Map and list views combined into one seamless experience. The new Locations tab automatically refreshes as your travels grow."
+                ),
+                WhatsNewFeature(
+                    symbolName: "chart.bar.doc.horizontal.fill",
+                    symbolColor: .purple,
+                    title: "Infographics Tab",
+                    description: "New dedicated tab for visual insights with full-year and multi-year infographic data. See your travel patterns at a glance with smart US state detection."
+                ),
+                WhatsNewFeature(
+                    symbolName: "sparkles",
+                    symbolColor: .orange,
+                    title: "First Launch Wizard",
+                    description: "New users get a helpful step-by-step onboarding experience to set up LocTrac and start tracking their travels right away."
+                ),
+                WhatsNewFeature(
+                    symbolName: "location.fill.viewfinder",
+                    symbolColor: .red,
+                    title: "Default Location & Better Management",
+                    description: "Set a default location with a ⭐ badge. Enhanced locations manager with search, sorting, mini map previews, and inline editing."
+                ),
+                WhatsNewFeature(
+                    symbolName: "doc.text.fill",
+                    symbolColor: .cyan,
+                    title: "Improved Documentation",
+                    description: "README, Changelog, and License files now display with beautiful markdown formatting — making them easier to read right in the app."
+                ),
+                WhatsNewFeature(
+                    symbolName: "paintpalette.fill",
+                    symbolColor: .pink,
+                    title: "Custom Location Colors",
+                    description: "Pick any color from the full spectrum for your locations — no more theme snapping! Custom colors appear everywhere: lists, maps, pins, and charts."
+                ),
+                WhatsNewFeature(
+                    symbolName: "sparkles.rectangle.stack.fill",
+                    symbolColor: .purple,
+                    title: "Daily Affirmation Widget",
+                    description: "Add the new home screen widget to start each day with a calming affirmation. Updates automatically at midnight with a fresh message."
+                ),
+                WhatsNewFeature(
+                    symbolName: "bell.badge.fill",
+                    symbolColor: .red,
+                    title: "Daily Notifications",
+                    description: "Opt-in to receive a daily notification with your affirmation and a gentle reminder to catch up on missing stays. Sent once per day at your chosen time."
+                ),
+            ]
+
         // ── Add future versions below ──────────────────────────────────────
-        // case "1.4":
+        // case "1.5":
         //     return [ ... ]
 
         default:
