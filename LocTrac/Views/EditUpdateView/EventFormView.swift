@@ -54,17 +54,17 @@ struct EventFormView: View {
             .onAppear {
                 focus = true
                 if viewModel.updating {
-                    let localExisting = localStartOfDay(fromUTCStartOfDay: viewModel.date.startOfDay)
-                    viewModel.date = localExisting
-                    toDate = localExisting
+                    // When editing, keep date as UTC - DatePicker binding converts
+                    viewModel.date = viewModel.date.startOfDay
+                    toDate = viewModel.date.startOfDay
                 } else if let selected = viewModel.dateSelected {
-                    let localSelected = localStartOfDay(fromUTCStartOfDay: selected.startOfDay)
-                    viewModel.date = localSelected
-                    toDate = localSelected
+                    // When creating from selected date, use UTC - DatePicker binding converts
+                    viewModel.date = selected.startOfDay
+                    toDate = selected.startOfDay
                 } else {
-                    let todayLocal = localStartOfDay(fromUTCStartOfDay: Date().startOfDay)
-                    viewModel.date = todayLocal
-                    toDate = todayLocal
+                    // Default to today UTC - DatePicker binding converts
+                    viewModel.date = Date().startOfDay
+                    toDate = Date().startOfDay
                 }
                 latitudeText = String(viewModel.latitude)
                 longitudeText = String(viewModel.longitude)
@@ -96,21 +96,42 @@ struct EventFormView_Previews: PreviewProvider {
 
 extension EventFormView {
     private func localStartOfDay(fromUTCStartOfDay utc: Date) -> Date {
+        // Extract Y/M/D from UTC midnight
         var utcCal = Calendar(identifier: .gregorian)
         utcCal.timeZone = TimeZone(secondsFromGMT: 0)!
         let ymd = utcCal.dateComponents([.year, .month, .day], from: utc)
-        var localCal = Calendar.current
-        localCal.timeZone = TimeZone.current
-        return localCal.date(from: ymd) ?? utc
+        
+        // Create local midnight for the same calendar date
+        // Use startOfDay() which properly handles timezone
+        let localCal = Calendar.current
+        var components = DateComponents()
+        components.year = ymd.year
+        components.month = ymd.month
+        components.day = ymd.day
+        
+        // Create date and force to start of day in local timezone
+        guard let tempDate = localCal.date(from: components) else { return utc }
+        return localCal.startOfDay(for: tempDate)
     }
 
     private func utcStartOfDay(fromLocalStartOfDay local: Date) -> Date {
-        var localCal = Calendar.current
-        localCal.timeZone = TimeZone.current
+        // Extract Y/M/D from local date
+        let localCal = Calendar.current
         let ymd = localCal.dateComponents([.year, .month, .day], from: local)
+        
+        // Create UTC midnight for the same calendar date
         var utcCal = Calendar(identifier: .gregorian)
         utcCal.timeZone = TimeZone(secondsFromGMT: 0)!
-        return utcCal.date(from: ymd) ?? local.startOfDay
+        var components = DateComponents()
+        components.year = ymd.year
+        components.month = ymd.month
+        components.day = ymd.day
+        components.hour = 0
+        components.minute = 0
+        components.second = 0
+        
+        // Use the UTC calendar to create the date
+        return utcCal.date(from: components) ?? local.startOfDay
     }
 
     private var getDates: some View {
@@ -374,25 +395,26 @@ extension EventFormView {
                 guard let id = viewModel.id else { return }
                 guard let selectedLocation = viewModel.location else { return }
                 
-                let country = await store.updateEventCountry(Event(
+                // v1.5: Get country and state for the event
+                let tempEvent = Event(
                     id: id,
                     eventType: viewModel.eventType,
                     date: viewModel.date.startOfDay,
                     location: selectedLocation,
-                    city: viewModel.city ?? "",
                     latitude: viewModel.latitude,
                     longitude: viewModel.longitude,
                     note: viewModel.note
-                ))
+                )
+                let country = await store.updateEventCountry(tempEvent)
                 
                 let event = Event(id: id,
                                   eventType: viewModel.eventType,
                                   date: viewModel.date.startOfDay,
                                   location: selectedLocation,
-                                  city: viewModel.city ?? "",
                                   latitude: viewModel.latitude,
                                   longitude: viewModel.longitude,
                                   country: country,
+                                  state: nil,  // v1.5: Will be geocoded if "Other" location
                                   note: viewModel.note,
                                   people: viewModel.people,
                                   activityIDs: viewModel.activityIDs)
@@ -406,25 +428,26 @@ extension EventFormView {
                 let days = utcCalendar.dateComponents([.day], from: start, to: end).day ?? 0
                 guard let selectedLocation = viewModel.location else { return }
                 
-                let country = await store.updateEventCountry(Event(
+                // v1.5: Get country for the event
+                let tempEvent = Event(
                     eventType: viewModel.eventType,
                     date: start,
                     location: selectedLocation,
-                    city: viewModel.city ?? "",
                     latitude: viewModel.latitude,
                     longitude: viewModel.longitude,
                     note: viewModel.note
-                ))
+                )
+                let country = await store.updateEventCountry(tempEvent)
                 
                 for n in 0...days {
                     guard let nextDate = utcCalendar.date(byAdding: .day, value: n, to: start) else { continue }
                     let newEvent = Event(eventType: viewModel.eventType,
                                          date: nextDate,
                                          location: selectedLocation,
-                                         city: viewModel.city ?? "",
                                          latitude: viewModel.latitude,
                                          longitude: viewModel.longitude,
                                          country: country,
+                                         state: nil,  // v1.5: Will be geocoded if "Other" location
                                          note: viewModel.note,
                                          people: viewModel.people,
                                          activityIDs: viewModel.activityIDs)

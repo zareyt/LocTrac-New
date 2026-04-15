@@ -3,6 +3,7 @@
 //  LocTrac
 //
 //  Travel Statistics & Infographics with PDF Export
+//  Last Modified: 2026-04-14 20:45 - Debug migration to DebugConfig
 //
 
 import SwiftUI
@@ -118,7 +119,9 @@ struct InfographicsView: View {
         }
         // Listen for share button taps from StartTabView toolbar
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("GeneratePDF"))) { _ in
-            print("📨 Received GeneratePDF notification")
+            #if DEBUG
+            DebugConfig.shared.log(.navigation, "Received GeneratePDF notification")
+            #endif
             generatePDF()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ShareScreenshot"))) { _ in
@@ -128,7 +131,9 @@ struct InfographicsView: View {
         .task(id: selectedYear) {
             // Check if we already have derived data for this year
             if derivedByYear[selectedYear] != nil {
-                print("✅ Derived data already computed for \(selectedYear)")
+                #if DEBUG
+                DebugConfig.shared.log(.cache, "Derived data already computed for \(selectedYear)")
+                #endif
                 return
             }
             
@@ -139,7 +144,9 @@ struct InfographicsView: View {
         }
         .onChange(of: store.dataUpdateToken) { _, _ in
             // Data changed - clear memoization
-            print("🔄 Data updated - clearing memoization cache")
+            #if DEBUG
+            DebugConfig.shared.log(.cache, "Data updated - clearing memoization cache")
+            #endif
             derivedByYear.removeAll()
             
             // Recompute current year
@@ -153,7 +160,9 @@ struct InfographicsView: View {
     
     /// Compute all derived data for a specific year
     private func computeDerivedData(for year: String) async {
-        print("🔄 Computing derived data for \(year)...")
+        #if DEBUG
+        DebugConfig.shared.log(.charts, "Computing derived data for \(year)...")
+        #endif
         let startTime = Date()
         
         // Step 1: Filter events
@@ -274,7 +283,9 @@ struct InfographicsView: View {
         await MainActor.run {
             derivedByYear[year] = derived
             let elapsed = Date().timeIntervalSince(startTime)
-            print("✅ Derived data computed for \(year) in \(String(format: "%.2f", elapsed))s")
+            #if DEBUG
+            DebugConfig.shared.log(.charts, "Derived data computed for \(year) in \(String(format: "%.2f", elapsed))s")
+            #endif
         }
     }
     
@@ -313,13 +324,26 @@ struct InfographicsView: View {
         
         let grouped = Dictionary(grouping: events) { $0.location.id }
         
-        return grouped.compactMap { (_, value) -> (name: String, count: Int, color: Color)? in
-            guard let firstEvent = value.first else { return nil }
-            let location = firstEvent.location
+        return grouped.compactMap { (locationID, eventsForLocation) -> (name: String, count: Int, color: Color)? in
+            // Look up the current location from store instead of using event's embedded location
+            // This ensures we get the latest name and color
+            guard let currentLocation = store.locations.first(where: { $0.id == locationID }) else {
+                #if DEBUG
+                DebugConfig.shared.log(.charts, "Location ID \(locationID) not found in store")
+                DebugConfig.shared.log(.charts, "  Events count: \(eventsForLocation.count)")
+                if let firstEvent = eventsForLocation.first {
+                    DebugConfig.shared.log(.charts, "  Event location name: \(firstEvent.location.name)")
+                }
+                #endif
+                return nil  // Skip locations not found in store
+            }
+            
+
+            
             return (
-                name: location.name,
-                count: value.count,
-                color: location.theme.mainColor
+                name: currentLocation.name,
+                count: eventsForLocation.count,
+                color: currentLocation.effectiveColor  // Use effectiveColor instead of theme.mainColor
             )
         }.sorted { $0.count > $1.count }
     }
@@ -436,7 +460,9 @@ struct InfographicsView: View {
         // Try cache first
         let cache = DataStore.infographicsCache
         if let cached = await cache.getStates(for: year) {
-            print("✅ Cache hit (states) for year: \(year) -> \(cached.count) states")
+            #if DEBUG
+            DebugConfig.shared.log(.cache, "Cache hit (states) for year: \(year) -> \(cached.count) states")
+            #endif
             return cached
         }
         
@@ -448,7 +474,9 @@ struct InfographicsView: View {
         
         guard !usEvents.isEmpty else { return [] }
         
-        print("🔍 Starting state detection for \(usEvents.count) US events...")
+        #if DEBUG
+        DebugConfig.shared.log(.network, "Starting state detection for \(usEvents.count) US events...")
+        #endif
         
         var states = Set<String>()
         
@@ -462,7 +490,9 @@ struct InfographicsView: View {
         // Geocode remaining
         let needingGeocode = usEvents.filter { StateDetector.extractStateFromCity($0.city) == nil }
         if !needingGeocode.isEmpty {
-            print("  🌍 Geocoding \(needingGeocode.count) events without state in city field...")
+            #if DEBUG
+            DebugConfig.shared.log(.network, "Geocoding \(needingGeocode.count) events without state in city field...")
+            #endif
             for event in needingGeocode {
                 let lat = event.latitude != 0.0 ? event.latitude : event.location.latitude
                 let lon = event.longitude != 0.0 ? event.longitude : event.location.longitude
@@ -473,7 +503,9 @@ struct InfographicsView: View {
             }
         }
         
-        print("🔍 Final states detected: \(states.sorted())")
+        #if DEBUG
+        DebugConfig.shared.log(.network, "Final states detected: \(states.sorted())")
+        #endif
         
         // Cache for next time
         await cache.updateStates(states, for: year)
@@ -1599,7 +1631,9 @@ extension InfographicsView {
 extension InfographicsView {
     private func generatePDF() {
         guard let derived = derivedByYear[selectedYear] else {
-            print("⚠️ No derived data for PDF generation")
+            #if DEBUG
+            DebugConfig.shared.log(.charts, "No derived data for PDF generation")
+            #endif
             return
         }
         
@@ -1618,7 +1652,9 @@ extension InfographicsView {
     
     /// Generate PDF with an actual MapKit snapshot
     private func generatePDFWithMapSnapshot(derived: Derived) async {
-        print("🗺️ Generating map snapshot...")
+        #if DEBUG
+        DebugConfig.shared.log(.charts, "Generating map snapshot...")
+        #endif
         
         // Calculate map region from coordinates
         let coordinates = derived.polylineCoordinates
@@ -1654,7 +1690,9 @@ extension InfographicsView {
         
         do {
             let snapshot = try await snapshotter.start()
-            print("✅ Map snapshot generated")
+            #if DEBUG
+            DebugConfig.shared.log(.charts, "Map snapshot generated")
+            #endif
             
             // Draw route and markers on the snapshot
             let image = await drawRouteOnSnapshot(snapshot: snapshot, derived: derived)
@@ -1664,7 +1702,9 @@ extension InfographicsView {
                 createPDFContent(derived: derived, mapSnapshot: image)
             }
         } catch {
-            print("❌ Map snapshot failed: \(error.localizedDescription)")
+            #if DEBUG
+            DebugConfig.shared.log(.charts, "Map snapshot failed: \(error.localizedDescription)")
+            #endif
             await MainActor.run {
                 createPDFContent(derived: derived, mapSnapshot: nil)
             }
@@ -1836,7 +1876,9 @@ extension InfographicsView {
         renderer.proposedSize = ProposedViewSize(width: 8.5 * 72, height: .infinity)
         
         guard let image = renderer.uiImage else {
-            print("❌ Failed to render PDF content to image")
+            #if DEBUG
+            DebugConfig.shared.log(.charts, "Failed to render PDF content to image")
+            #endif
             return
         }
         
@@ -1844,7 +1886,9 @@ extension InfographicsView {
         
         // Convert image to PDF
         guard let pdfData = createPDFFromImage(image, pageSize: image.size) else {
-            print("❌ Failed to create PDF from image")
+            #if DEBUG
+            DebugConfig.shared.log(.charts, "Failed to create PDF from image")
+            #endif
             return
         }
         
@@ -1856,7 +1900,9 @@ extension InfographicsView {
         
         do {
             try pdfData.write(to: tempURL)
-            print("✅ PDF saved to: \(tempURL.path)")
+            #if DEBUG
+            DebugConfig.shared.log(.charts, "PDF saved to: \(tempURL.path)")
+            #endif
             
             // Present share sheet
             presentShareSheet(for: tempURL, fileType: "PDF")
@@ -2255,7 +2301,9 @@ extension InfographicsView {
     
     private func shareScreenshot() {
         guard let derived = derivedByYear[selectedYear] else {
-            print("⚠️ No derived data for screenshot")
+            #if DEBUG
+            DebugConfig.shared.log(.charts, "No derived data for screenshot")
+            #endif
             return
         }
         
@@ -2349,7 +2397,9 @@ extension InfographicsView {
         renderer.scale = 3.0 // Super high resolution for social media sharing
         
         guard let image = renderer.uiImage else {
-            print("❌ Failed to render screenshot image")
+            #if DEBUG
+            DebugConfig.shared.log(.charts, "Failed to render screenshot image")
+            #endif
             return
         }
         
@@ -2386,19 +2436,23 @@ extension InfographicsView {
         
         // Set completion handler for debugging
         activityVC.completionWithItemsHandler = { activityType, completed, returnedItems, error in
+            #if DEBUG
             if let error = error {
-                print("❌ Share error: \(error.localizedDescription)")
+                DebugConfig.shared.log(.charts, "Share error: \(error.localizedDescription)")
             } else if completed {
-                print("✅ \(fileType) shared successfully via \(activityType?.rawValue ?? "unknown")")
+                DebugConfig.shared.log(.charts, "\(fileType) shared successfully via \(activityType?.rawValue ?? "unknown")")
             } else {
-                print("ℹ️ Share cancelled")
+                DebugConfig.shared.log(.charts, "Share cancelled")
             }
+            #endif
         }
         
         // Find the top-most view controller to present from
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let rootViewController = windowScene.windows.first?.rootViewController else {
-            print("❌ Could not find root view controller")
+            #if DEBUG
+            DebugConfig.shared.log(.navigation, "Could not find root view controller")
+            #endif
             return
         }
         
@@ -2419,7 +2473,9 @@ extension InfographicsView {
             popover.permittedArrowDirections = []
         }
         
-        print("✅ Presenting share sheet for \(fileType)...")
+        #if DEBUG
+        DebugConfig.shared.log(.navigation, "Presenting share sheet for \(fileType)...")
+        #endif
         topController.present(activityVC, animated: true)
     }
     

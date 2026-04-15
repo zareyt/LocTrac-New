@@ -11,35 +11,41 @@ import SwiftUI
 struct Location: Identifiable, Hashable, Codable {
     var id: String
     var name: String
-    var city: String?
+    var city: String?           // City name ONLY (no state/country)
+    var state: String?          // v1.5: State, province, territory, etc.
     var latitude: Double
     var longitude: Double
-    var country: String?         // NEW: Country field
+    var country: String?        // Country name (e.g., "United States")
+    var countryCode: String?    // v1.5: ISO country code (e.g., "US", "CA", "FR")
     var theme: Theme
-    var imageIDs: [String]? // optional, absent means no photos
-    var customColorHex: String? // NEW: optional custom color (full spectrum)
+    var imageIDs: [String]?     // optional, absent means no photos
+    var customColorHex: String? // optional custom color (full spectrum)
 
     init(id: String = UUID().uuidString,
          name: String,
          city: String?,
+         state: String? = nil,      // v1.5: State/province
          latitude: Double,
          longitude: Double,
-         country: String? = nil, // NEW: Add country to init
+         country: String? = nil,
+         countryCode: String? = nil, // v1.5: ISO country code
          theme: Theme,
          imageIDs: [String]? = nil,
-         customColorHex: String? = nil) { // NEW: Add customColorHex to init
+         customColorHex: String? = nil) {
         self.id = id
         self.name = name
         self.city = city
+        self.state = state
         self.latitude = latitude
         self.longitude = longitude
         self.country = country
+        self.countryCode = countryCode
         self.theme = theme
         self.imageIDs = imageIDs
         self.customColorHex = customColorHex
     }
     
-    // NEW: Computed property for effective display color
+    // Computed property for effective display color
     var effectiveColor: Color {
         if let hex = customColorHex {
             return Color(hex: hex)
@@ -47,20 +53,37 @@ struct Location: Identifiable, Hashable, Codable {
         return theme.mainColor
     }
     
-    // NEW: Helper to set custom color from ColorPicker
+    // Helper to set custom color from ColorPicker
     mutating func setCustomColor(_ color: Color) {
         self.customColorHex = color.toHex()
+    }
+    
+    // v1.5: Computed property for full address display
+    var fullAddress: String {
+        var components: [String] = []
+        if let city = city { components.append(city) }
+        if let state = state { components.append(state) }
+        if let country = country { components.append(country) }
+        return components.isEmpty ? "Unknown" : components.joined(separator: ", ")
+    }
+    
+    // v1.5: Computed property for short address (city, state)
+    var shortAddress: String {
+        var components: [String] = []
+        if let city = city { components.append(city) }
+        if let state = state { components.append(state) }
+        return components.isEmpty ? (country ?? "Unknown") : components.joined(separator: ", ")
     }
 }
 
 extension Location {
     static let sampleData: [Location] =
     [
-        Location(name: "Loft", city: "Denver",latitude: 39.75331, longitude: 104.99920, country: "United States", theme: .magenta),
-        Location(name: "Arrowhead", city: "Edwards", latitude: 39.6329611, longitude: 106.5624717, country: "United States", theme: .purple),
-        Location(name: "Cabo", city: "San Jose", latitude: 23.01786, longitude: 109.73016, country: "Mexico", theme: .navy),
-        Location(name: "Ravenna", city: "Littleton", latitude: 39.47834, longitude: 105.09497, country: "United States", theme: .purple),
-        Location(name: "Other", city: "None", latitude: 39.75331, longitude: 104.99920, country: "United States", theme: .yellow)
+        Location(name: "Loft", city: "Denver", state: "Colorado", latitude: 39.75331, longitude: 104.99920, country: "United States", countryCode: "US", theme: .magenta),
+        Location(name: "Arrowhead", city: "Edwards", state: "Colorado", latitude: 39.6329611, longitude: 106.5624717, country: "United States", countryCode: "US", theme: .purple),
+        Location(name: "Cabo", city: "San José del Cabo", state: "Baja California Sur", latitude: 23.01786, longitude: 109.73016, country: "Mexico", countryCode: "MX", theme: .navy),
+        Location(name: "Ravenna", city: "Littleton", state: "Colorado", latitude: 39.47834, longitude: 105.09497, country: "United States", countryCode: "US", theme: .purple),
+        Location(name: "Other", city: "None", state: nil, latitude: 39.75331, longitude: 104.99920, country: "United States", countryCode: "US", theme: .yellow)
     ]
 }
 

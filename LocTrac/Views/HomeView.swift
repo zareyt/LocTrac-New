@@ -7,9 +7,15 @@ struct HomeView: View {
     let onAddEvent: () -> Void
     let onShowOtherCities: () -> Void
     let onOpenCalendar: () -> Void
-    let onOpenLocations: () -> Void
+    let onOpenLocationsManagement: () -> Void  // CHANGED: From onOpenLocations to manage locations
     let onOpenInfographics: () -> Void
-    let onSwitchToMapTab: () -> Void  // NEW: For Travel Map link
+    let onSwitchToMapTab: () -> Void
+    
+    // NEW: Expandable sections state
+    @State private var showAllAffirmations = false
+    @State private var showAllPeople = false
+    @State private var showAllActivities = false
+    @State private var showAllVacationPlaces = false
     
     // MARK: - Date helpers
     private var now: Date { Date() }
@@ -47,15 +53,16 @@ struct HomeView: View {
         return Array(pairs.sorted { $0.1 > $1.1 }.prefix(5))
     }
     
-    // Top Vacation Places (Rolling 12 months, only "Other" location cities)
+    // Top Vacation Places (Rolling 12 months, only "Other" location cities) - Return all for expandable UI
     private var topVacationPlaces12M: [(city: String, count: Int)] {
         let otherEvents = rolling12MonthEvents.filter { $0.location.name == "Other" }
         let cityCounts = Dictionary(grouping: otherEvents, by: { $0.city ?? "Unknown" })
             .mapValues { $0.count }
-        return Array(cityCounts.map { ($0.key, $0.value) }.sorted { $0.1 > $1.1 }.prefix(5))
+        // Return all, sorted - UI will show top 3 with expand option
+        return cityCounts.map { ($0.key, $0.value) }.sorted { $0.1 > $1.1 }
     }
     
-    // Top People (Rolling 12 months)
+    // Top People (Rolling 12 months) - Return all for expandable UI
     private var topPeople12M: [(person: Person, count: Int)] {
         // Flatten all people from all events
         let allPeople = rolling12MonthEvents.flatMap { $0.people }
@@ -73,9 +80,8 @@ struct HomeView: View {
             return (person: person, count: people.count)
         }
         
-        let sorted = Array(pairs.sorted { $0.count > $1.count }.prefix(5))
-        
-        return sorted
+        // Return all, sorted by count - UI will show top 3 with expand option
+        return pairs.sorted { $0.count > $1.count }
     }
     
     // Top Affirmations (Rolling 12 months)
@@ -92,7 +98,24 @@ struct HomeView: View {
             guard let affirmation = store.affirmations.first(where: { $0.id == id }) else { return nil }
             return (affirmation, count)
         }
-        return Array(pairs.sorted { $0.1 > $1.1 }.prefix(5))
+        return Array(pairs.sorted { $0.1 > $1.1 })  // Return all, not just top 5
+    }
+    
+    // Top Activities (Rolling 12 months)
+    private var topActivities12M: [(activity: Activity, count: Int)] {
+        var activityCounts: [String: Int] = [:]
+        
+        for event in rolling12MonthEvents {
+            for activityID in event.activityIDs {
+                activityCounts[activityID, default: 0] += 1
+            }
+        }
+        
+        let pairs: [(Activity, Int)] = activityCounts.compactMap { id, count in
+            guard let activity = store.activities.first(where: { $0.id == id }) else { return nil }
+            return (activity, count)
+        }
+        return Array(pairs.sorted { $0.1 > $1.1 })  // Return all
     }
     
     // Random Daily Affirmation
@@ -137,25 +160,34 @@ struct HomeView: View {
     
     // MARK: - Body
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    header
-                    quickActions
-                    dailyAffirmationSection
-                    environmentImpactSection
-                    topLocationsSection
-                    vacationPlacesSection
-                    topPeopleSection
-                    topAffirmationsSection
-                    quickLinksSection
-                }
-                .padding(.horizontal)
-                .padding(.top, 12)
-                .padding(.bottom, 24)
+        ScrollView {
+            VStack(spacing: 16) {
+                header
+                quickActions
+                dailyAffirmationSection
+                environmentImpactSection
+                topLocationsSection
+                vacationPlacesSection
+                topAffirmationsSection  // Moved up, before people
+                topPeopleSection
+                topActivitiesSection  // NEW: Added activities section
             }
-            .navigationTitle("Home")
-            .navigationBarTitleDisplayMode(.inline)
+            .padding(.horizontal)
+            .padding(.top, 12)
+            .padding(.bottom, 24)
+        }
+        .navigationTitle("Home")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    NotificationSettingsView()
+                        .environmentObject(store)
+                } label: {
+                    Image(systemName: "bell.badge.fill")
+                        .foregroundStyle(.red)
+                }
+            }
         }
     }
     
@@ -277,17 +309,17 @@ struct HomeView: View {
         }
     }
     
-    // Top Locations Section (Rolling 12 months, excluding "Other")
+    // Locations Section (Rolling 12 months)
     private var topLocationsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Top Locations (Last 12 Months)")
+                Text("Locations (Last 12 Months)")
                     .font(.headline)
                 Spacer()
                 Button {
-                    onOpenLocations()
+                    onOpenLocationsManagement()
                 } label: {
-                    Label("View All", systemImage: "chevron.right.circle")
+                    Label("Manage", systemImage: "chevron.right.circle")
                         .labelStyle(.iconOnly)
                 }
                 .buttonStyle(.plain)
@@ -301,7 +333,7 @@ struct HomeView: View {
                         let item = topLocations12M[idx]
                         HStack {
                             Circle()
-                                .fill(item.location.theme.mainColor)
+                                .fill(item.location.effectiveColor)
                                 .frame(width: 12, height: 12)
                             Text(item.location.name)
                             Spacer()
@@ -321,28 +353,34 @@ struct HomeView: View {
         }
     }
     
-    // Vacation Places Section (Top 5 "Other" cities, Rolling 12 months)
+    // Vacation Places Section (Top "Other" cities, Rolling 12 months) - Expandable
     private var vacationPlacesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Vacation Places (Last 12 Months)")
+                Text("Top Vacation Places (Last 12 Months)")
                     .font(.headline)
                 Spacer()
-                Button {
-                    onShowOtherCities()
-                } label: {
-                    Label("View All", systemImage: "chevron.right.circle")
-                        .labelStyle(.iconOnly)
+                if topVacationPlaces12M.count > 3 {
+                    Button {
+                        withAnimation {
+                            showAllVacationPlaces.toggle()
+                        }
+                    } label: {
+                        Label(showAllVacationPlaces ? "Show Less" : "Show All", systemImage: showAllVacationPlaces ? "chevron.up.circle" : "chevron.down.circle")
+                            .labelStyle(.iconOnly)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
             
             if topVacationPlaces12M.isEmpty {
                 emptyCard(text: "No vacation places visited in the last 12 months.")
             } else {
+                let displayedPlaces = showAllVacationPlaces ? topVacationPlaces12M : Array(topVacationPlaces12M.prefix(3))
+                
                 VStack(spacing: 8) {
-                    ForEach(topVacationPlaces12M.indices, id: \.self) { idx in
-                        let item = topVacationPlaces12M[idx]
+                    ForEach(displayedPlaces.indices, id: \.self) { idx in
+                        let item = displayedPlaces[idx]
                         HStack {
                             Image(systemName: "airplane.departure")
                                 .foregroundColor(.blue)
@@ -353,7 +391,7 @@ struct HomeView: View {
                                 .foregroundColor(.secondary)
                         }
                         .padding(.vertical, 6)
-                        if idx != topVacationPlaces12M.indices.last {
+                        if idx != displayedPlaces.indices.last {
                             Divider()
                         }
                     }
@@ -364,7 +402,7 @@ struct HomeView: View {
         }
     }
     
-    // Top People Section (Rolling 12 months)
+    // Top People Section (Rolling 12 months) - Expandable, show top 3
     private var topPeopleSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -372,14 +410,28 @@ struct HomeView: View {
                     .foregroundColor(.purple)
                 Text("People You've Spent Time With (Last 12 Months)")
                     .font(.headline)
+                Spacer()
+                if topPeople12M.count > 3 {
+                    Button {
+                        withAnimation {
+                            showAllPeople.toggle()
+                        }
+                    } label: {
+                        Label(showAllPeople ? "Show Less" : "Show All", systemImage: showAllPeople ? "chevron.up.circle" : "chevron.down.circle")
+                            .labelStyle(.iconOnly)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             
             if topPeople12M.isEmpty {
                 emptyCard(text: "No people recorded in the last 12 months.")
             } else {
+                let displayedPeople = showAllPeople ? topPeople12M : Array(topPeople12M.prefix(3))
+                
                 VStack(spacing: 8) {
-                    ForEach(topPeople12M.indices, id: \.self) { idx in
-                        let item = topPeople12M[idx]
+                    ForEach(displayedPeople.indices, id: \.self) { idx in
+                        let item = displayedPeople[idx]
                         HStack {
                             Image(systemName: "person.fill")
                                 .foregroundColor(.purple)
@@ -390,7 +442,7 @@ struct HomeView: View {
                                 .foregroundColor(.secondary)
                         }
                         .padding(.vertical, 6)
-                        if idx != topPeople12M.indices.last {
+                        if idx != displayedPeople.indices.last {
                             Divider()
                         }
                     }
@@ -401,7 +453,7 @@ struct HomeView: View {
         }
     }
     
-    // Top Affirmations Section (Rolling 12 months)
+    // Top Affirmations Section (Rolling 12 months) - Expandable, show top 3
     private var topAffirmationsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -409,14 +461,28 @@ struct HomeView: View {
                     .foregroundColor(.green)
                 Text("Top Affirmations (Last 12 Months)")
                     .font(.headline)
+                Spacer()
+                if topAffirmations12M.count > 3 {
+                    Button {
+                        withAnimation {
+                            showAllAffirmations.toggle()
+                        }
+                    } label: {
+                        Label(showAllAffirmations ? "Show Less" : "Show All", systemImage: showAllAffirmations ? "chevron.up.circle" : "chevron.down.circle")
+                            .labelStyle(.iconOnly)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             
             if topAffirmations12M.isEmpty {
                 emptyCard(text: "No affirmations used in the last 12 months.")
             } else {
+                let displayedAffirmations = showAllAffirmations ? topAffirmations12M : Array(topAffirmations12M.prefix(3))
+                
                 VStack(spacing: 12) {
-                    ForEach(topAffirmations12M.indices, id: \.self) { idx in
-                        let item = topAffirmations12M[idx]
+                    ForEach(displayedAffirmations.indices, id: \.self) { idx in
+                        let item = displayedAffirmations[idx]
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
                                 Image(systemName: "quote.bubble")
@@ -442,7 +508,7 @@ struct HomeView: View {
                                 .lineLimit(2)
                         }
                         .padding(.vertical, 6)
-                        if idx != topAffirmations12M.indices.last {
+                        if idx != displayedAffirmations.indices.last {
                             Divider()
                         }
                     }
@@ -453,59 +519,53 @@ struct HomeView: View {
         }
     }
     
-    // Quick Links Section
-    private var quickLinksSection: some View {
+    // Top Activities Section (Rolling 12 months) - Expandable, show top 3
+    private var topActivitiesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Quick Links")
-                .font(.headline)
-            
-            VStack(spacing: 8) {
-                quickLinkButton(
-                    title: "Travel Map",
-                    icon: "map.fill",
-                    color: .blue,
-                    action: onSwitchToMapTab
-                )
-                
-                quickLinkButton(
-                    title: "Infographics",
-                    icon: "chart.pie.fill",
-                    color: .purple,
-                    action: onOpenInfographics
-                )
+            HStack {
+                Image(systemName: "figure.walk")
+                    .foregroundColor(.orange)
+                Text("Top Activities (Last 12 Months)")
+                    .font(.headline)
+                Spacer()
+                if topActivities12M.count > 3 {
+                    Button {
+                        withAnimation {
+                            showAllActivities.toggle()
+                        }
+                    } label: {
+                        Label(showAllActivities ? "Show Less" : "Show All", systemImage: showAllActivities ? "chevron.up.circle" : "chevron.down.circle")
+                            .labelStyle(.iconOnly)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             
-            // NEW: Options section
-            Text("Options")
-                .font(.headline)
-                .padding(.top, 12)
-            
-            VStack(spacing: 8) {
-                // NEW: Notifications link
-                NavigationLink {
-                    NotificationSettingsView()
-                        .environmentObject(store)
-                } label: {
-                    HStack {
-                        Image(systemName: "bell.badge.fill")
-                            .foregroundColor(.red)
-                            .frame(width: 24)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Notifications")
-                                .foregroundColor(.primary)
-                            Text("Daily affirmations & reminders")
-                                .font(.caption)
+            if topActivities12M.isEmpty {
+                emptyCard(text: "No activities recorded in the last 12 months.")
+            } else {
+                let displayedActivities = showAllActivities ? topActivities12M : Array(topActivities12M.prefix(3))
+                
+                VStack(spacing: 8) {
+                    ForEach(displayedActivities.indices, id: \.self) { idx in
+                        let item = displayedActivities[idx]
+                        HStack {
+                            Image(systemName: "figure.walk")
+                                .foregroundColor(.orange)
+                            Text(item.activity.name)
+                            Spacer()
+                            Text("\(item.count) time\(item.count == 1 ? "" : "s")")
+                                .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        .padding(.vertical, 6)
+                        if idx != displayedActivities.indices.last {
+                            Divider()
+                        }
                     }
-                    .padding(12)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
                 }
-                .buttonStyle(.plain)
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
             }
         }
     }
@@ -528,27 +588,6 @@ struct HomeView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
-    }
-    
-    private func quickLinkButton(title: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
-        Button {
-            action()
-        } label: {
-            HStack {
-                Image(systemName: icon)
-                    .foregroundColor(color)
-                    .frame(width: 24)
-                Text(title)
-                    .foregroundColor(.primary)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .padding(12)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
-        }
-        .buttonStyle(.plain)
     }
     
     private func emptyCard(text: String) -> some View {

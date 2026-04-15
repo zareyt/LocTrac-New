@@ -11,6 +11,7 @@ import SwiftUI
 class LocationFormViewModel: ObservableObject {
     @Published var name: String = ""
     @Published var city: String = ""
+    @Published var state: String = ""        // v1.5: State/province
     @Published var latitude: Double = 0
     @Published var longitude: Double = 0
     @Published var country: String = "" // NEW: Country field
@@ -28,6 +29,7 @@ class LocationFormViewModel: ObservableObject {
     init(_ location: Location) {
         name = location.name
         city = location.city ?? "none"
+        state = location.state ?? ""         // v1.5: Load state
         latitude = location.latitude
         longitude = location.longitude
         country = location.country ?? "" // NEW: Load country

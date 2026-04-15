@@ -301,8 +301,7 @@ private extension String {
     }
     
     func convertMarkdownLists() -> String {
-        var result = self
-        let lines = result.components(separatedBy: .newlines)
+        let lines = self.components(separatedBy: .newlines)
         var inList = false
         var listType = ""
         var processedLines: [String] = []

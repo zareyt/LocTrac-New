@@ -17,12 +17,57 @@ struct WhatsNewFeature: Identifiable {
     let symbolColor: Color          // Tint for the symbol
     let title: String               // Short feature title
     let description: String         // One or two sentence description
+    
+    /// Result containing both features and bug fixes
+    struct ContentResult {
+        let features: [WhatsNewFeature]
+        let bugFixes: [WhatsNewFeature]
+    }
 
     // MARK: - Release Definitions
+    
+    /// Returns features and bug fixes separately for a given version.
+    /// First attempts to parse from VERSION_x.x_RELEASE_NOTES.md file.
+    /// Falls back to hardcoded features if parsing fails or file doesn't exist.
+    static func content(for version: String) -> ContentResult {
+        // 🆕 Try dynamic parsing first
+        if let parseResult = ReleaseNotesParser.parse(forVersion: version) {
+            #if DEBUG
+            print("📝 [Parser] Using dynamically parsed content for version \(version)")
+            print("📝 [Parser] \(parseResult.features.count) features, \(parseResult.bugFixes.count) bug fixes")
+            #endif
+            return ContentResult(features: parseResult.features, bugFixes: parseResult.bugFixes)
+        }
+        
+        // 🔄 Fall back to hardcoded features (no bugs in hardcoded)
+        #if DEBUG
+        print("📝 [Parser] Falling back to hardcoded features for version \(version)")
+        #endif
+        return ContentResult(features: hardcodedFeatures(for: version), bugFixes: [])
+    }
 
-    /// Returns the ordered list of feature pages for a given version string.
-    /// Add a new `case` here for each release that deserves a "What's New" screen.
+    /// Returns the ordered list of feature pages for a given version string (legacy method).
+    /// First attempts to parse from VERSION_x.x_RELEASE_NOTES.md file.
+    /// Falls back to hardcoded features if parsing fails or file doesn't exist.
     static func features(for version: String) -> [WhatsNewFeature] {
+        // 🆕 Try dynamic parsing first
+        if let parsedFeatures = ReleaseNotesParser.parseFeatures(forVersion: version) {
+            #if DEBUG
+            print("📝 [Parser] Using dynamically parsed features for version \(version)")
+            #endif
+            return parsedFeatures
+        }
+        
+        // 🔄 Fall back to hardcoded features
+        #if DEBUG
+        print("📝 [Parser] Falling back to hardcoded features for version \(version)")
+        #endif
+        return hardcodedFeatures(for: version)
+    }
+    
+    /// Hardcoded fallback features (original implementation).
+    /// Kept for backward compatibility and as safety net.
+    private static func hardcodedFeatures(for version: String) -> [WhatsNewFeature] {
         switch version {
 
         case "1.3":
@@ -112,8 +157,33 @@ struct WhatsNewFeature: Identifiable {
             ]
 
         // ── Add future versions below ──────────────────────────────────────
-        // case "1.5":
-        //     return [ ... ]
+        case "1.5":
+            return [
+                WhatsNewFeature(
+                    symbolName: "calendar.badge.clock",
+                    symbolColor: .blue,
+                    title: "Date-Only Tracking",
+                    description: "LocTrac now focuses purely on calendar dates. Time displays removed from events — track which day you were somewhere, not the exact hour."
+                ),
+                WhatsNewFeature(
+                    symbolName: "map.fill",
+                    symbolColor: .green,
+                    title: "State & Province Support",
+                    description: "New state/province field for both locations and events provides more precise location tracking, especially useful for domestic travel."
+                ),
+                WhatsNewFeature(
+                    symbolName: "doc.text.fill",
+                    symbolColor: .purple,
+                    title: "Enhanced Documentation",
+                    description: "Comprehensive developer documentation added, including detailed guidelines for date handling, architecture patterns, and project structure."
+                ),
+                WhatsNewFeature(
+                    symbolName: "clock.fill",
+                    symbolColor: .orange,
+                    title: "Consistent UTC Handling",
+                    description: "All dates now stored and compared in UTC timezone, eliminating date-shifting issues when traveling or changing time zones."
+                ),
+            ]
 
         default:
             return []

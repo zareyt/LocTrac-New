@@ -19,6 +19,7 @@ struct DonutChartView: View {
     @State var indexOfTappedSlice = -1
     @State var yearSelection: String = "Total"
     @State var regionFilter: RegionFilter = .all    // New: region filter
+    @State private var refreshID = UUID()  // Force refresh when needed
 
     private var utcCalendar: Calendar {
         var cal = Calendar(identifier: .gregorian)
@@ -143,6 +144,13 @@ struct DonutChartView: View {
             regionPickerSection   // New region filter picker
             legendList
             totalsSummary        // New totals summary
+        }
+        .id(refreshID)  // Force view refresh when ID changes
+        .onChange(of: store.dataUpdateToken) { _, _ in
+            #if DEBUG
+            print("📊 [DonutChartView] Data update token changed - forcing chart refresh")
+            #endif
+            refreshID = UUID()  // Force recomputation of charDataObj
         }
     }
 

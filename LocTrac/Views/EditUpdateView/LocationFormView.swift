@@ -68,35 +68,82 @@ struct LocationFormView: View {
             Form {
 
                 // MARK: - Details
-                Section(header: Text("Location Name")) {
-                    TextField("Location Name", text: $viewModel.name)
-                        .textInputAutocapitalization(.words)
+                Section {
+                    HStack {
+                        Label("Name", systemImage: "mappin.circle.fill")
+                            .foregroundColor(.blue)
+                        Spacer()
+                        TextField("Required", text: $viewModel.name)
+                            .textInputAutocapitalization(.words)
+                            .multilineTextAlignment(.trailing)
+                    }
+                } header: {
+                    Text("Location Name")
+                } footer: {
+                    Text("A unique name for this location")
                 }
 
-                Section(header: Text("Location City")) {
-                    TextField("Location City", text: $viewModel.city)
-                        .textInputAutocapitalization(.words)
+                Section {
+                    HStack {
+                        Label("City", systemImage: "building.2.fill")
+                            .foregroundColor(.orange)
+                        Spacer()
+                        TextField("e.g., Denver", text: $viewModel.city)
+                            .textInputAutocapitalization(.words)
+                            .multilineTextAlignment(.trailing)
+                    }
+                } header: {
+                    Text("Location City")
+                } footer: {
+                    Text("City name only (no state or country)")
                 }
 
-                Section(header: Text("Country")) {
-                    TextField("Country", text: $viewModel.country)
-                        .textInputAutocapitalization(.words)
+                Section {
+                    HStack {
+                        Label("State", systemImage: "map.fill")
+                            .foregroundColor(.green)
+                        Spacer()
+                        TextField("e.g., Colorado", text: $viewModel.state)
+                            .textInputAutocapitalization(.words)
+                            .multilineTextAlignment(.trailing)
+                    }
+                } header: {
+                    Text("State / Province")
+                } footer: {
+                    Text("State, province, territory, or region")
+                }
+
+                Section {
+                    HStack {
+                        Label("Country", systemImage: "globe")
+                            .foregroundColor(.purple)
+                        Spacer()
+                        TextField("e.g., United States", text: $viewModel.country)
+                            .textInputAutocapitalization(.words)
+                            .multilineTextAlignment(.trailing)
+                    }
+                } header: {
+                    Text("Country")
+                } footer: {
+                    Text("Country name for location organization")
                 }
 
                 // MARK: - Coordinates
-                Section(header: Text("Coordinates")) {
+                Section {
                     HStack {
-                        Text("Latitude:")
+                        Label("Latitude", systemImage: "location.fill")
+                            .foregroundColor(.red)
                         Spacer()
-                        TextField("Latitude", text: latitudeBinding)
+                        TextField("0.0", text: latitudeBinding)
                             .keyboardType(.numbersAndPunctuation)
                             .multilineTextAlignment(.trailing)
                     }
 
                     HStack {
-                        Text("Longitude:")
+                        Label("Longitude", systemImage: "location.fill")
+                            .foregroundColor(.red)
                         Spacer()
-                        TextField("Longitude", text: longitudeBinding)
+                        TextField("0.0", text: longitudeBinding)
                             .keyboardType(.numbersAndPunctuation)
                             .multilineTextAlignment(.trailing)
                     }
@@ -142,6 +189,7 @@ struct LocationFormView: View {
                                     id: viewModel.id!,
                                     name: viewModel.name,
                                     city: viewModel.city,
+                                    state: viewModel.state.isEmpty ? nil : viewModel.state,  // v1.5: Save state
                                     latitude: viewModel.latitude,
                                     longitude: viewModel.longitude,
                                     country: viewModel.country.isEmpty ? nil : viewModel.country,
@@ -168,6 +216,7 @@ struct LocationFormView: View {
                                 let newLocation = Location(
                                     name: viewModel.name,
                                     city: viewModel.city,
+                                    state: viewModel.state.isEmpty ? nil : viewModel.state,  // v1.5: Save state
                                     latitude: viewModel.latitude,
                                     longitude: viewModel.longitude,
                                     country: viewModel.country.isEmpty ? nil : viewModel.country,

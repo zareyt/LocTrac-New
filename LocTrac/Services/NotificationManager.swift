@@ -42,7 +42,7 @@ class NotificationManager: ObservableObject {
                 self.isNotificationsEnabled = granted
                 self.saveSettings()
             }
-            await checkAuthorizationStatus()
+            checkAuthorizationStatus()  // Remove await - function is not async
             
             if granted {
                 await scheduleNotifications()

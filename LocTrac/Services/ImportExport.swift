@@ -6,26 +6,29 @@ struct Import: Codable {
         let id: String
         var eventType: String
         let date: Date
-        var city: String
+        var city: String?           // v1.5: Now optional (backward compat)
         var latitude: Double
         var longitude: Double
-        var country: String? // NEW: Country field for events
+        var country: String?        // Country field for events
+        var state: String?          // v1.5: State/province (optional for backward compat)
         var note: String
-        var people: [Person]? // optional for backward compatibility
-        var activityIDs: [String]? // NEW: optional for backward compatibility
-        var affirmationIDs: [String]? // NEW: optional for backward compatibility
+        var people: [Person]?       // optional for backward compatibility
+        var activityIDs: [String]?  // optional for backward compatibility
+        var affirmationIDs: [String]? // optional for backward compatibility
     }
     
     struct Location: Codable {
         let id: String
         var name: String
         var city: String?
+        var state: String?          // v1.5: State/province (optional for backward compat)
         var latitude: Double
         var longitude: Double
-        var country: String?  // <-- Country support
+        var country: String?        // Country name
+        var countryCode: String?    // v1.5: ISO country code (optional for backward compat)
         var theme: String
-        var imageIDs: [String]? // existing
-        var customColorHex: String? // NEW: optional custom color (backward compatible)
+        var imageIDs: [String]?     // existing
+        var customColorHex: String? // optional custom color (backward compatible)
     }
     
     struct ActivityData: Codable {
@@ -57,9 +60,9 @@ struct Import: Codable {
     
     let events: [Event]
     let locations: [Location]
-    let activities: [ActivityData]? // NEW (optional for old seed files)
-    let affirmations: [AffirmationData]? // NEW (optional for old seed files)
-    let trips: [TripData]? // NEW (optional for old seed files)
+    let activities: [ActivityData]? // optional for old seed files
+    let affirmations: [AffirmationData]? // optional for old seed files
+    let trips: [TripData]? // optional for old seed files
 }
 
 struct Export: Codable {
@@ -84,9 +87,11 @@ struct Export: Codable {
             LocationData(id: $0.id,
                          name: $0.name,
                          city: $0.city,
+                         state: $0.state,           // v1.5
                          latitude: $0.latitude,
                          longitude: $0.longitude,
                          country: $0.country,
+                         countryCode: $0.countryCode, // v1.5
                          theme: $0.theme.rawValue,
                          imageIDs: $0.imageIDs,
                          customColorHex: $0.customColorHex)
@@ -96,10 +101,11 @@ struct Export: Codable {
                       id: $0.id,
                       eventType: $0.eventType,
                       date: $0.date,
-                      city: $0.city ?? "",
+                      city: $0.city,            // v1.5: City for "Other" events
                       latitude: $0.latitude,
                       longitude: $0.longitude,
-                      country: $0.country, // NEW: Export event's country
+                      country: $0.country,
+                      state: $0.state,          // v1.5
                       note: $0.note,
                       people: $0.people,
                       activityIDs: $0.activityIDs,
@@ -136,12 +142,14 @@ struct Export: Codable {
         let id: String
         let name: String
         let city: String?
+        let state: String?          // v1.5
         let latitude: Double
         let longitude: Double
-        let country: String?  // <-- Country support
+        let country: String?
+        let countryCode: String?    // v1.5
         let theme: String
         let imageIDs: [String]?
-        let customColorHex: String? // NEW: optional custom color
+        let customColorHex: String?
     }
     
     struct EventData: Codable {
@@ -149,14 +157,15 @@ struct Export: Codable {
         let id: String
         var eventType: String
         let date: Date
-        let city: String
+        let city: String?           // v1.5: City for "Other" events
         let latitude: Double
         let longitude: Double
-        let country: String? // NEW: Country field
+        let country: String?
+        let state: String?          // v1.5
         let note: String
-        let people: [Person]? // existing
-        let activityIDs: [String] // NEW
-        let affirmationIDs: [String] // NEW
+        let people: [Person]?
+        let activityIDs: [String]
+        let affirmationIDs: [String]
     }
     
     struct ActivityData: Codable {

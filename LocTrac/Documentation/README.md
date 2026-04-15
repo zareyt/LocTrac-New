@@ -1,50 +1,105 @@
-# LocTrac
+# LocTrac Documentation
 
-**LocTrac** is your personal location and travel tracker for iPhone and iPad.  
-Log where you've been, who you were with, what you did — and let the app turn that history into meaningful insights.
-
----
-
-## Features
-
-### 🏠 Home
-A personalised dashboard showing your rolling 12-month highlights: top locations, recent stays, travel companions, and a random affirmation to start your day.
-
-### 📅 Calendar
-Browse your stays day by day. Filter the calendar by Location, Activity, or People and see coloured dots at a glance. Tap any day for a detailed summary.
-
-### 📊 Charts & Infographics
-Rich visualisations of your travel history — time spent per location, top activities, environmental impact, trips taken, and much more. Refresh manually or let the app detect changes automatically.
-
-### 🗺 Locations
-Manage everywhere you've been. Add, edit, or delete locations with full GPS support, map previews, and per-location stats.
-
-### ✈️ Travel History
-A comprehensive list of every country, city and stay — sortable and filterable, with a share sheet to export your history.
-
-### 💬 Affirmations
-Curate a personal library of affirmations organised by category. Attach one or more to any stay as a reflection for that day.
-
-### 🚗 Trips
-LocTrac automatically creates trip records when you move between locations. Review, edit, or refresh trips at any time — including transport mode and carbon footprint estimates.
+**Current Version**: 1.5  
+**Last Updated**: April 15, 2026
 
 ---
 
-## Getting Started
+## 📁 Quick Navigation
 
-1. **Launch LocTrac** — the Setup Wizard guides you through creating your first location and choosing activities.
-2. **Add a Stay** — tap **Add Stay** on the Home screen and fill in the location, date, activities and people.
-3. **Explore your data** — open Infographics or Charts to see patterns emerge over time.
+### 🚀 [Releases/](Releases/)
+Version-specific documentation and release notes.
+
+- **[v1.5/SUMMARY.md](Releases/v1.5/SUMMARY.md)** - Complete v1.5 implementation
+- **[v1.4/](Releases/v1.4/)** - v1.4 release notes
+- **[WhatsNew/](Releases/WhatsNew/)** - Dynamic "What's New" system
+
+### ⚡ [Features/](Features/)
+Feature documentation (maintained, version-agnostic).
+
+**Location & Geocoding:**
+- [LocationDataEnhancement.md](Features/LocationDataEnhancement.md)
+- [GeocodingFlag.md](Features/GeocodingFlag.md)
+- [SessionPersistence.md](Features/SessionPersistence.md)
+- [RetryErrors.md](Features/RetryErrors.md)
+- [RateLimitingAndCountries.md](Features/RateLimitingAndCountries.md)
+- [EnhancedGeocoder.md](Features/EnhancedGeocoder.md)
+
+**UI Components:**
+- [ModernCalendar.md](Features/ModernCalendar.md)
+- [ModernEventForm.md](Features/ModernEventForm.md)
+- [TravelJourney.md](Features/TravelJourney.md)
+- [JourneyMapVisual.md](Features/JourneyMapVisual.md)
+- [Widget.md](Features/Widget.md)
+
+**Data Management:**
+- [SelectiveImport.md](Features/SelectiveImport.md)
+- [SelectiveDeletion.md](Features/SelectiveDeletion.md)
+- [BackupFilesList.md](Features/BackupFilesList.md)
+- [DuplicatePreview.md](Features/DuplicatePreview.md)
+
+**Optimization:**
+- [InfographicsOptimization.md](Features/InfographicsOptimization.md)
+- [InfographicsCaching.md](Features/InfographicsCaching.md)
+
+### 📖 [Guides/](Guides/)
+User and developer guides.
+
+- [FirstLaunchWizard.md](Guides/FirstLaunchWizard.md)
+- [LocationManagement.md](Guides/LocationManagement.md)
+
+### 📚 [Reference/](Reference/)
+Technical reference documentation.
+
+**Calendar System:**
+- [CALENDAR_QUICK_REFERENCE.md](Calendar/CALENDAR_QUICK_REFERENCE.md)
+- [CALENDAR_COMPARISON.md](Calendar/CALENDAR_COMPARISON.md)
+- [CALENDAR_IMPLEMENTATION_GUIDE.md](Calendar/CALENDAR_IMPLEMENTATION_GUIDE.md)
+- [KEY_CODE_CHANGES.md](Calendar/KEY_CODE_CHANGES.md)
+
+**Development:**
+- [DebugSystem.md](Reference/DebugSystem.md)
+- [ParserDebug.md](Reference/ParserDebug.md)
+- [InfoPlistPrivacy.md](Reference/InfoPlistPrivacy.md)
 
 ---
 
-## Data & Privacy
+## 🏗️ Project Documentation
 
-All your data is stored **on-device only**. Nothing is sent to external servers.  
-Use **Backup & Import** (main menu) to export a JSON backup to iCloud Drive or your device at any time.
+### Core Files (Root Level)
+- **[../README.md](../README.md)** - Project overview
+- **[../CHANGELOG.md](../CHANGELOG.md)** - Complete version history
+- **[../CLAUDE.md](../CLAUDE.md)** - AI assistant context & architecture
 
 ---
 
-## Support
+## 📦 Archived Documentation
 
-For feedback or questions, contact the developer via the App Store listing.
+Historical documentation is available in the `Archived/` folder (not visible in Xcode).
+
+Access via Finder: `LocTrac/Archived/`
+
+**Archived Content:**
+- Build fixes and bug resolution notes
+- Feature development notes
+- Version-specific implementation details (v1.1 - v1.5)
+- Consolidated historical documentation
+
+---
+
+## 🎯 Finding What You Need
+
+| I want to... | Look in... |
+|--------------|------------|
+| See what's new in v1.5 | [Releases/v1.5/SUMMARY.md](Releases/v1.5/SUMMARY.md) |
+| Understand a feature | [Features/](Features/) |
+| Learn how to use something | [Guides/](Guides/) |
+| Look up technical details | [Reference/](Reference/) or [Calendar/](Calendar/) |
+| See version history | [../CHANGELOG.md](../CHANGELOG.md) |
+| Understand architecture | [../CLAUDE.md](../CLAUDE.md) |
+| Review old implementation notes | `Archived/` (via Finder) |
+
+---
+
+*Documentation organized for Xcode Project Navigator.*  
+*Archived files excluded from Xcode but available in filesystem.*

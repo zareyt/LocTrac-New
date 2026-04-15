@@ -4,7 +4,7 @@
 ![Swift](https://img.shields.io/badge/Swift-5.7-orange)
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-4.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Version](https://img.shields.io/badge/version-1.1-brightgreen)
+![Version](https://img.shields.io/badge/version-1.5-brightgreen)
 
 A powerful, privacy-focused iOS app for tracking your locations, travels, and life events. Keep a detailed record of everywhere you've been with beautiful visualizations, statistics, and maps.
 
@@ -178,6 +178,10 @@ LocTrac/
 │   ├── Activity.swift           # Activity data model
 │   ├── Trip.swift               # Trip data model
 │   └── Person.swift             # Contact data model
+├── Services/
+│   ├── EnhancedGeocoder.swift   # Smart geocoding service (v1.5)
+│   ├── GeocodeResult.swift      # Geocoding result structure (v1.5)
+│   └── LocationDataMigrator.swift  # Batch migration utility (v1.5)
 ├── Views/
 │   ├── StartTabView.swift       # Main tab navigation
 │   ├── HomeView.swift           # Home dashboard
@@ -188,7 +192,7 @@ LocTrac/
 │   ├── DataStore.swift          # Main data store
 │   └── ...
 ├── Utilities/
-│   ├── EventCountryGeocoder.swift  # Geocoding utility (v1.1)
+│   ├── EventCountryGeocoder.swift  # Legacy geocoding (v1.1)
 │   └── ...
 └── Resources/
     ├── Assets.xcassets
@@ -213,6 +217,31 @@ Central data management with CRUD operations for:
 - Trips
 - Data persistence to JSON
 
+### EnhancedGeocoder (v1.5)
+Smart geocoding service with:
+- **Manual Entry Parsing**: Parse "Denver, CO" → city, state, country
+- **Forward Geocoding**: Convert addresses to coordinates
+- **Reverse Geocoding**: Convert coordinates to addresses
+- **Rate Limit Handling**: Automatic detection and retry (50 req/60s)
+- **City Name Preservation**: Never overwrites user's original input
+- **Country Code Support**: Expands MX → Mexico, UK → United Kingdom, etc.
+- **US/Canadian Detection**: Recognizes all 50 US states + DC, 13 Canadian provinces
+
+**Parsing Examples**:
+- `"Denver, CO"` → City: "Denver", State: "CO", Country: "United States"
+- `"Paris, France"` → City: "Paris", Country: "France"
+- `"Toronto, ON"` → City: "Toronto", State: "ON", Country: "Canada"
+- `"Diamante, MX"` → City: "Diamante", Country: "Mexico"
+
+### LocationDataMigrator (v1.5)
+Batch migration utility for existing data:
+- Parse existing "City, State" entries
+- Geocode coordinates to fill missing data
+- Preserve original city names
+- Track migration statistics
+- Handle rate limits gracefully
+- Detailed error logging
+
 ### TravelHistoryView (v1.1)
 Comprehensive travel analytics with:
 - Filtering by location type
@@ -222,7 +251,7 @@ Comprehensive travel analytics with:
 - Performance optimization for large datasets (1500+ events)
 
 ### EventCountryGeocoder (v1.1)
-Intelligent country detection:
+Legacy geocoding utility:
 - Parse from city strings ("Caen, France")
 - Detect US states ("Denver, CO")
 - Reverse geocode coordinates
@@ -354,7 +383,39 @@ Contributions are welcome! Please follow these guidelines:
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed release notes.
 
-### Latest Release: v1.1 (March 29, 2026)
+### Latest Release: v1.5 (April 10, 2026)
+
+**🌍 Enhanced Geocoding System**:
+- ✨ Smart manual entry parsing ("Denver, CO" → city, state, country)
+- 🔄 Forward and reverse geocoding with automatic rate limit handling
+- 🛡️ City name preservation (never overwrites user's original input)
+- 🗺️ Support for 50+ country codes (MX → Mexico, UK → United Kingdom, etc.)
+- 📍 Intelligent country detection (US states, Canadian provinces)
+- ⏱️ Automatic retry with rate limit detection (50 req/60s limit)
+- 🏷️ Smart country preference (preserves "Scotland" over "United Kingdom")
+
+**🔄 Data Migration Tools**:
+- 🆕 LocationDataMigrator for batch updates of existing data
+- 📊 Migration statistics and error tracking
+- 🔍 Parse existing "City, State" entries automatically
+- 🌐 Geocode coordinates to fill missing state/country data
+- ⚡ Rate-limited geocoding (300ms delays + automatic pause/retry)
+- 📝 Detailed logging for migration progress
+
+**🏗️ New Services Architecture**:
+- `EnhancedGeocoder.swift` - Comprehensive geocoding service
+- `GeocodeResult.swift` - Structured geocoding results
+- `LocationDataMigrator.swift` - Batch data migration utility
+
+**📚 Documentation**:
+- Complete geocoding guide with examples
+- Rate limit handling documentation
+- City name preservation best practices
+- Migration process documentation
+
+---
+
+### Previous Release: v1.1 (March 29, 2026)
 
 **New Features**:
 - 🆕 Travel History view with comprehensive filtering and sorting

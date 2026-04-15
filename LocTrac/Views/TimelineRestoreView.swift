@@ -904,11 +904,14 @@ struct TimelineRestoreView: View {
                     id: locationData.id,
                     name: locationData.name,
                     city: locationData.city,
+                    state: locationData.state,  // v1.5: State/province
                     latitude: locationData.latitude,
                     longitude: locationData.longitude,
                     country: locationData.country,
+                    countryCode: locationData.countryCode,  // v1.5: ISO country code
                     theme: Theme(rawValue: locationData.theme) ?? .purple,
-                    imageIDs: locationData.imageIDs
+                    imageIDs: locationData.imageIDs,
+                    customColorHex: locationData.customColorHex  // v1.5: Custom color
                 )
             }
             
@@ -922,10 +925,11 @@ struct TimelineRestoreView: View {
                     eventType: Event.EventType(rawValue: eventData.eventType) ?? .unspecified,
                     date: eventData.date,
                     location: location,
-                    city: eventData.city,
+                    city: eventData.city,  // v1.5: City for "Other" location events
                     latitude: eventData.latitude,
                     longitude: eventData.longitude,
                     country: eventData.country,
+                    state: eventData.state,  // v1.5: Use state if available
                     note: eventData.note,
                     people: eventData.people ?? [],
                     activityIDs: eventData.activityIDs ?? [],
@@ -1092,7 +1096,6 @@ struct TimelineRestoreView: View {
         showResults = false
         
         var importedEventsCount = 0
-        var importedEventsWithAffirmationsCount = 0 // NEW: Track events that have affirmations
         var importedTripsCount = 0
         var importedLocationsCount = 0
         var importedActivitiesCount = 0
@@ -1274,9 +1277,53 @@ struct TimelineRestoreView: View {
                 importedEventsCount = filteredEvents.count
             } else {
                 // Merge mode
+                // NEW: Build a mapping of old location IDs → new location IDs
+                var locationIDMapping: [String: String] = [:]
+                
+                if importLocations {
+                    let referencedLocationIDs = Set(filteredEvents.map { $0.location.id })
+                    let locationsToImport = backup.locations.filter { referencedLocationIDs.contains($0.id) }
+                    
+                    for backupLocation in locationsToImport {
+                        // Check if this location already exists in the store
+                        if let existingLocation = store.locations.first(where: { $0.id == backupLocation.id }) {
+                            // Already imported earlier in this session - use the same ID
+                            locationIDMapping[backupLocation.id] = existingLocation.id
+                        } else if backupLocation.name.caseInsensitiveCompare("Other") == .orderedSame {
+                            // Special case: "Other" location - always map to current store's "Other"
+                            if let storeOther = store.locations.first(where: { $0.name.caseInsensitiveCompare("Other") == .orderedSame }) {
+                                locationIDMapping[backupLocation.id] = storeOther.id
+                                print("   🔗 Mapping backup 'Other' (ID: \(backupLocation.id)) → store 'Other' (ID: \(storeOther.id))")
+                            }
+                        } else {
+                            // Location was imported - map to itself
+                            locationIDMapping[backupLocation.id] = backupLocation.id
+                        }
+                    }
+                    
+                    print("📍 [performImport] Location ID mapping created: \(locationIDMapping.count) mappings")
+                }
+                
                 for event in filteredEvents {
                     if !store.events.contains(where: { $0.id == event.id }) {
                         var modifiedEvent = event
+                        
+                        // NEW: Remap location ID if needed
+                        if let newLocationID = locationIDMapping[event.location.id],
+                           let updatedLocation = store.locations.first(where: { $0.id == newLocationID }) {
+                            // Update the event's embedded location to match the current store
+                            modifiedEvent.location = updatedLocation
+                            print("   🔗 Remapped event '\(event.id)' location from '\(event.location.id)' → '\(newLocationID)'")
+                        } else if !store.locations.contains(where: { $0.id == event.location.id }) {
+                            // Location doesn't exist - this would create an orphan!
+                            // Try to find "Other" location as fallback
+                            if let otherLocation = store.locations.first(where: { $0.name.caseInsensitiveCompare("Other") == .orderedSame }) {
+                                print("   ⚠️ Event '\(event.id)' location ID '\(event.location.id)' not found - assigning to 'Other'")
+                                modifiedEvent.location = otherLocation
+                            } else {
+                                print("   ❌ ERROR: Event '\(event.id)' location ID '\(event.location.id)' not found and no 'Other' location exists!")
+                            }
+                        }
                         
                         // Clean up based on toggles
                         if !importPeople {

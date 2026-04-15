@@ -86,7 +86,9 @@ class ChartDataContainer: ObservableObject {
         for (_, location) in store.locations.enumerated() {
             guard let percent = percentByLocation[location] else { continue }
             guard let count = countByLocation[location] else { continue }
-            let color = location.theme.mainColor
+            
+            // Use effectiveColor to respect custom colors
+            let color = location.effectiveColor
 
             // percent is 0...1 (Float). Convert to 0...100 (CGFloat) for display and accumulation.
             let slicePercentValue = CGFloat(percent) * 100.0

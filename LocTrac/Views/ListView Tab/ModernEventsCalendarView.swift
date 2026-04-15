@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Contacts
+import CoreLocation
 
 enum CalendarFilterMode: String, CaseIterable {
     case location = "Location"
@@ -81,6 +82,12 @@ struct ModernEventsCalendarView: View {
                 guard let date = newValue?.date else { return }
                 let eventsForDate = store.events.filter { $0.date.startOfDay == date.startOfDay }
                 
+                #if DEBUG
+                print("\n📅 [Calendar] Date selected: \(date.formatted(date: .abbreviated, time: .omitted))")
+                print("   Events found: \(eventsForDate.count)")
+                store.debugPrintEventsForDate(date)
+                #endif
+                
                 if !eventsForDate.isEmpty {
                     formType = nil
                     displayEvents = true
@@ -92,8 +99,13 @@ struct ModernEventsCalendarView: View {
                 }
             }
             // NEW: Listen for calendar refresh token changes
-            .onChange(of: store.calendarRefreshToken) { _, _ in
-                print("🔄 Calendar refresh token changed - forcing calendar update")
+            .onChange(of: store.calendarRefreshToken) { oldValue, newValue in
+                #if DEBUG
+                print("🔄 [ModernEventsCalendarView] Calendar refresh token changed!")
+                print("   Old token: \(oldValue)")
+                print("   New token: \(newValue)")
+                print("   Incrementing calendarRefreshTrigger from \(calendarRefreshTrigger) to \(calendarRefreshTrigger + 1)")
+                #endif
                 calendarRefreshTrigger += 1
             }
         }
@@ -254,7 +266,24 @@ struct ModernCalendarView: UIViewRepresentable {
             
             switch filterMode {
             case .location:
-                let eventColor: UIColor = self.store.locations[singleEvent.getLocationIndex(locations: self.store.locations, location: singleEvent.location) ?? 0].theme.uiColor
+                // Try to get the location from the store first
+                let locationIndex = singleEvent.getLocationIndex(locations: self.store.locations, location: singleEvent.location) ?? 0
+                let locationFromStore = self.store.locations[locationIndex]
+                
+                // Use the event's embedded location color (which should be updated when location changes)
+                let eventColor = UIColor(singleEvent.location.effectiveColor)
+                
+                #if DEBUG
+                print("📅 [Calendar Decoration] Rendering decoration for date: \(dateComponents)")
+                print("   Event location: \(singleEvent.location.name)")
+                print("   Event location ID: \(singleEvent.location.id)")
+                print("   Event location theme: \(singleEvent.location.theme.rawValue)")
+                print("   Event location customColorHex: \(singleEvent.location.customColorHex ?? "nil")")
+                print("   Store location theme: \(locationFromStore.theme.rawValue)")
+                print("   Store location customColorHex: \(locationFromStore.customColorHex ?? "nil")")
+                print("   Using color from event.location.effectiveColor")
+                #endif
+                
                 return UICalendarView.Decoration.default(color: eventColor, size: .large)
                 
             case .activities:
@@ -295,7 +324,16 @@ struct ModernCalendarView: UIViewRepresentable {
         
         @MainActor
         func reloadThreeMonthWindow() {
-            guard let view = calendarView else { return }
+            #if DEBUG
+            print("\n🔄 ========== CALENDAR RELOAD START ==========")
+            #endif
+            
+            guard let view = calendarView else {
+                #if DEBUG
+                print("❌ [Coordinator] Calendar view is nil!")
+                #endif
+                return
+            }
             let cal = view.calendar
             
             // Prefer the visible month from the calendar, fall back to selected or today
@@ -303,25 +341,38 @@ struct ModernCalendarView: UIViewRepresentable {
             let visibleComponents = view.visibleDateComponents
             if let visibleDate = cal.date(from: visibleComponents) {
                 anchor = visibleDate
+                #if DEBUG
                 print("🔍 [Coordinator] Reloading based on visible month: \(visibleDate.formatted(date: .abbreviated, time: .omitted))")
+                #endif
             } else if let selectedDate = parent.dateSelected?.date {
                 anchor = selectedDate
+                #if DEBUG
                 print("🔍 [Coordinator] Reloading based on selected date: \(selectedDate.formatted(date: .abbreviated, time: .omitted))")
+                #endif
             } else {
                 anchor = Date()
+                #if DEBUG
                 print("🔍 [Coordinator] Reloading based on today: \(Date().formatted(date: .abbreviated, time: .omitted))")
+                #endif
             }
             
             guard let currentMonth = cal.dateInterval(of: .month, for: anchor),
                   let prevMonthStart = cal.date(byAdding: .month, value: -1, to: currentMonth.start),
                   let prevMonth = cal.dateInterval(of: .month, for: prevMonthStart),
                   let nextMonthStart = cal.date(byAdding: .month, value: 1, to: currentMonth.start),
-                  let nextMonth = cal.dateInterval(of: .month, for: nextMonthStart) else { return }
+                  let nextMonth = cal.dateInterval(of: .month, for: nextMonthStart) else {
+                #if DEBUG
+                print("❌ [Coordinator] Failed to calculate month intervals!")
+                #endif
+                return
+            }
             
             let totalStart = prevMonth.start
             let totalEnd = nextMonth.end
             
+            #if DEBUG
             print("🔄 [Coordinator] Reloading decorations from \(totalStart.formatted(date: .abbreviated, time: .omitted)) to \(totalEnd.formatted(date: .abbreviated, time: .omitted))")
+            #endif
             
             var comps: [DateComponents] = []
             var cursor = totalStart
@@ -330,7 +381,15 @@ struct ModernCalendarView: UIViewRepresentable {
                 guard let next = cal.date(byAdding: .day, value: 1, to: cursor) else { break }
                 cursor = next
             }
+            
+            #if DEBUG
+            print("🔄 [Coordinator] Reloading \(comps.count) days of decorations")
+            #endif
             view.reloadDecorations(forDateComponents: comps, animated: true)
+            #if DEBUG
+            print("🔄 [Coordinator] Reload complete!")
+            print("🔄 ========== CALENDAR RELOAD END ==========\n")
+            #endif
         }
     }
 }
@@ -446,12 +505,8 @@ struct ModernEventRow: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header with time and location
+            // Header with location badge only (no time display)
             HStack {
-                Text(event.date.formatted(date: .omitted, time: .shortened))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
                 Spacer()
                 
                 // Location badge
@@ -569,6 +624,7 @@ struct ModernEventEditorSheet: View {
     @State private var eventDate: Date
     @State private var eventType: Event.EventType
     @State private var city: String
+    @State private var state: String  // v1.5: State/province
     @State private var country: String
     @State private var notes: String
     @State private var selectedPeople: [Person]
@@ -576,25 +632,60 @@ struct ModernEventEditorSheet: View {
     @State private var selectedAffirmationIDs: Set<String>
     @State private var showingContactsPicker = false
     @State private var showingAffirmationsSelector = false
+    @State private var latitude: Double
+    @State private var longitude: Double
+    @State private var latitudeText: String
+    @State private var longitudeText: String
+    @StateObject private var locationManager = LocationManager()
+    @State private var geocodeError: String?
+    
+    // UTC calendar for consistent date handling (no timezone issues)
+    private var utcCalendar: Calendar {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 0)!
+        return cal
+    }
+    
+    // Check if "Other" location is selected
+    private var isOtherSelected: Bool {
+        guard let other = store.locations.first(where: { $0.name == "Other" }) else { return false }
+        return selectedLocation.id == other.id
+    }
     
     init(event: Event) {
+        #if DEBUG
+        print("📅 [ModernEventEditorSheet INIT] Initializing for event:")
+        print("📅   - Event ID: \(event.id)")
+        print("📅   - Event date (raw): \(event.date)")
+        print("📅   - Event date (startOfDay): \(event.date.startOfDay)")
+        #endif
+        
         self.event = event
         _selectedLocation = State(initialValue: event.location)
-        _eventDate = State(initialValue: event.date)
+        _eventDate = State(initialValue: event.date.startOfDay)  // Normalize to start of day
         _eventType = State(initialValue: Event.EventType(rawValue: event.eventType) ?? .unspecified)
         _city = State(initialValue: event.city ?? "")
+        _state = State(initialValue: event.state ?? "")  // v1.5: Initialize state
         _country = State(initialValue: event.country ?? "")
         _notes = State(initialValue: event.note)
         _selectedPeople = State(initialValue: event.people)
         _selectedActivityIDs = State(initialValue: Set(event.activityIDs))
         _selectedAffirmationIDs = State(initialValue: Set(event.affirmationIDs))
+        _latitude = State(initialValue: event.latitude)
+        _longitude = State(initialValue: event.longitude)
+        _latitudeText = State(initialValue: String(event.latitude))
+        _longitudeText = State(initialValue: String(event.longitude))
+        
+        #if DEBUG
+        print("📅   - Initialized eventDate: \(event.date.startOfDay)")
+        #endif
     }
     
     var body: some View {
         NavigationStack {
             Form {
-                // Location Section
-                Section("Location") {
+                // Location Section - matching Travel History style
+                Section {
                     Picker("Location", selection: $selectedLocation) {
                         ForEach(store.locations, id: \.id) { location in
                             HStack {
@@ -606,14 +697,68 @@ struct ModernEventEditorSheet: View {
                             .tag(location)
                         }
                     }
+                    .onChange(of: selectedLocation) { oldValue, newValue in
+                        // Auto-populate fields from location
+                        populateFieldsFromLocation(newValue)
+                    }
                     
-                    TextField("City", text: $city)
-                    TextField("Country", text: $country)
+                    // City field with icon
+                    HStack {
+                        Image(systemName: "building.2.fill")
+                            .foregroundColor(.orange)
+                            .frame(width: 30)
+                        TextField("City", text: $city)
+                    }
+                    
+                    // State field with icon
+                    HStack {
+                        Image(systemName: "map.fill")
+                            .foregroundColor(.green)
+                            .frame(width: 30)
+                        TextField("State/Province", text: $state)
+                    }
+                    
+                    // Country field with icon
+                    HStack {
+                        Image(systemName: "globe")
+                            .foregroundColor(.purple)
+                            .frame(width: 30)
+                        TextField("Country", text: $country)
+                    }
+                } header: {
+                    Label("Location Details", systemImage: "map")
+                } footer: {
+                    if isOtherSelected {
+                        Text("For 'Other' locations, enter city/state manually. Country will auto-populate from coordinates but can be overridden.")
+                            .font(.caption)
+                    } else {
+                        Text("Location details inherited from '\(selectedLocation.name)'. You can override any field.")
+                            .font(.caption)
+                    }
+                }
+                
+                // Coordinates Section (only for "Other" location)
+                if isOtherSelected {
+                    coordinatesSection
                 }
                 
                 // Date & Time
                 Section("Date & Time") {
-                    DatePicker("Event Date", selection: $eventDate)
+                    DatePicker(
+                        "Event Date",
+                        selection: $eventDate,
+                        displayedComponents: .date
+                    )
+                    .environment(\.calendar, utcCalendar)
+                    .environment(\.timeZone, TimeZone(secondsFromGMT: 0)!)
+                    #if DEBUG
+                    .onChange(of: eventDate) { oldValue, newValue in
+                        print("📅 [ModernEventEditorSheet] DatePicker changed:")
+                        print("📅   - Old: \(oldValue)")
+                        print("📅   - New: \(newValue)")
+                        print("📅   - New (startOfDay): \(newValue.startOfDay)")
+                    }
+                    #endif
                 }
                 
                 // Stay Type Section
@@ -797,24 +942,223 @@ struct ModernEventEditorSheet: View {
         }
     }
     
+    // MARK: - Coordinates Section
+    private var coordinatesSection: some View {
+        Section {
+            VStack(spacing: 12) {
+                // Fetch current location button and status
+                HStack {
+                    Button {
+                        geocodeError = nil
+                        locationManager.requestCurrentLocation()
+                    } label: {
+                        if locationManager.isRequestInFlight {
+                            HStack(spacing: 6) {
+                                ProgressView().scaleEffect(0.8)
+                                Text("Getting Current Location…")
+                            }
+                        } else {
+                            Label("Get Current Location", systemImage: "location.circle.fill")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    
+                    Spacer(minLength: 8)
+                    
+                    // Show quick status/error
+                    if let msg = locationManager.errorMessage ?? geocodeError {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text(msg)
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
+                    } else if locationManager.location != nil && !locationManager.isRequestInFlight {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text("Location updated")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                        }
+                    }
+                }
+                
+                // When we get a fix, update fields and reverse geocode city
+                .onChange(of: locationManager.location) { _, newValue in
+                    guard let loc = newValue else { return }
+                    latitude = loc.coordinate.latitude
+                    longitude = loc.coordinate.longitude
+                    latitudeText = String(latitude)
+                    longitudeText = String(longitude)
+                    
+                    print("🔍 [LocationManager] Got location - Latitude: \(latitude), Longitude: \(longitude)")
+                    
+                    Task {
+                        await reverseGeocodeAndSetCity(for: loc)
+                    }
+                }
+                
+                // Latitude
+                HStack {
+                    Image(systemName: "location")
+                        .foregroundColor(.blue)
+                        .frame(width: 30)
+                    Text("Latitude")
+                        .frame(width: 80, alignment: .leading)
+                    Spacer()
+                    TextField("0.0", text: Binding<String>(
+                        get: { latitudeText },
+                        set: { newValue in
+                            latitudeText = newValue
+                            if let doubleValue = Double(newValue) {
+                                latitude = doubleValue
+                                print("🔍 [Latitude TextField] Updated to: \(latitude)")
+                            } else {
+                                print("⚠️ [Latitude TextField] Failed to parse: \(newValue)")
+                            }
+                        }
+                    ))
+                    .keyboardType(.numbersAndPunctuation)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 120)
+                }
+                
+                Divider()
+                
+                // Longitude
+                HStack {
+                    Image(systemName: "location.fill")
+                        .foregroundColor(.blue)
+                        .frame(width: 30)
+                    Text("Longitude")
+                        .frame(width: 80, alignment: .leading)
+                    Spacer()
+                    TextField("0.0", text: Binding<String>(
+                        get: { longitudeText },
+                        set: { newValue in
+                            longitudeText = newValue
+                            if let doubleValue = Double(newValue) {
+                                longitude = doubleValue
+                                print("🔍 [Longitude TextField] Updated to: \(longitude)")
+                            } else {
+                                print("⚠️ [Longitude TextField] Failed to parse: \(newValue)")
+                            }
+                        }
+                    ))
+                    .keyboardType(.numbersAndPunctuation)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 120)
+                }
+                
+                // Warning if coordinates are missing
+                if latitude == 0.0 && longitude == 0.0 {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                        Text("Coordinates needed for accurate country data")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                    .padding()
+                    .background(Color.orange.opacity(0.1))
+                    .cornerRadius(8)
+                }
+            }
+        } header: {
+            Label("Coordinates", systemImage: "location.circle")
+        } footer: {
+            Text("Coordinates are required for 'Other' locations to determine country information")
+                .font(.caption)
+        }
+    }
+    
+    @MainActor
+    private func reverseGeocodeAndSetCity(for location: CLLocation) async {
+        geocodeError = nil
+        do {
+            let placemarks = try await CLGeocoder().reverseGeocodeLocation(location)
+            if let placemark = placemarks.first {
+                // Auto-populate city
+                let cityName = placemark.locality ?? placemark.administrativeArea ?? ""
+                if !cityName.isEmpty {
+                    city = cityName
+                }
+                
+                // Auto-populate state/province
+                if let stateName = placemark.administrativeArea {
+                    state = stateName
+                }
+                
+                // Auto-populate country
+                if let countryName = placemark.country {
+                    country = countryName
+                }
+            }
+        } catch {
+            geocodeError = "Could not determine location details"
+        }
+    }
+    
+    // Helper: Populate fields from location
+    private func populateFieldsFromLocation(_ location: Location) {
+        if location.name == "Other" {
+            // For "Other", keep existing event values or clear if needed
+            // (User will use GPS or manual entry)
+        } else {
+            // For named locations, populate from location data
+            city = location.city ?? ""
+            state = location.state ?? ""
+            country = location.country ?? ""
+            latitude = location.latitude
+            longitude = location.longitude
+            latitudeText = String(location.latitude)
+            longitudeText = String(location.longitude)
+        }
+    }
+    
     private func saveChanges() {
+        #if DEBUG
+        print("🔍 [ModernEventEditorSheet] Saving event:")
+        print("   Event ID: \(event.id)")
+        print("   Original event.date: \(event.date)")
+        print("   Current eventDate: \(eventDate)")
+        print("   Current eventDate.startOfDay: \(eventDate.startOfDay)")
+        print("   Latitude: \(latitude)")
+        print("   Longitude: \(longitude)")
+        print("   Location: \(selectedLocation.name)")
+        #endif
+        
         // Update event properties
         var updatedEvent = event
         updatedEvent.location = selectedLocation
-        updatedEvent.date = eventDate
+        updatedEvent.date = eventDate.startOfDay  // Normalize to start of day in UTC
         updatedEvent.eventType = eventType.rawValue  // Save the event type
         updatedEvent.city = city
+        updatedEvent.state = state  // v1.5: Save state
         updatedEvent.country = country
         updatedEvent.note = notes
         updatedEvent.people = selectedPeople
         updatedEvent.activityIDs = Array(selectedActivityIDs)
         updatedEvent.affirmationIDs = Array(selectedAffirmationIDs)
-        updatedEvent.latitude = selectedLocation.latitude
-        updatedEvent.longitude = selectedLocation.longitude
+        updatedEvent.latitude = latitude
+        updatedEvent.longitude = longitude
+        
+        #if DEBUG
+        print("   Updated Event - Date: \(updatedEvent.date)")
+        print("   Updated Event - Latitude: \(updatedEvent.latitude), Longitude: \(updatedEvent.longitude)")
+        #endif
         
         // Save via store
         if let index = store.events.firstIndex(where: { $0.id == event.id }) {
             store.events[index] = updatedEvent
+            
+            #if DEBUG
+            print("   After assignment to store - Date: \(store.events[index].date)")
+            print("   After assignment to store - Latitude: \(store.events[index].latitude), Longitude: \(store.events[index].longitude)")
+            #endif
+            
             store.save()
         }
         

@@ -20,39 +20,45 @@ struct Event: Identifiable {
     var location: Location
     var id: String
     var date: Date
-    var city: String?
-    var latitude: Double
-    var longitude: Double
-    var country: String? // NEW: Country field for each event
+    var city: String?               // v1.5: City for "Other" location events only
+    var latitude: Double            // For "Other" location events only
+    var longitude: Double           // For "Other" location events only
+    var country: String?            // Keep for backward compat, derive from location
+    var state: String?              // v1.5: State/province for "Other" location events
     var note: String
     var people: [Person] = []
-    var activityIDs: [String] = [] // NEW: references Activity.id
-    var affirmationIDs: [String] = [] // NEW: references Affirmation.id
+    var activityIDs: [String] = [] // references Activity.id
+    var affirmationIDs: [String] = [] // references Affirmation.id
+    var isGeocoded: Bool = false    // v1.5: Flag to prevent re-geocoding successfully processed events
     
     init(id: String = UUID().uuidString,
          eventType: EventType = .unspecified,
          date: Date,
          location: Location,
-         city: String,
+         city: String? = nil,       // v1.5: City for "Other" events
          latitude: Double,
          longitude: Double,
-         country: String? = nil, // NEW: Country parameter
+         country: String? = nil,
+         state: String? = nil,      // v1.5: State/province
          note: String,
          people: [Person] = [],
          activityIDs: [String] = [],
-         affirmationIDs: [String] = []) {
+         affirmationIDs: [String] = [],
+         isGeocoded: Bool = false) {  // v1.5: Default to false for new events
         self.eventType = eventType.rawValue
         self.date = date
         self.id = id
         self.location = location
-        self.city = city
+        self.city = city            // v1.5
         self.latitude = latitude
         self.longitude = longitude
         self.country = country
+        self.state = state          // v1.5
         self.note = note
         self.people = people
         self.activityIDs = activityIDs
         self.affirmationIDs = affirmationIDs
+        self.isGeocoded = isGeocoded  // v1.5
     }
     
     var dateComponents: DateComponents {
@@ -82,6 +88,58 @@ extension Event {
             return (latitude: location.latitude, longitude: location.longitude)
         }
     }
+    
+    // v1.5: Computed property for effective city
+    var effectiveCity: String? {
+        if location.name == "Other" {
+            return city  // Use event-specific city for "Other"
+        } else {
+            return location.city  // Use location's city for named locations
+        }
+    }
+    
+    // v1.5: Computed property for effective state
+    var effectiveState: String? {
+        if location.name == "Other" {
+            return state  // Use event-specific state for "Other"
+        } else {
+            return location.state  // Use location's state for named locations
+        }
+    }
+    
+    // v1.5: Computed property for effective country
+    var effectiveCountry: String? {
+        if location.name == "Other" {
+            return country  // Use event-specific country for "Other"
+        } else {
+            return location.country  // Use location's country for named locations
+        }
+    }
+    
+    // v1.5: Full address for event display
+    var effectiveAddress: String {
+        if location.name == "Other" {
+            var components: [String] = []
+            if let city = city { components.append(city) }
+            if let state = state { components.append(state) }
+            if let country = country { components.append(country) }
+            return components.isEmpty ? "Other" : components.joined(separator: ", ")
+        } else {
+            return location.shortAddress
+        }
+    }
+    
+    // v1.5: Short address (city, state only)
+    var effectiveShortAddress: String {
+        if location.name == "Other" {
+            var components: [String] = []
+            if let city = city { components.append(city) }
+            if let state = state { components.append(state) }
+            return components.isEmpty ? "Other" : components.joined(separator: ", ")
+        } else {
+            return location.shortAddress
+        }
+    }
 }
 
 extension Event {
@@ -89,9 +147,11 @@ extension Event {
     [
         Event(date: Date(),
               location: Location.sampleData[0],
-              city: Location.sampleData[0].city ?? "city",
+              city: Location.sampleData[0].city,
               latitude: Location.sampleData[0].latitude,
               longitude: Location.sampleData[0].longitude,
+              country: Location.sampleData[0].country,
+              state: Location.sampleData[0].state,
               note: "Note Field ",
               people: [],
               activityIDs: [],

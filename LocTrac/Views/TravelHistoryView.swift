@@ -16,7 +16,7 @@ struct TravelHistoryView: View {
     @State private var sortOrder: SortOrder = .country
     @State private var selectedStay: Event?
     @State private var shareText: String = ""
-    @State private var expandedSections: Set<String> = []  // Track expanded sections by ID
+    @State private var expandedSections: Set<String> = []  // For "Other" filter expand/collapse
     
     enum LocationFilter: String, CaseIterable {
         case locations = "Locations"
@@ -315,14 +315,15 @@ struct TravelHistoryView: View {
         }
     }
     
-    // Location-grouped view (for user-added locations)
+    // Location-grouped view (for user-added locations) - Expand/collapse with year/month grouping
     private var locationGroupedView: some View {
-        ForEach(staysByLocation, id: \.location.id) { locationGroup in
-            let sectionID: String = locationGroup.location.id
+        Group {
+            ForEach(staysByLocation, id: \.location.id) { locationGroup in
+            let sectionID = locationGroup.location.id
             let isExpanded = expandedSections.contains(sectionID)
             
             Section {
-                // Header row - always visible, tap to expand/collapse
+                // Header - tap to expand/collapse
                 Button {
                     withAnimation {
                         if isExpanded {
@@ -344,30 +345,133 @@ struct TravelHistoryView: View {
                 }
                 .buttonStyle(.plain)
                 
-                // Individual stays - only shown when expanded
+                // Expanded content - years with nested months
                 if isExpanded {
-                    ForEach(locationGroup.stays) { stay in
-                        StayRow(
-                            event: stay,
-                            activityCount: stay.activityIDs.count,
-                            peopleCount: stay.people.count,
-                            affirmationCount: stay.affirmationIDs.count
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedStay = stay
+                    let eventsByYear = groupEventsByYear(locationGroup.stays)
+                    
+                    ForEach(eventsByYear, id: \.year) { yearGroup in
+                        let yearSectionID = "\(sectionID)-\(yearGroup.year)"
+                        let isYearExpanded = expandedSections.contains(yearSectionID)
+                        
+                        // Year header
+                        Button {
+                            withAnimation {
+                                if isYearExpanded {
+                                    expandedSections.remove(yearSectionID)
+                                } else {
+                                    expandedSections.insert(yearSectionID)
+                                }
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: "calendar")
+                                    .foregroundColor(.blue)
+                                Text("\(yearGroup.year)")
+                                    .font(.headline)
+                                Spacer()
+                                Text("\(yearGroup.events.count) stays")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Image(systemName: isYearExpanded ? "chevron.up" : "chevron.down")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.vertical, 8)
+                            .padding(.leading, 20)
+                        }
+                        .buttonStyle(.plain)
+                        
+                        // Expanded year content - months
+                        if isYearExpanded {
+                            let eventsByMonth = groupEventsByMonth(yearGroup.events)
+                            
+                            ForEach(eventsByMonth, id: \.month) { monthGroup in
+                                let monthSectionID = "\(yearSectionID)-\(monthGroup.month)"
+                                let isMonthExpanded = expandedSections.contains(monthSectionID)
+                                
+                                // Month header
+                                Button {
+                                    withAnimation {
+                                        if isMonthExpanded {
+                                            expandedSections.remove(monthSectionID)
+                                        } else {
+                                            expandedSections.insert(monthSectionID)
+                                        }
+                                    }
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "calendar.circle")
+                                            .foregroundColor(.green)
+                                        Text(monthGroup.monthName)
+                                            .font(.subheadline)
+                                        Spacer()
+                                        Text("\(monthGroup.events.count) stays")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Image(systemName: isMonthExpanded ? "chevron.up" : "chevron.down")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.vertical, 6)
+                                    .padding(.leading, 40)
+                                }
+                                .buttonStyle(.plain)
+                                
+                                // Individual stays for this month
+                                if isMonthExpanded {
+                                    ForEach(monthGroup.events.sorted { $0.date > $1.date }) { event in
+                                        Button {
+                                            selectedStay = event
+                                        } label: {
+                                            StayRow(
+                                                event: event,
+                                                activityCount: event.activityIDs.count,
+                                                peopleCount: event.people.count,
+                                                affirmationCount: event.affirmationIDs.count
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                        .padding(.leading, 60)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
+            }
         }
+    }
+    
+    // Helper to group events by year
+    private func groupEventsByYear(_ events: [Event]) -> [(year: Int, events: [Event])] {
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: events) { event -> Int in
+            calendar.component(.year, from: event.date)
+        }
+        return grouped.map { (year: $0.key, events: $0.value) }
+            .sorted { $0.year > $1.year }
+    }
+    
+    // Helper to group events by month
+    private func groupEventsByMonth(_ events: [Event]) -> [(month: Int, monthName: String, events: [Event])] {
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: events) { event -> Int in
+            calendar.component(.month, from: event.date)
+        }
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MMMM"
+        
+        return grouped.map { (month: $0.key, monthName: dateFormatter.monthSymbols[$0.key - 1], events: $0.value) }
+            .sorted { $0.month > $1.month }
     }
     
     // Country-grouped view (optimized) - for "Other" filter
     private var countryGroupedView: some View {
-        ForEach(Array(staysByCountry.enumerated()), id: \.offset) { index, countryGroup in
+        ForEach(staysByCountry, id: \.country) { countryGroup in
             Section {
-                ForEach(Array(countryGroup.cities.enumerated()), id: \.offset) { cityIndex, cityGroup in
+                ForEach(countryGroup.cities, id: \.city) { cityGroup in
                     let sectionID = "\(countryGroup.country)-\(cityGroup.city)"
                     let isExpanded = expandedSections.contains(sectionID)
                     
@@ -422,7 +526,7 @@ struct TravelHistoryView: View {
     
     // City-grouped view (optimized) - for "Other" filter
     private var cityGroupedView: some View {
-        ForEach(Array(staysByCity.enumerated()), id: \.offset) { index, cityGroup in
+        ForEach(staysByCity, id: \.city) { cityGroup in
             let sectionID = cityGroup.city
             let isExpanded = expandedSections.contains(sectionID)
             
@@ -862,40 +966,83 @@ struct StayDetailSheet: View {
         }
     }
     
+    // v1.5: Live lookup of current location data (master-detail relationship)
+    private var currentLocation: Location? {
+        store.locations.first(where: { $0.id == event.location.id })
+    }
+    
+    private var displayCity: String {
+        if event.location.name == "Other" {
+            return event.city ?? "Unknown"
+        } else {
+            // Use current location data (live lookup)
+            return currentLocation?.city ?? event.location.city ?? "Unknown"
+        }
+    }
+    
+    private var displayState: String? {
+        if event.location.name == "Other" {
+            return event.state
+        } else {
+            // Use current location data (live lookup)
+            return currentLocation?.state ?? event.location.state
+        }
+    }
+    
+    private var displayCountry: String {
+        if event.location.name == "Other" {
+            return event.country ?? "Unknown"
+        } else {
+            // Use current location data (live lookup)
+            return currentLocation?.country ?? event.location.country ?? "Unknown"
+        }
+    }
+    
     var body: some View {
         NavigationStack {
             List {
-                Section("Location") {
+                Section {
                     HStack {
-                        Text("City")
+                        Label("Name", systemImage: "mappin.circle.fill")
+                            .foregroundColor(.blue)
                         Spacer()
-                        Text(event.city ?? "Unknown")
+                        Text(event.location.name)
                             .foregroundColor(.secondary)
                     }
                     
                     HStack {
-                        Text("Country")
+                        Label("City", systemImage: "building.2.fill")
+                            .foregroundColor(.orange)
                         Spacer()
-                        Text(event.country ?? event.location.country ?? "Unknown")
+                        Text(displayCity)
                             .foregroundColor(.secondary)
                     }
                     
                     HStack {
-                        Text("Location")
+                        Label("State", systemImage: "map.fill")
+                            .foregroundColor(.green)
                         Spacer()
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(event.location.theme.mainColor)
-                                .frame(width: 12, height: 12)
-                            Text(event.location.name)
-                                .foregroundColor(.secondary)
-                        }
+                        Text(displayState ?? "—")
+                            .foregroundColor(.secondary)
                     }
+                    
+                    HStack {
+                        Label("Country", systemImage: "globe")
+                            .foregroundColor(.purple)
+                        Spacer()
+                        Text(displayCountry)
+                            .foregroundColor(.secondary)
+                    }
+                } header: {
+                    Text("Location Details")
+                } footer: {
+                    Text("Current location information (updates when location is edited)")
                 }
                 
-                Section("Details") {
+                Section {
                     HStack {
-                        Text("Date")
+                        Label("Date", systemImage: "calendar")
+                            .foregroundColor(.blue)
                         Spacer()
                         Text(TravelHistoryView.dateFormatter.string(from: event.date))
                             .foregroundColor(.secondary)
@@ -903,22 +1050,39 @@ struct StayDetailSheet: View {
                     
                     if !event.eventType.isEmpty {
                         HStack {
-                            Text("Event Type")
+                            Label("Event Type", systemImage: "tag.fill")
+                                .foregroundColor(.indigo)
                             Spacer()
                             Text(event.eventType.capitalized)
                                 .foregroundColor(.secondary)
                         }
                     }
-                    
-                    if event.latitude != 0 || event.longitude != 0 {
-                        HStack {
-                            Text("Coordinates")
-                            Spacer()
-                            Text(String(format: "%.4f, %.4f", event.latitude, event.longitude))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+                } header: {
+                    Text("Event Details")
+                }
+                
+                Section {
+                    HStack {
+                        Label("Latitude", systemImage: "location.fill")
+                            .foregroundColor(.red)
+                        Spacer()
+                        Text(String(format: "%.6f", event.effectiveCoordinates.latitude))
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundColor(.secondary)
                     }
+                    
+                    HStack {
+                        Label("Longitude", systemImage: "location.fill")
+                            .foregroundColor(.red)
+                        Spacer()
+                        Text(String(format: "%.6f", event.effectiveCoordinates.longitude))
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundColor(.secondary)
+                    }
+                } header: {
+                    Label("GPS Coordinates", systemImage: "point.topleft.down.curvedto.point.filled.bottomright.up")
+                } footer: {
+                    Text("Precise location coordinates for this stay")
                 }
                 
                 // Notes section
@@ -1033,6 +1197,191 @@ struct StayDetailSheet: View {
                     }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Travel Location Detail View with Year/Month Drill-Down
+struct TravelLocationDetailView: View {
+    @EnvironmentObject var store: DataStore
+    let location: Location
+    let events: [Event]
+    @State private var selectedStay: Event?
+    
+    // Group events by year
+    private var eventsByYear: [(year: Int, events: [Event])] {
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: events) { event -> Int in
+            calendar.component(.year, from: event.date)
+        }
+        return grouped.map { (year: $0.key, events: $0.value.sorted { $0.date > $1.date }) }
+            .sorted { $0.year > $1.year }  // Most recent year first
+    }
+    
+    var body: some View {
+        List {
+            // Summary section
+            Section {
+                HStack(spacing: 16) {
+                    StatBox(title: "Total Stays", value: "\(events.count)", color: .blue)
+                    StatBox(title: "Years", value: "\(eventsByYear.count)", color: .green)
+                    if let firstDate = events.map({ $0.date }).min(),
+                       let lastDate = events.map({ $0.date }).max() {
+                        let years = Calendar.current.dateComponents([.year], from: firstDate, to: lastDate).year ?? 0
+                        StatBox(title: "Span", value: "\(years)y", color: .purple)
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+            
+            // Year sections
+            ForEach(eventsByYear, id: \.year) { yearGroup in
+                NavigationLink(destination: TravelYearDetailView(
+                    location: location,
+                    year: yearGroup.year,
+                    events: yearGroup.events
+                ).environmentObject(store)) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(yearGroup.year)")
+                                .font(.headline)
+                            Text("\(yearGroup.events.count) stays")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+        .navigationTitle(location.name)
+        .navigationBarTitleDisplayMode(.large)
+    }
+}
+
+// MARK: - Travel Year Detail View with Month Drill-Down
+struct TravelYearDetailView: View {
+    @EnvironmentObject var store: DataStore
+    let location: Location
+    let year: Int
+    let events: [Event]
+    @State private var selectedStay: Event?
+    
+    // Group events by month
+    private var eventsByMonth: [(month: Int, monthName: String, events: [Event])] {
+        let calendar = Calendar.current
+        let grouped = Dictionary(grouping: events) { event -> Int in
+            calendar.component(.month, from: event.date)
+        }
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MMMM"
+        
+        return grouped.map { (month: $0.key, monthName: dateFormatter.monthSymbols[$0.key - 1], events: $0.value.sorted { $0.date > $1.date }) }
+            .sorted { $0.month > $1.month }  // Most recent month first
+    }
+    
+    var body: some View {
+        List {
+            // Year summary
+            Section {
+                HStack(spacing: 16) {
+                    StatBox(title: "Stays", value: "\(events.count)", color: .blue)
+                    StatBox(title: "Months", value: "\(eventsByMonth.count)", color: .green)
+                    StatBox(title: "Avg/Month", value: String(format: "%.1f", Double(events.count) / Double(eventsByMonth.count)), color: .orange)
+                }
+                .padding(.vertical, 8)
+            }
+            
+            // Month sections
+            ForEach(eventsByMonth, id: \.month) { monthGroup in
+                NavigationLink(destination: TravelMonthDetailView(
+                    location: location,
+                    year: year,
+                    month: monthGroup.month,
+                    monthName: monthGroup.monthName,
+                    events: monthGroup.events
+                ).environmentObject(store)) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(monthGroup.monthName)
+                                .font(.headline)
+                            Text("\(monthGroup.events.count) stays")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+        .navigationTitle("\(location.name) - \(year)")
+        .navigationBarTitleDisplayMode(.large)
+    }
+}
+
+// MARK: - Travel Month Detail View with Individual Stays
+struct TravelMonthDetailView: View {
+    @EnvironmentObject var store: DataStore
+    let location: Location
+    let year: Int
+    let month: Int
+    let monthName: String
+    let events: [Event]
+    @State private var selectedStay: Event?
+    
+    var body: some View {
+        List {
+            // Month summary
+            Section {
+                HStack(spacing: 16) {
+                    StatBox(title: "Stays", value: "\(events.count)", color: .blue)
+                    if !events.flatMap({ $0.activityIDs }).isEmpty {
+                        StatBox(title: "Activities", value: "\(Set(events.flatMap({ $0.activityIDs })).count)", color: .green)
+                    }
+                    if !events.flatMap({ $0.people }).isEmpty {
+                        StatBox(title: "People", value: "\(Set(events.flatMap({ $0.people }).map({ $0.displayName })).count)", color: .purple)
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+            
+            // Individual stays
+            Section {
+                ForEach(events.sorted { $0.date > $1.date }) { event in
+                    Button {
+                        selectedStay = event
+                    } label: {
+                        StayRow(
+                            event: event,
+                            activityCount: event.activityIDs.count,
+                            peopleCount: event.people.count,
+                            affirmationCount: event.affirmationIDs.count
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            } header: {
+                Text("All Stays")
+            }
+        }
+        .navigationTitle("\(monthName) \(year)")
+        .navigationBarTitleDisplayMode(.large)
+        .sheet(item: $selectedStay) { stay in
+            StayDetailSheet(event: stay)
+                .environmentObject(store)
         }
     }
 }

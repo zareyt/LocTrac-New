@@ -67,7 +67,11 @@ class DataStore: ObservableObject {
     }
     
     func delete(_ event: Event) {
-        print("🗑️ delete(Event) called for id=\(event.id)")
+        #if DEBUG
+        Task { @MainActor in
+            DebugConfig.shared.log(.dataStore, "delete(Event) called for id=\(event.id)")
+        }
+        #endif
         if let index = events.firstIndex(where: {$0.id == event.id}) {
             changedEvent = events.remove(at: index)
             invalidateCacheForEvent(event, isDelete: true)
@@ -75,7 +79,11 @@ class DataStore: ObservableObject {
             // Check if this event's deletion affects any trips
             checkAndUpdateTripsForDeletedEvent(event)
         } else {
-            print("⚠️ delete(Event): event not found in store")
+            #if DEBUG
+            Task { @MainActor in
+                DebugConfig.shared.log(.dataStore, "delete(Event): event not found in store")
+            }
+            #endif
         }
         storeData()
         
@@ -93,7 +101,11 @@ class DataStore: ObservableObject {
     }
 
     func add(_ event: Event) {
-        print("➕ add(Event) called for id=\(event.id), date=\(event.date), location='\(event.location.name)'")
+        #if DEBUG
+        Task { @MainActor in
+            DebugConfig.shared.log(.dataStore, "add(Event) called for id=\(event.id), date=\(event.date), location='\(event.location.name)'")
+        }
+        #endif
         events.append(event)
         changedEvent = event
         
@@ -111,20 +123,127 @@ class DataStore: ObservableObject {
     }
 
     func update(_ location: Location) {
+        #if DEBUG
+        Task { @MainActor in
+            DebugConfig.shared.log(.dataStore, "========== LOCATION UPDATE START ==========")
+            DebugConfig.shared.log(.dataStore, "Updating location: \(location.name)")
+            DebugConfig.shared.log(.dataStore, "Location ID: \(location.id)")
+            DebugConfig.shared.log(.dataStore, "New theme: \(location.theme.rawValue)")
+            DebugConfig.shared.log(.dataStore, "New customColorHex: \(location.customColorHex ?? "nil")")
+        }
+        #endif
+        
         if let index = locations.firstIndex(where: {$0.id == location.id}) {
+            #if DEBUG
+            let oldTheme = locations[index].theme.rawValue
+            let oldColorHex = locations[index].customColorHex
+            Task { @MainActor in
+                DebugConfig.shared.log(.dataStore, "Found location at index \(index) in locations array")
+            }
+            #endif
+            
             movedLocation = locations[index]
             locations[index].name = location.name
             locations[index].city = location.city
+            locations[index].state = location.state  // v1.5: Update state
             locations[index].latitude = location.latitude
             locations[index].longitude = location.longitude
             locations[index].country = location.country
+            locations[index].countryCode = location.countryCode  // v1.5: Update country code
             locations[index].theme = location.theme
             locations[index].imageIDs = location.imageIDs
             locations[index].customColorHex = location.customColorHex // NEW: Update custom color
             changedLocation = location
+            
+            #if DEBUG
+            Task { @MainActor in
+                DebugConfig.shared.log(.dataStore, "Location updated in array:")
+                DebugConfig.shared.log(.dataStore, "  Old theme: \(oldTheme) → New theme: \(locations[index].theme.rawValue)")
+                DebugConfig.shared.log(.dataStore, "  Old colorHex: \(oldColorHex ?? "nil") → New colorHex: \(locations[index].customColorHex ?? "nil")")
+            }
+            #endif
+            
             invalidateCacheForLocation(location)
+            
+            // CRITICAL: Update all events that reference this location
+            // Events store a copy of the location, so we need to update them too
+            let updatedLocation = locations[index]
+            
+            #if DEBUG
+            var eventsUpdated = 0
+            Task { @MainActor in
+                DebugConfig.shared.log(.dataStore, "Searching for events with location ID: \(location.id)")
+                DebugConfig.shared.log(.dataStore, "Total events in store: \(events.count)")
+            }
+            #endif
+            
+            for i in events.indices {
+                if events[i].location.id == location.id {
+                    #if DEBUG
+                    let oldEventLocationTheme = events[i].location.theme.rawValue
+                    let oldEventLocationColorHex = events[i].location.customColorHex
+                    #endif
+                    
+                    events[i].location = updatedLocation
+                    
+                    #if DEBUG
+                    eventsUpdated += 1
+                    let eventID = events[i].id
+                    let eventDate = events[i].date.formatted(date: .abbreviated, time: .omitted)
+                    let newTheme = events[i].location.theme.rawValue
+                    let newColorHex = events[i].location.customColorHex
+                    Task { @MainActor in
+                        DebugConfig.shared.log(.dataStore, "Updated event \(i): \(eventID)")
+                        DebugConfig.shared.log(.dataStore, "  Event date: \(eventDate)")
+                        DebugConfig.shared.log(.dataStore, "  Old location theme: \(oldEventLocationTheme)")
+                        DebugConfig.shared.log(.dataStore, "  New location theme: \(newTheme)")
+                        DebugConfig.shared.log(.dataStore, "  Old location colorHex: \(oldEventLocationColorHex ?? "nil")")
+                        DebugConfig.shared.log(.dataStore, "  New location colorHex: \(newColorHex ?? "nil")")
+                    }
+                    #endif
+                }
+            }
+            
+            #if DEBUG
+            let finalEventsUpdated = eventsUpdated
+            let finalCalendarToken = UUID()
+            Task { @MainActor in
+                DebugConfig.shared.log(.dataStore, "Total events updated: \(finalEventsUpdated)")
+                DebugConfig.shared.log(.dataStore, "Calling bumpCalendarRefresh()")
+            }
+            #endif
+            bumpCalendarRefresh()
+            #if DEBUG
+            Task { @MainActor in
+                DebugConfig.shared.log(.dataStore, "Calendar refresh token bumped to: \(calendarRefreshToken)")
+                DebugConfig.shared.log(.dataStore, "Calling bumpDataUpdate()")
+            }
+            #endif
+            bumpDataUpdate()
+            #if DEBUG
+            Task { @MainActor in
+                DebugConfig.shared.log(.dataStore, "Data update token bumped to: \(dataUpdateToken)")
+            }
+            #endif
+        } else {
+            #if DEBUG
+            Task { @MainActor in
+                DebugConfig.shared.log(.dataStore, "Location not found in locations array!")
+            }
+            #endif
         }
+        
+        #if DEBUG
+        Task { @MainActor in
+            DebugConfig.shared.log(.dataStore, "Saving data to disk...")
+        }
+        #endif
         storeData()
+        #if DEBUG
+        Task { @MainActor in
+            DebugConfig.shared.log(.dataStore, "========== LOCATION UPDATE END ==========")
+        }
+        #endif
     }
     
     func update(_ event: Event) {
@@ -133,13 +252,14 @@ class DataStore: ObservableObject {
             events[index].date = event.date
             events[index].eventType = event.eventType
             events[index].location = event.location
-            events[index].city = event.city
+            events[index].city = event.city        // v1.5: Update city
             events[index].latitude = event.latitude
             events[index].longitude = event.longitude
-            events[index].country = event.country // NEW: Update country
+            events[index].country = event.country
+            events[index].state = event.state  // v1.5: Update state
             events[index].note = event.note
             events[index].people = event.people
-            events[index].activityIDs = event.activityIDs // NEW
+            events[index].activityIDs = event.activityIDs
             changedEvent = event
             storeData()
             invalidateCacheForEvent(event)
@@ -225,7 +345,11 @@ class DataStore: ObservableObject {
     // Load preset affirmations on first launch
     func seedDefaultAffirmations() {
         if affirmations.isEmpty {
-            print("🌟 Seeding default affirmations")
+            #if DEBUG
+            Task { @MainActor in
+                DebugConfig.shared.log(.dataStore, "Seeding default affirmations")
+            }
+            #endif
             affirmations = Affirmation.presets
             storeData()
         }
@@ -236,31 +360,51 @@ class DataStore: ObservableObject {
     func storeData() -> Void {
         let export = Export(locations: self.locations, events: self.events, activities: self.activities, affirmations: self.affirmations, trips: self.trips)
         
+        #if DEBUG
         // Debug: Check affirmation IDs in events before export
         let eventsWithAffirmations = self.events.filter { !$0.affirmationIDs.isEmpty }
-        print("💾 [storeData] Events with affirmations: \(eventsWithAffirmations.count) out of \(self.events.count) total")
-        if let firstWithAffirmations = eventsWithAffirmations.first {
-            print("   Example: Event '\(firstWithAffirmations.location.name)' has \(firstWithAffirmations.affirmationIDs.count) affirmation IDs: \(firstWithAffirmations.affirmationIDs)")
+        Task { @MainActor in
+            DebugConfig.shared.log(.persistence, "Events with affirmations: \(eventsWithAffirmations.count) out of \(self.events.count) total")
+            if let firstWithAffirmations = eventsWithAffirmations.first {
+                DebugConfig.shared.log(.persistence, "  Example: Event '\(firstWithAffirmations.location.name)' has \(firstWithAffirmations.affirmationIDs.count) affirmation IDs")
+            }
         }
+        #endif
         
         do {
             let encodedData = try JSONEncoder().encode(export)
             if let filepath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("backup.json") {
                 do {
                     try encodedData.write(to: filepath)
-                    print(filepath)
-                    print("💾 Data saved successfully")
+                    #if DEBUG
+                    Task { @MainActor in
+                        DebugConfig.shared.log(.persistence, "Data saved to: \(filepath.path)")
+                        DebugConfig.shared.log(.persistence, "Data saved successfully")
+                    }
+                    #endif
                     bumpDataUpdate() // Notify that data has changed
                 } catch {
-                    print(error.localizedDescription)
-                    print("❌ Could not save data")
+                    #if DEBUG
+                    Task { @MainActor in
+                        DebugConfig.shared.log(.persistence, "Error: \(error.localizedDescription)")
+                        DebugConfig.shared.log(.persistence, "Could not save data")
+                    }
+                    #endif
                 }
             } else {
-                print("❌ Could not create filepath")
+                #if DEBUG
+                Task { @MainActor in
+                    DebugConfig.shared.log(.persistence, "Could not create filepath")
+                }
+                #endif
             }
         } catch {
-            print(error.localizedDescription)
-            print("❌ Could not encode data")
+            #if DEBUG
+            Task { @MainActor in
+                DebugConfig.shared.log(.persistence, "Error: \(error.localizedDescription)")
+                DebugConfig.shared.log(.persistence, "Could not encode data")
+            }
+            #endif
         }
     }
 
@@ -269,8 +413,12 @@ class DataStore: ObservableObject {
         
         // Check if backup.json exists
         if !FileManager().fileExists(atPath: backupURL.path) {
-            print("📝 No backup.json found - this appears to be first launch")
-            print("🎯 Initializing with empty data for wizard")
+            #if DEBUG
+            Task { @MainActor in
+                DebugConfig.shared.log(.persistence, "No backup.json found - this appears to be first launch")
+                DebugConfig.shared.log(.persistence, "Initializing with empty data for wizard")
+            }
+            #endif
             // Initialize with empty data - wizard will populate
             self.locations = []
             self.events = []
@@ -281,7 +429,11 @@ class DataStore: ObservableObject {
             return
         }
         
-        print("📂 Loading from backup.json")
+        #if DEBUG
+        Task { @MainActor in
+            DebugConfig.shared.log(.persistence, "Loading from backup.json")
+        }
+        #endif
         loadFromURL(backupURL)
         
         // Repair older backups that might be missing the "Other" location
@@ -290,7 +442,11 @@ class DataStore: ObservableObject {
     
     private func loadFromURL(_ url: URL) {
         guard let data = try? Data(contentsOf: url) else {
-            print("❌ Unable to load data from \(url)")
+            #if DEBUG
+            Task { @MainActor in
+                DebugConfig.shared.log(.persistence, "Unable to load data from \(url)")
+            }
+            #endif
             // Initialize with empty data rather than crashing
             self.locations = []
             self.events = []
@@ -302,7 +458,11 @@ class DataStore: ObservableObject {
         }
         
         guard let decodedImport = try? JSONDecoder().decode(Import.self, from: data) else {
-            print("❌ Failed to decode JSON from \(url)")
+            #if DEBUG
+            Task { @MainActor in
+                DebugConfig.shared.log(.persistence, "Failed to decode JSON from \(url)")
+            }
+            #endif
             // Initialize with empty data rather than crashing
             self.locations = []
             self.events = []
@@ -316,22 +476,34 @@ class DataStore: ObservableObject {
             Location(id: location.id,
                      name: location.name,
                      city: location.city,
+                     state: location.state,        // v1.5
                      latitude: location.latitude,
                      longitude: location.longitude,
                      country: location.country,
+                     countryCode: location.countryCode, // v1.5
                      theme: Theme(rawValue: location.theme) ?? .purple,
                      imageIDs: location.imageIDs,
-                     customColorHex: location.customColorHex) // NEW: Load custom color
+                     customColorHex: location.customColorHex)
         })
         self.events = decodedImport.events.map({ event in
             Event(id: event.id,
                   eventType: Event.EventType(rawValue: event.eventType) ?? .unspecified,
                   date: event.date,
-                  location: locations.first(where: {$0.id == event.locationID}) ?? Location(name: "Unknown", city: nil, latitude: 0, longitude: 0, theme: .purple),
-                  city: event.city,
+                  location: locations.first(where: {$0.id == event.locationID}) ?? Location(
+                      name: "Unknown",
+                      city: "Unknown",
+                      state: nil,
+                      latitude: 0,
+                      longitude: 0,
+                      country: nil,
+                      countryCode: nil,
+                      theme: .purple
+                  ),
+                  city: event.city,             // v1.5: Load city for "Other" events
                   latitude: event.latitude,
                   longitude: event.longitude,
                   country: event.country,
+                  state: event.state,  // v1.5: Load state if available
                   note: event.note,
                   people: event.people ?? [],
                   activityIDs: event.activityIDs ?? [],
@@ -448,7 +620,7 @@ class DataStore: ObservableObject {
     /// Check if a new event should create a trip from the previous event
     private func checkAndCreateTripForNewEvent(_ newEvent: Event) {
         print("\n🚗 [Auto-Trip] Checking if new event creates a trip...")
-        print("   New event: \(newEvent.city ?? "nil") at location '\(newEvent.location.name)' on \(newEvent.date.formatted(date: .abbreviated, time: .omitted))")
+        print("   New event: at location '\(newEvent.location.name)' on \(newEvent.date.formatted(date: .abbreviated, time: .omitted))")
         print("   New event STORED coords: (\(newEvent.latitude), \(newEvent.longitude))")
         print("   New event EFFECTIVE coords: (\(newEvent.effectiveCoordinates.latitude), \(newEvent.effectiveCoordinates.longitude))")
         
@@ -461,7 +633,7 @@ class DataStore: ObservableObject {
         }
         
         let previousEvent = sortedEvents[newEventIndex - 1]
-        print("   Previous event: \(previousEvent.city ?? "nil") at location '\(previousEvent.location.name)' on \(previousEvent.date.formatted(date: .abbreviated, time: .omitted))")
+        print("   Previous event: at location '\(previousEvent.location.name)' on \(previousEvent.date.formatted(date: .abbreviated, time: .omitted))")
         print("   Previous event STORED coords: (\(previousEvent.latitude), \(previousEvent.longitude))")
         print("   Previous event EFFECTIVE coords: (\(previousEvent.effectiveCoordinates.latitude), \(previousEvent.effectiveCoordinates.longitude))")
         print("   Location comparison: '\(previousEvent.location.id)' vs '\(newEvent.location.id)' (same: \(previousEvent.location.id == newEvent.location.id))")
@@ -510,7 +682,7 @@ class DataStore: ObservableObject {
         // Also check if there's a NEXT event that would need a trip TO it
         if newEventIndex < sortedEvents.count - 1 {
             let nextEvent = sortedEvents[newEventIndex + 1]
-            print("   Checking forward trip to: \(nextEvent.city ?? "Unknown")")
+            print("   Checking forward trip to: \(nextEvent.location.name)")
             
             if let suggestedTrip = TripMigrationUtility.suggestTrip(from: newEvent, to: nextEvent) {
                 let tripExists = trips.contains { trip in
@@ -536,7 +708,7 @@ class DataStore: ObservableObject {
     /// Check if deleting an event affects any trips and remove them
     private func checkAndUpdateTripsForDeletedEvent(_ deletedEvent: Event) {
         print("\n🗑️ [Auto-Trip] Checking if deleted event affects trips...")
-        print("   Deleted event: \(deletedEvent.city ?? "Unknown") on \(deletedEvent.date.formatted(date: .abbreviated, time: .omitted))")
+        print("   Deleted event: \(deletedEvent.location.name) on \(deletedEvent.date.formatted(date: .abbreviated, time: .omitted))")
         
         // Find trips that reference this event
         let affectedTrips = trips.filter { trip in
@@ -573,8 +745,8 @@ class DataStore: ObservableObject {
         if let beforeEvent = eventsBeforeDeleted.last,
            let afterEvent = eventsAfterDeleted.first {
             print("   Checking if new trip needed between remaining events:")
-            print("   - Before: \(beforeEvent.city ?? "Unknown")")
-            print("   - After: \(afterEvent.city ?? "Unknown")")
+            print("   - Before: \(beforeEvent.location.name)")
+            print("   - After: \(afterEvent.location.name)")
             
             if let newTrip = TripMigrationUtility.suggestTrip(from: beforeEvent, to: afterEvent) {
                 let tripExists = trips.contains { trip in
@@ -644,7 +816,6 @@ class DataStore: ObservableObject {
             var updatedEvents = events
             var processedCount = 0
             var usedLocationCountry = 0
-            var geocodedFromCity = 0
             
             for idx in updatedEvents.indices {
                 if updatedEvents[idx].country == nil {
@@ -676,35 +847,19 @@ class DataStore: ObservableObject {
                         // Delay to avoid rate limiting
                         try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
                     } else {
-                        // Event has (0.0, 0.0) - try to geocode from city name
-                        if let cityName = event.city, !cityName.isEmpty {
-                            if let result = await geocodeCity(cityName) {
-                                updatedEvents[idx].latitude = result.latitude
-                                updatedEvents[idx].longitude = result.longitude
-                                updatedEvents[idx].country = result.country
-                                geocodedFromCity += 1
-                                
-                                // Longer delay to avoid rate limiting (50 requests per 60 seconds = ~1.2 seconds each)
-                                try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
-                            } else if let locationCountry = event.location.country {
-                                // Geocoding failed, use location country
-                                updatedEvents[idx].country = locationCountry
-                                usedLocationCountry += 1
-                            }
-                        } else {
-                            // No city name - use location's country if available, otherwise leave empty
-                            if let locationCountry = event.location.country {
-                                updatedEvents[idx].country = locationCountry
-                                usedLocationCountry += 1
-                            }
-                            // If no location country, event will remain without country data
+                        // Event has (0.0, 0.0) - can't geocode without coordinates
+                        // Use location's country if available
+                        if let locationCountry = event.location.country {
+                            updatedEvents[idx].country = locationCountry
+                            usedLocationCountry += 1
                         }
+                        // If no location country, event will remain without country data
                     }
                 }
             }
             
             self.events = updatedEvents
-            print("   ✅ Geocoded from coords: \(processedCount), From city: \(geocodedFromCity), Used location country: \(usedLocationCountry)")
+            print("   ✅ Geocoded from coords: \(processedCount), Used location country: \(usedLocationCountry)")
         }
         
         // Save everything
@@ -793,9 +948,11 @@ class DataStore: ObservableObject {
         let other = Location(
             name: "Other",
             city: "None",
+            state: nil,
             latitude: 0.0,
             longitude: 0.0,
             country: nil,
+            countryCode: nil,
             theme: .yellow
         )
         locations.append(other)
@@ -806,5 +963,42 @@ class DataStore: ObservableObject {
         print("✅ Seeded required 'Other' location")
         return true
     }
+    
+    // MARK: - Debug Helpers
+    
+    #if DEBUG
+    /// Debug helper: Print all events for a specific date
+    func debugPrintEventsForDate(_ date: Date) {
+        let targetDay = date.startOfDay
+        let eventsForDate = events.filter { $0.date.startOfDay == targetDay }
+        
+        print("\n📅 DEBUG: Events for \(date.formatted(date: .abbreviated, time: .omitted))")
+        print("   Target start of day: \(targetDay)")
+        print("   Total events found: \(eventsForDate.count)")
+        
+        let validLocationIDs = Set(locations.map { $0.id })
+        
+        for (index, event) in eventsForDate.enumerated() {
+            let isValid = validLocationIDs.contains(event.location.id)
+            print("\n   Event #\(index + 1): \(isValid ? "✅ VALID" : "❌ ORPHAN")")
+            print("      ID: \(event.id)")
+            print("      FULL DATE: \(event.date)")
+            print("      Start of Day: \(event.date.startOfDay)")
+            print("      Location: \(event.location.name)")
+            print("      Location ID: \(event.location.id)")
+            print("      City: '\(event.city ?? "nil")'")
+            print("      State: '\(event.state ?? "nil")'")
+            print("      Country: '\(event.country ?? "nil")'")
+            print("      Note: '\(event.note.isEmpty ? "(empty)" : event.note)'")
+            print("      Event Type: \(event.eventType)")
+        }
+        
+        if eventsForDate.isEmpty {
+            print("   ⚠️ No events found for this date")
+        }
+        
+        print("")
+    }
+    #endif
 }
 

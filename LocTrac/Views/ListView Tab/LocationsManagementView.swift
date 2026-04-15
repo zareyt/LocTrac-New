@@ -7,6 +7,7 @@
 
 import SwiftUI
 import MapKit
+import PhotosUI
 
 struct LocationsManagementView: View {
     @EnvironmentObject var store: DataStore
@@ -453,10 +454,17 @@ struct LocationEditorSheet: View {
     let location: Location
     
     @StateObject private var editor: LocationSheetEditorModel
+    @State private var photoItems: [PhotosPickerItem] = []
+    @State private var isShowingDeleteConfirm = false
+    @State private var imageToDelete: String?
     
     init(location: Location) {
         self.location = location
         self._editor = StateObject(wrappedValue: LocationSheetEditorModel(location: location, isDefault: false))
+    }
+    
+    private var liveLocation: Location? {
+        store.locations.first(where: { $0.id == location.id })
     }
     
     var body: some View {
@@ -470,30 +478,77 @@ struct LocationEditorSheet: View {
         
         NavigationStack {
             Form {
-                // Basic info
-                Section("Location Details") {
-                    TextField("Name", text: $editor.name)
-                    TextField("City", text: $editor.city)
-                    TextField("Country", text: $editor.country)
+                // Photos Section
+                if let loc = liveLocation {
+                    Section {
+                        imageSection(loc)
+                    } header: {
+                        Text("Photos")
+                    }
                 }
                 
-                // Coordinates
-                Section("Coordinates") {
+                // Basic info
+                Section {
                     HStack {
-                        Text("Latitude")
+                        Label("Name", systemImage: "mappin.circle.fill")
+                            .foregroundColor(.blue)
                         Spacer()
-                        TextField("Latitude", value: $editor.latitude, format: .number)
+                        TextField("Required", text: $editor.name)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    
+                    HStack {
+                        Label("City", systemImage: "building.2.fill")
+                            .foregroundColor(.orange)
+                        Spacer()
+                        TextField("e.g., Denver", text: $editor.city)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    
+                    HStack {
+                        Label("State", systemImage: "map.fill")
+                            .foregroundColor(.green)
+                        Spacer()
+                        TextField("e.g., Colorado", text: $editor.state)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    
+                    HStack {
+                        Label("Country", systemImage: "globe")
+                            .foregroundColor(.purple)
+                        Spacer()
+                        TextField("e.g., United States", text: $editor.country)
+                            .multilineTextAlignment(.trailing)
+                    }
+                } header: {
+                    Text("Location Details")
+                } footer: {
+                    Text("Name is required. City, State, and Country help organize and display your locations.")
+                }
+                
+                // GPS Coordinates
+                Section {
+                    HStack {
+                        Label("Latitude", systemImage: "location.fill")
+                            .foregroundColor(.red)
+                        Spacer()
+                        TextField("0.0", value: $editor.latitude, format: .number)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                     }
                     
                     HStack {
-                        Text("Longitude")
+                        Label("Longitude", systemImage: "location.fill")
+                            .foregroundColor(.red)
                         Spacer()
-                        TextField("Longitude", value: $editor.longitude, format: .number)
+                        TextField("0.0", value: $editor.longitude, format: .number)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                     }
+                } header: {
+                    Label("GPS Coordinates", systemImage: "point.topleft.down.curvedto.point.filled.bottomright.up")
+                } footer: {
+                    Text("Latitude: -90° to 90° (N/S)\nLongitude: -180° to 180° (E/W)")
                 }
                 
                 // Map preview
@@ -535,7 +590,7 @@ struct LocationEditorSheet: View {
                             .foregroundColor(.secondary)
                     }
                     
-                    if let imageIDs = location.imageIDs {
+                    if let imageIDs = liveLocation?.imageIDs {
                         HStack {
                             Text("Photos")
                             Spacer()
@@ -561,6 +616,125 @@ struct LocationEditorSheet: View {
                     .disabled(editor.name.isEmpty)
                 }
             }
+            .confirmationDialog("Delete Photo?", isPresented: $isShowingDeleteConfirm, titleVisibility: .visible) {
+                Button("Delete", role: .destructive) {
+                    if let filename = imageToDelete, let loc = liveLocation {
+                        deleteImage(filename: filename, from: loc)
+                    }
+                }
+                Button("Cancel", role: .cancel) { imageToDelete = nil }
+            }
+            .onChange(of: photoItems) { oldItems, newItems in
+                if let loc = liveLocation {
+                    Task {
+                        await savePhotos(newItems, to: loc)
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - Image Section
+    
+    private func imageSection(_ location: Location) -> some View {
+        VStack(spacing: 8) {
+            if let ids = location.imageIDs, !ids.isEmpty {
+                TabView {
+                    ForEach(ids, id: \.self) { filename in
+                        ZStack(alignment: .topTrailing) {
+                            if let ui = ImageStore.load(filename: filename) {
+                                Image(uiImage: ui)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: UIScreen.main.bounds.width - 40, height: 300)
+                                    .clipped()
+                                    .cornerRadius(12)
+                            } else {
+                                Color.gray.opacity(0.2)
+                                    .overlay(
+                                        Image(systemName: "photo")
+                                            .imageScale(.large)
+                                            .foregroundColor(.secondary)
+                                    )
+                                    .frame(width: UIScreen.main.bounds.width - 40, height: 300)
+                                    .cornerRadius(12)
+                            }
+                            Button {
+                                imageToDelete = filename
+                                isShowingDeleteConfirm = true
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .padding(8)
+                                    .background(Color.red.opacity(0.8))
+                                    .clipShape(Capsule())
+                                    .padding()
+                            }
+                            .accessibilityLabel("Delete Photo")
+                        }
+                    }
+                }
+                .frame(height: 300)
+                .tabViewStyle(PageTabViewStyle())
+            } else {
+                ZStack {
+                    Color(.secondarySystemBackground)
+                    VStack(spacing: 8) {
+                        Image(systemName: "photo.on.rectangle")
+                            .font(.system(size: 40, weight: .regular))
+                            .foregroundColor(.secondary)
+                        Text("No photos yet")
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .frame(height: 180)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            PhotosPicker(selection: $photoItems,
+                         maxSelectionCount: 6,
+                         matching: .images) {
+                Label("Add Photos", systemImage: "plus.circle")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+    }
+    
+    // MARK: - Photo Management
+    
+    private func deleteImage(filename: String, from location: Location) {
+        var updated = location
+        if let idx = updated.imageIDs?.firstIndex(of: filename) {
+            updated.imageIDs?.remove(at: idx)
+        }
+        if updated.imageIDs?.isEmpty == true {
+            updated.imageIDs = nil
+        }
+        ImageStore.delete(filename: filename)
+        store.update(updated)
+    }
+    
+    private func savePhotos(_ items: [PhotosPickerItem], to location: Location) async {
+        var updated = location
+        var currentIDs = updated.imageIDs ?? []
+        
+        for item in items {
+            guard let data = try? await item.loadTransferable(type: Data.self),
+                  let uiImage = UIImage(data: data) else { continue }
+            
+            // Save image with proper error handling
+            if let filename = try? ImageStore.save(image: uiImage) {
+                currentIDs.append(filename)
+            }
+        }
+        
+        updated.imageIDs = currentIDs.isEmpty ? nil : currentIDs
+        store.update(updated)
+        
+        // Clear the picker selection
+        await MainActor.run {
+            photoItems = []
         }
     }
     
@@ -570,12 +744,13 @@ struct LocationEditorSheet: View {
             id: location.id,
             name: editor.name,
             city: editor.city.isEmpty ? nil : editor.city,
+            state: editor.state.isEmpty ? nil : editor.state,  // v1.5: Save state
             latitude: editor.latitude,
             longitude: editor.longitude,
             country: editor.country.isEmpty ? nil : editor.country,
             theme: editor.selectedTheme,
-            imageIDs: location.imageIDs,
-            customColorHex: editor.customColorHex // NEW: Save custom color
+            imageIDs: liveLocation?.imageIDs,  // Preserve current images
+            customColorHex: editor.customColorHex
         )
         
         store.update(updatedLocation)

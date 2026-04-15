@@ -23,6 +23,13 @@ struct ModernEventFormView: View {
     @StateObject var locationManager = LocationManager()
     @State private var geocodeError: String?
     
+    // UTC calendar for consistent date handling (no timezone issues)
+    private var utcCalendar: Calendar {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 0)!
+        return cal
+    }
+    
     // Robust check: selected location matches the store's "Other" by id
     private var isOtherSelected: Bool {
         guard let selected = viewModel.location,
@@ -87,6 +94,7 @@ struct ModernEventFormView: View {
     }
     
     // MARK: - Location Section
+    @ViewBuilder
     private var locationSection: some View {
         Section {
             // Location Picker with color indicators
@@ -103,21 +111,58 @@ struct ModernEventFormView: View {
                 }
             }
             .pickerStyle(.menu)
-            
-            // City field (for "Other" location)
-            if isOtherSelected {
-                HStack {
-                    Image(systemName: "building.2")
-                        .foregroundColor(.blue)
-                        .frame(width: 30)
-                    TextField("City Name", text: Binding(
-                        get: { viewModel.city ?? "" },
-                        set: { viewModel.city = $0.isEmpty ? nil : $0 }
-                    ))
+            .onChange(of: viewModel.location) { oldValue, newValue in
+                // When location changes, auto-populate fields
+                if let location = newValue {
+                    populateFieldsFromLocation(location)
                 }
+            }
+            
+            // City field
+            HStack {
+                Image(systemName: "building.2.fill")
+                    .foregroundColor(.orange)
+                    .frame(width: 30)
+                TextField("City", text: Binding(
+                    get: { viewModel.city ?? "" },
+                    set: { viewModel.city = $0.isEmpty ? nil : $0 }
+                ))
+            }
+            
+            // State field
+            HStack {
+                Image(systemName: "map.fill")
+                    .foregroundColor(.green)
+                    .frame(width: 30)
+                TextField("State/Province", text: Binding(
+                    get: { viewModel.state ?? "" },
+                    set: { viewModel.state = $0.isEmpty ? nil : $0 }
+                ))
+            }
+            
+            // Country field
+            HStack {
+                Image(systemName: "globe")
+                    .foregroundColor(.purple)
+                    .frame(width: 30)
+                TextField("Country", text: Binding(
+                    get: { viewModel.country ?? "" },
+                    set: { viewModel.country = $0.isEmpty ? nil : $0 }
+                ))
             }
         } header: {
             Label("Location Details", systemImage: "map")
+        } footer: {
+            if isOtherSelected {
+                Text("For 'Other' locations, enter city/state manually. Country will auto-populate from coordinates but can be overridden.")
+                    .font(.caption)
+            } else if viewModel.location != nil {
+                Text("Location details inherited from '\(viewModel.location?.name ?? "")'. You can override any field.")
+                    .font(.caption)
+            } else {
+                Text("Select a location to auto-populate location details")
+                    .font(.caption)
+            }
         }
     }
     
@@ -145,18 +190,11 @@ struct ModernEventFormView: View {
                 
                 DatePicker(
                     "Start Date",
-                    selection: Binding<Date>(
-                        get: { localStartOfDay(fromUTCStartOfDay: viewModel.date.startOfDay) },
-                        set: { newLocalDay in
-                            let newUTC = utcStartOfDay(fromLocalStartOfDay: newLocalDay)
-                            viewModel.date = newUTC
-                            if toDate < viewModel.date {
-                                toDate = newUTC
-                            }
-                        }
-                    ),
+                    selection: $viewModel.date,
                     displayedComponents: .date
                 )
+                .environment(\.calendar, utcCalendar)
+                .environment(\.timeZone, TimeZone(secondsFromGMT: 0)!)
             }
             
             // End Date
@@ -165,20 +203,14 @@ struct ModernEventFormView: View {
                     .foregroundColor(.red)
                     .frame(width: 30)
                 
-                let localStart = localStartOfDay(fromUTCStartOfDay: viewModel.date.startOfDay)
-                let localRange: ClosedRange<Date> = localStart...Date.distantFuture
-                
                 DatePicker(
                     "End Date",
-                    selection: Binding<Date>(
-                        get: { localStartOfDay(fromUTCStartOfDay: toDate.startOfDay) },
-                        set: { newLocalDay in
-                            toDate = utcStartOfDay(fromLocalStartOfDay: newLocalDay)
-                        }
-                    ),
-                    in: localRange,
+                    selection: $toDate,
+                    in: viewModel.date...Date.distantFuture,
                     displayedComponents: .date
                 )
+                .environment(\.calendar, utcCalendar)
+                .environment(\.timeZone, TimeZone(secondsFromGMT: 0)!)
             }
             
             // Duration indicator
@@ -527,8 +559,32 @@ struct ModernEventFormView: View {
         } header: {
             Label("Coordinates", systemImage: "location.circle")
         } footer: {
-            Text("Coordinates are required for 'Other' locations to determine country information")
+            Text("GPS coordinates used to auto-populate city, state, and country information")
                 .font(.caption)
+        }
+    }
+    
+    // MARK: - Helper: Populate fields from location
+    private func populateFieldsFromLocation(_ location: Location) {
+        if location.name == "Other" {
+            // For "Other", clear fields but keep coordinates at 0,0
+            // User will need to enter manually or use "Get Current Location"
+            viewModel.city = nil
+            viewModel.state = nil
+            viewModel.country = nil
+            viewModel.latitude = 0
+            viewModel.longitude = 0
+            latitudeText = "0.0"
+            longitudeText = "0.0"
+        } else {
+            // For named locations, populate from location data
+            viewModel.city = location.city
+            viewModel.state = location.state
+            viewModel.country = location.country
+            viewModel.latitude = location.latitude
+            viewModel.longitude = location.longitude
+            latitudeText = String(location.latitude)
+            longitudeText = String(location.longitude)
         }
     }
     
@@ -538,13 +594,24 @@ struct ModernEventFormView: View {
         do {
             let placemarks = try await CLGeocoder().reverseGeocodeLocation(location)
             if let placemark = placemarks.first {
+                // Auto-populate city
                 let city = placemark.locality ?? placemark.administrativeArea ?? ""
                 if !city.isEmpty {
                     viewModel.city = city
                 }
+                
+                // Auto-populate state/province
+                if let state = placemark.administrativeArea {
+                    viewModel.state = state
+                }
+                
+                // Auto-populate country
+                if let country = placemark.country {
+                    viewModel.country = country
+                }
             }
         } catch {
-            geocodeError = "Could not determine city"
+            geocodeError = "Could not determine location details"
         }
     }
     
@@ -587,50 +654,141 @@ struct ModernEventFormView: View {
     private func setupInitialValues() {
         focus = true
         if viewModel.updating {
-            let localExisting = localStartOfDay(fromUTCStartOfDay: viewModel.date.startOfDay)
-            viewModel.date = localExisting
-            toDate = localExisting
+            print("📅 [DATE DEBUG] === EDITING EXISTING EVENT ===")
+            print("📅 [DATE DEBUG] Original viewModel.date: \(viewModel.date)")
+            print("📅 [DATE DEBUG] Original viewModel.date.startOfDay: \(viewModel.date.startOfDay)")
+            
+            // ⚠️ DO NOT convert the date here!
+            // The DatePicker's binding will handle UTC→Local conversion
+            // If we convert here, then the binding converts AGAIN, causing double-conversion
+            
+            // Just ensure the date is normalized to start of day
+            viewModel.date = viewModel.date.startOfDay
+            toDate = viewModel.date.startOfDay
+            
+            print("📅 [DATE DEBUG] Normalized viewModel.date (UTC): \(viewModel.date)")
+            print("📅 [DATE DEBUG] This will be converted by DatePicker binding")
+            print("📅 [DATE DEBUG] === END EDITING SETUP ===\n")
+            
+            // When editing, ensure text fields are synced with viewModel
+            latitudeText = String(viewModel.latitude)
+            longitudeText = String(viewModel.longitude)
+            
+            // For named locations (not "Other"), refresh from current location data
+            if let location = viewModel.location, location.name != "Other" {
+                // Check if user had manually overridden values
+                // If not, refresh from current location
+                if viewModel.city == location.city &&
+                   viewModel.state == location.state &&
+                   viewModel.country == location.country {
+                    // Values match location, so refresh from current location data
+                    populateFieldsFromLocation(location)
+                }
+                // Otherwise keep the overridden values from the event
+            }
         } else if let selected = viewModel.dateSelected {
-            let localSelected = localStartOfDay(fromUTCStartOfDay: selected.startOfDay)
-            viewModel.date = localSelected
-            toDate = localSelected
+            // When creating from a selected date, use UTC start of day
+            // DatePicker binding will convert to local for display
+            viewModel.date = selected.startOfDay
+            toDate = selected.startOfDay
+            latitudeText = String(viewModel.latitude)
+            longitudeText = String(viewModel.longitude)
         } else {
-            let todayLocal = localStartOfDay(fromUTCStartOfDay: Date().startOfDay)
-            viewModel.date = todayLocal
-            toDate = todayLocal
+            // Default to today (UTC start of day)
+            // DatePicker binding will convert to local for display
+            viewModel.date = Date().startOfDay
+            toDate = Date().startOfDay
+            latitudeText = String(viewModel.latitude)
+            longitudeText = String(viewModel.longitude)
         }
-        latitudeText = String(viewModel.latitude)
-        longitudeText = String(viewModel.longitude)
         
         // Set default location if none is selected (only for new events)
         if !viewModel.updating && viewModel.location == nil {
             if let defaultLocationID = UserDefaults.standard.string(forKey: "defaultLocationID"),
                let defaultLocation = store.locations.first(where: { $0.id == defaultLocationID }) {
                 viewModel.location = defaultLocation
-                viewModel.latitude = defaultLocation.latitude
-                viewModel.longitude = defaultLocation.longitude
-                latitudeText = String(viewModel.latitude)
-                longitudeText = String(viewModel.longitude)
+                // Populate fields from default location
+                populateFieldsFromLocation(defaultLocation)
             }
         }
     }
     
     private func localStartOfDay(fromUTCStartOfDay utc: Date) -> Date {
+        // Extract Y/M/D from UTC midnight
         var utcCal = Calendar(identifier: .gregorian)
         utcCal.timeZone = TimeZone(secondsFromGMT: 0)!
         let ymd = utcCal.dateComponents([.year, .month, .day], from: utc)
-        var localCal = Calendar.current
-        localCal.timeZone = TimeZone.current
-        return localCal.date(from: ymd) ?? utc
+        print("📅 [CONVERT UTC→Local] Input UTC: \(utc)")
+        print("📅 [CONVERT UTC→Local] Extracted Y/M/D: \(ymd.year ?? 0)/\(ymd.month ?? 0)/\(ymd.day ?? 0)")
+        
+        // Create local midnight for the SAME CALENDAR DATE
+        // This creates a Date that represents midnight in the user's timezone
+        // Example: Apr 15 midnight MT = Apr 15 06:00 UTC
+        let localCal = Calendar.current
+        print("📅 [CONVERT DEBUG] Calendar.current.timeZone = \(localCal.timeZone.identifier)")
+        print("📅 [CONVERT DEBUG] Calendar.current.timeZone.secondsFromGMT = \(localCal.timeZone.secondsFromGMT())")
+        print("📅 [CONVERT DEBUG] TimeZone.current.identifier = \(TimeZone.current.identifier)")
+        print("📅 [CONVERT DEBUG] TimeZone.current.secondsFromGMT = \(TimeZone.current.secondsFromGMT())")
+        
+        var components = DateComponents()
+        components.year = ymd.year
+        components.month = ymd.month
+        components.day = ymd.day
+        components.hour = 0
+        components.minute = 0
+        components.second = 0
+        
+        print("📅 [CONVERT DEBUG] Components before date creation: year=\(components.year ?? 0), month=\(components.month ?? 0), day=\(components.day ?? 0), hour=\(components.hour ?? 99)")
+        print("📅 [CONVERT DEBUG] Creating date from components in local calendar...")
+        // Create the date - this will be midnight local time
+        guard let result = localCal.date(from: components) else {
+            print("📅 [CONVERT ERROR] Failed to create date from components!")
+            return utc
+        }
+        
+        print("📅 [CONVERT DEBUG] Raw result from localCal.date(from:): \(result)")
+        print("📅 [CONVERT DEBUG] Result displayed in UTC: \(result)")
+        
+        // Try to extract components BACK from the result to see what we actually got
+        let verifyComponents = localCal.dateComponents([.year, .month, .day, .hour, .minute, .timeZone], from: result)
+        print("📅 [CONVERT DEBUG] Verification - extracted back: year=\(verifyComponents.year ?? 0), month=\(verifyComponents.month ?? 0), day=\(verifyComponents.day ?? 0), hour=\(verifyComponents.hour ?? 99), tz=\(verifyComponents.timeZone?.identifier ?? "nil")")
+        
+        print("📅 [CONVERT UTC→Local] Result local date: \(result)")
+        print("📅 [CONVERT UTC→Local] Local timezone: \(TimeZone.current.identifier)")
+        
+        // Debug: Show what DatePicker will actually display
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        formatter.timeZone = TimeZone.current
+        print("📅 [CONVERT UTC→Local] DatePicker will show: \(formatter.string(from: result))\n")
+        return result
     }
     
     private func utcStartOfDay(fromLocalStartOfDay local: Date) -> Date {
-        var localCal = Calendar.current
-        localCal.timeZone = TimeZone.current
+        // Extract Y/M/D from local date
+        let localCal = Calendar.current
         let ymd = localCal.dateComponents([.year, .month, .day], from: local)
+        print("📅 [CONVERT Local→UTC] Input local: \(local)")
+        print("📅 [CONVERT Local→UTC] Extracted Y/M/D: \(ymd.year ?? 0)/\(ymd.month ?? 0)/\(ymd.day ?? 0)")
+        
+        // Create UTC midnight for the same calendar date
         var utcCal = Calendar(identifier: .gregorian)
         utcCal.timeZone = TimeZone(secondsFromGMT: 0)!
-        return utcCal.date(from: ymd) ?? local.startOfDay
+        var components = DateComponents()
+        components.year = ymd.year
+        components.month = ymd.month
+        components.day = ymd.day
+        components.hour = 0
+        components.minute = 0
+        components.second = 0
+        
+        // Use the UTC calendar to create the date
+        guard let result = utcCal.date(from: components) else { return local.startOfDay }
+        
+        print("📅 [CONVERT Local→UTC] Result UTC date: \(result)")
+        print("📅 [CONVERT Local→UTC] UTC start of day: \(result.startOfDay)\n")
+        return result
     }
     
     private func calculateDurationDays() -> Int {
@@ -678,16 +836,22 @@ struct ModernEventFormView: View {
         guard let id = viewModel.id else { return }
         guard let selectedLocation = viewModel.location else { return }
         
-        let country = await store.updateEventCountry(Event(
-            id: id,
-            eventType: viewModel.eventType,
-            date: viewModel.date.startOfDay,
-            location: selectedLocation,
-            city: viewModel.city ?? "",
-            latitude: viewModel.latitude,
-            longitude: viewModel.longitude,
-            note: viewModel.note
-        ))
+        // Use manually entered country if available, otherwise auto-detect
+        let country: String?
+        if let manualCountry = viewModel.country, !manualCountry.isEmpty {
+            country = manualCountry
+        } else {
+            country = await store.updateEventCountry(Event(
+                id: id,
+                eventType: viewModel.eventType,
+                date: viewModel.date.startOfDay,
+                location: selectedLocation,
+                city: viewModel.city ?? "",
+                latitude: viewModel.latitude,
+                longitude: viewModel.longitude,
+                note: viewModel.note
+            ))
+        }
         
         let event = Event(
             id: id,
@@ -698,6 +862,7 @@ struct ModernEventFormView: View {
             latitude: viewModel.latitude,
             longitude: viewModel.longitude,
             country: country,
+            state: viewModel.state,  // v1.5: Save state
             note: viewModel.note,
             people: viewModel.people,
             activityIDs: viewModel.activityIDs,
@@ -715,15 +880,21 @@ struct ModernEventFormView: View {
         let days = utcCalendar.dateComponents([.day], from: start, to: end).day ?? 0
         guard let selectedLocation = viewModel.location else { return }
         
-        let country = await store.updateEventCountry(Event(
-            eventType: viewModel.eventType,
-            date: start,
-            location: selectedLocation,
-            city: viewModel.city ?? "",
-            latitude: viewModel.latitude,
-            longitude: viewModel.longitude,
-            note: viewModel.note
-        ))
+        // Use manually entered country if available, otherwise auto-detect
+        let country: String?
+        if let manualCountry = viewModel.country, !manualCountry.isEmpty {
+            country = manualCountry
+        } else {
+            country = await store.updateEventCountry(Event(
+                eventType: viewModel.eventType,
+                date: start,
+                location: selectedLocation,
+                city: viewModel.city ?? "",
+                latitude: viewModel.latitude,
+                longitude: viewModel.longitude,
+                note: viewModel.note
+            ))
+        }
         
         for n in 0...days {
             guard let nextDate = utcCalendar.date(byAdding: .day, value: n, to: start) else { continue }
@@ -735,6 +906,7 @@ struct ModernEventFormView: View {
                 latitude: viewModel.latitude,
                 longitude: viewModel.longitude,
                 country: country,
+                state: viewModel.state,  // v1.5: Save state
                 note: viewModel.note,
                 people: viewModel.people,
                 activityIDs: viewModel.activityIDs,

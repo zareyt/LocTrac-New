@@ -4,8 +4,8 @@ This file provides Claude with everything it needs to assist effectively on the
 LocTrac project. Update this file whenever the architecture, conventions, or
 backlog change significantly.
 
-**Last Updated**: 2026-04-08
-**Current Version**: 1.4
+**Last Updated**: 2026-04-13
+**Current Version**: 1.5 (Complete - Ready for Release)
 **Author**: Tim Arey
 
 ---
@@ -24,6 +24,11 @@ history through maps, charts, and infographics.
 - **No third-party dependencies**
 
 ---
+## Context Recovery
+If I paste a previous response at the start of a conversation, treat it as 
+recent context and continue from where it left off without re-explaining 
+or re-summarizing unless asked.
+
 
 ## 📁 Project Structure
 
@@ -80,7 +85,18 @@ LocTrac.xcodeproj/
 
 ⚠️  NO .swift or .md files belong inside LocTrac.xcodeproj/ — .gitignore blocks them
 ```
+## File Editing Behavior
+- ALWAYS edit existing files in place rather than creating new files
+- NEVER create a replacement file (e.g., `MyView_new.swift`, `MyView_v2.swift`)
+- When modifying a file, use targeted edits to change only the relevant sections
+- Do NOT rewrite an entire file unless explicitly asked
+- If a file needs structural changes, modify it directly and preserve all existing code that isn't being changed
+- Before creating any new file, confirm it doesn't already exist in the project
 
+
+## New File Policy
+- Only create new files when implementing genuinely new functionality
+- Ask before creating a new file if it's unclear whether one already exists
 ---
 
 ## 🧠 Core Architecture
@@ -150,8 +166,15 @@ Sheet state variables in `StartTabView`:
 @State private var showTravelHistory: Bool
 @State private var showCountryUpdater: Bool          // hidden, pending review
 @State private var showLocationSync: Bool            // hidden, pending review
+@State private var showDebugSettings: Bool           // v1.5: Debug system settings (DEBUG only)
 @State private var pendingItem: PendingTripItem?     // drives trip confirmation
+@StateObject private var debugConfig = DebugConfig.shared  // v1.5: Debug configuration
 ```
+
+**Settings/Options Menu Location**: The main app settings menu is in `StartTabView`, 
+typically in a toolbar Menu button (often gear icon or ellipsis). To add new menu items,
+find the `Menu { }` block in the toolbar and add your item there. For debug-only items,
+wrap in `#if DEBUG ... #endif`.
 
 ### Trip Confirmation Pipeline
 
@@ -177,38 +200,55 @@ standard CRUD methods which call both.
 
 ---
 
-## 🗃️ Data Models
+## 🗃️ Data Models (v1.5)
 
 ### Key Models
 
 ```swift
 // Location — a named place
 struct Location: Identifiable, Codable {
-    var id: UUID
+    var id: String
     var name: String
-    var city: String?
+    var city: String?           // City name ONLY (no state/country)
+    var state: String?          // v1.5: State, province, territory, etc.
     var latitude: Double
     var longitude: Double
-    var country: String?
-    var theme: Theme           // color theme enum
-    var imageIDs: [String]
+    var country: String?        // Country name (e.g., "United States")
+    var countryCode: String?    // v1.5: ISO country code (e.g., "US", "CA")
+    var theme: Theme            // color theme enum
+    var imageIDs: [String]?
+    var customColorHex: String? // optional custom color
+    
+    // v1.5: Computed properties
+    var fullAddress: String      // "Denver, Colorado, United States"
+    var shortAddress: String     // "Denver, Colorado"
+    var effectiveColor: Color    // custom color or theme color
 }
 
 // Event — a stay at a location
 struct Event: Identifiable, Codable {
-    var id: UUID
-    var eventType: EventType   // .unspecified, .stay, .vacation, etc.
+    var id: String
+    var eventType: String       // .unspecified, .stay, .vacation, etc.
     var date: Date
-    var location: Location     // embedded snapshot, NOT a reference ID
-    var city: String?
-    var latitude: Double
-    var longitude: Double
-    var country: String?
+    var location: Location      // embedded snapshot, NOT a reference ID
+    var city: String?           // v1.5: City for "Other" location events only
+    var latitude: Double        // For "Other" location events
+    var longitude: Double       // For "Other" location events
+    var country: String?        // Country (for "Other" events)
+    var state: String?          // v1.5: State/province (for "Other" events)
     var note: String
-    var people: [String]
-    var activityIDs: [UUID]
-    var affirmationIDs: [UUID]
-    // computed: effectiveCoordinates — prefers stored coords over location coords
+    var people: [Person]
+    var activityIDs: [String]
+    var affirmationIDs: [String]
+    var isGeocoded: Bool        // v1.5: Prevents re-geocoding successfully processed events
+    
+    // v1.5: Computed properties for effective values
+    var effectiveCoordinates: (latitude: Double, longitude: Double)
+    var effectiveCity: String?       // Event city for "Other", location city for named
+    var effectiveState: String?      // Event state for "Other", location state for named
+    var effectiveCountry: String?    // Event country for "Other", location country for named
+    var effectiveAddress: String     // Full address based on location type
+    var effectiveShortAddress: String // City, state only
 }
 
 // Trip — travel between two events
@@ -229,13 +269,13 @@ struct Trip: Identifiable, Codable {
 
 // Activity — user-defined tag for events
 struct Activity: Identifiable, Codable {
-    var id: UUID
+    var id: String
     var name: String
 }
 
 // Affirmation — motivational text associated with events
 struct Affirmation: Identifiable, Codable {
-    var id: UUID
+    var id: String
     var text: String
     var category: Category
     var createdDate: Date
@@ -243,17 +283,71 @@ struct Affirmation: Identifiable, Codable {
     var isFavorite: Bool
     static var presets: [Affirmation]  // default seeded affirmations
 }
+
+// v1.5: GeocodeResult — structured geocoding response
+struct GeocodeResult {
+    let city: String?
+    let state: String?          // administrativeArea
+    let country: String?
+    let countryCode: String?    // isoCountryCode
+    let latitude: Double
+    let longitude: Double
+}
+```
+
+### v1.5: "Other" Location Concept
+
+The "Other" location is special — it acts as a catch-all for events at non-standard locations:
+
+- **Named locations** (Loft, Cabo, etc.) → Use `location.city`, `location.state`, `location.country`
+- **"Other" location events** → Each event stores its own `city`, `state`, `country`, `latitude`, `longitude`
+
+This allows "Other" to represent multiple different cities/countries across different events.
+
+**Example:**
+```swift
+// Named location event
+let event1 = Event(
+    location: loftLocation,    // Has city="Denver", state="Colorado"
+    city: nil,                 // Not used for named locations
+    state: nil,                // Not used for named locations
+    // ... effectiveCity will return "Denver" from location
+)
+
+// "Other" location event #1
+let event2 = Event(
+    location: otherLocation,   // Generic "Other" 
+    city: "Paris",             // Event-specific
+    state: nil,                // France has no states
+    country: "France",         // Event-specific
+    // ... effectiveCity will return "Paris" from event
+)
+
+// "Other" location event #2
+let event3 = Event(
+    location: otherLocation,   // Same "Other" location
+    city: "Tokyo",             // Different event-specific city
+    state: "Tokyo",            // Event-specific
+    country: "Japan",          // Different event-specific country
+    // ... effectiveCity will return "Tokyo" from event
+)
 ```
 
 ### Serialization (ImportExport.swift)
 
 The on-disk format is `Export` / `Import`. When decoding older backups,
-`activities`, `affirmations`, and `trips` are optional and default to `[]`.
-**Never add required keys to the `Import` struct without providing a default.**
+`activities`, `affirmations`, `trips`, `state`, and `countryCode` are optional 
+and default to `[]` or `nil`.
+
+**v1.5: All new fields are optional in `Import` struct for backward compatibility.**
 
 ```swift
 struct Export: Codable { locations, events, activities, affirmations, trips }
-struct Import: Codable { locations, events, activities?, affirmations?, trips? }
+struct Import: Codable { 
+    locations, events, 
+    activities?, affirmations?, trips?  // Optional for v1.3 backups
+    // v1.5: state?, countryCode?, city? all optional in nested structs
+}
 ```
 
 ### ⚠️ Important: Trip References Event IDs
@@ -300,9 +394,11 @@ eventIDs.contains(trip.toEventID.uuidString)  // ERROR: toEventID is already a S
 
 6. **All new Swift files go in `LocTrac/`** — never inside `LocTrac.xcodeproj/`.
 
-7. **Debug prints** are acceptable during development using emoji prefixes
-   (🟢 init, 🔄 body, ✅ success, ❌ error, 📥 import, 💾 save). Remove or
-   gate them before App Store builds.
+7. **Debug logging** uses the centralized `DebugConfig` framework. Use 
+   `DebugConfig.shared.log(.category, "message")` instead of raw `print()` 
+   statements. Available categories: `.dataStore`, `.persistence`, `.navigation`, 
+   `.network`, `.cache`, `.trips`, `.charts`, `.parser`, `.startup`. All debug 
+   output can be toggled on/off via Debug Settings in the app (DEBUG builds only).
 
 8. **Navigation titles** are set centrally in `StartTabView.navigationTitleForSelection()`.
    Child views use `.navigationBarTitleDisplayMode(.inline)` only.
@@ -462,6 +558,10 @@ var body: some View {
 | **NotificationCenter listeners** | When using NotificationCenter for toolbar → child communication, ALWAYS add debug logging (`print("📨 Received...")`) to both the sender and receiver. This makes it immediately obvious if notifications aren't being received. |
 | **MapKit in PDFs** | Interactive MapKit `Map` views cannot be rendered in `ImageRenderer` for PDF export. Use `MKMapSnapshotter` to capture actual map images asynchronously before generating PDFs. The snapshotter must be called in an async context and its result drawn on with route lines and markers using `UIGraphicsImageRenderer`. |
 | **Infographics PDF export** | PDF generation for InfographicsView uses a two-phase process: (1) async map snapshot generation with `MKMapSnapshotter`, (2) SwiftUI content rendering with `ImageRenderer`. The map snapshot is embedded as a `UIImage` in the final PDF content. This ensures real Apple Maps tiles appear in exported PDFs. |
+| **Location Data Enhancement** | v1.5 tool for cleaning/geocoding location data. Accessible via Settings → Enhance Location Data. Uses rate limiting (45/min) to respect Apple's geocoding limit. Processes master Locations first, then "Other" Events. Skips named-location Events (inherit from master) and already-geocoded Events (`isGeocoded` flag). Session persistence allows resuming later. "Retry Errors" button reprocesses only failed items. |
+| **Geocoding efficiency** | `Event.isGeocoded` flag prevents re-geocoding successfully processed events. Set to `true` only when geocoding fully succeeds. Saves 50-66% of API calls on subsequent enhancement runs. Already-geocoded events are skipped silently. |
+| **Import location remapping** | v1.5 fix: Import now remaps old location IDs to current store IDs during merge. Special handling for "Other" location prevents orphaned events. Events reference valid locations after import. "Fix Orphaned Events" tool moved to DEBUG-only (issue resolved at import time). |
+| **Dynamic What's New** | v1.5+: Features are parsed from `VERSION_x.x_RELEASE_NOTES.md` files at runtime. Format: `### Title\nicon: symbol \| color: name\nDescription`. Falls back to hardcoded features in `WhatsNewFeature.swift` if parsing fails. Always include markdown file in Xcode target. See `WHATS_NEW_DYNAMIC_SYSTEM.md` for complete guide. |
 
 ---
 
@@ -471,7 +571,8 @@ var body: some View {
 
 | Tag | Notes |
 |---|---|
-| `v1.4` | Current — Infographics PDF/Screenshot export with real Apple Maps, Journey map visualization, Share button implementation with NotificationCenter |
+| `v1.5` | **In Development** — International location support with state/province fields, enhanced geocoding, data migration utility |
+| `v1.4` | Infographics PDF/Screenshot export with real Apple Maps, Journey map visualization, Share button implementation with NotificationCenter |
 | `v1.3` | Travel History, Unified Locations, Trip Confirmation, Infographics tab, Affirmations, Timeline Restore |
 | `v3.0` (legacy label) | Default location, State detection, LocationsManagementView |
 | `v1.2` | Golfshot import, Home tab, Backup & Import rename |
@@ -537,7 +638,13 @@ All documentation organized for clarity. Key files:
 | `PROJECT_ANALYSIS.md` | Architecture analysis, metrics, roadmap |
 | `KEY_CODE_CHANGES.md` | Major refactoring documentation |
 
-### **Current Version (v1.4)**
+### **Current Version (v1.5 - In Development)**
+| File | Contents |
+|------|----------|
+| `VERSION_1.5_SUMMARY.md` | Quick overview and development status for v1.5 |
+| `VERSION_1.5_INTERNATIONAL_LOCATIONS.md` | Complete technical specification for international location support |
+
+### **Previous Version (v1.4)**
 | File | Contents |
 |------|----------|
 | `VERSION_1.4_RELEASE_NOTES.md` | User-facing release notes for v1.4 |
@@ -546,6 +653,7 @@ All documentation organized for clarity. Key files:
 ### **Feature Guides**
 | File | Contents |
 |------|----------|
+| `WHATS_NEW_DYNAMIC_SYSTEM.md` | Dynamic "What's New" markdown parsing system |
 | `WIDGET_IMPLEMENTATION.md` | Complete widget setup and troubleshooting |
 | `WIDGET_QUICK_START.md` | Quick reference for widget integration |
 | `NOTIFICATIONS_SETUP_GUIDE.md` | Notification system implementation guide |
@@ -560,10 +668,67 @@ Older version-specific docs (v1.1-v1.3), build fix notes, and feature proposals 
 
 ## 🗺️ Feature Backlog (Known Priorities)
 
+### v1.5 - Complete ✅
+
+- [x] **Dynamic What's New System**
+  - Created `ReleaseNotesParser.swift` for markdown parsing
+  - Updated `WhatsNewFeature.swift` with dynamic loading + hardcoded fallback
+  - Parses `VERSION_x.x_RELEASE_NOTES.md` files automatically
+  - Format: `### Title\nicon: symbol | color: name\nDescription`
+  - Falls back to hardcoded features if parsing fails
+  - Supports 13 colors, all SF Symbols
+  - See `WHATS_NEW_DYNAMIC_SYSTEM.md` for complete guide
+
+- [x] **Model Updates**
+  - Added `state`/`province` field to Location and Event models
+  - Added `countryCode` field for ISO codes
+  - Added `isGeocoded: Bool` flag to Event (prevents re-geocoding)
+  - Enhanced geocoding service with forward/reverse geocoding
+  - Smart parsing of manual entry (e.g., "Denver, CO")
+  - Computed properties for clean address access
+  
+- [x] **Location Data Enhancement Tool**
+  - Complete UI (`LocationDataEnhancementView`) for data validation and cleanup
+  - `LocationDataEnhancer` service with 4-step priority algorithm
+  - Rate limiting with automatic retry queue (handles Apple's 50/min limit)
+  - Long country name support ("Canada", "Scotland", "United Kingdom", etc.)
+  - Session persistence via UserDefaults (resume later)
+  - "Retry Errors" button (process only failed items)
+  - Geocoding flag skips already-processed events (50-66% API savings)
+  - Comprehensive error handling with human-readable messages
+  - Before/after logging for troubleshooting
+  
+- [x] **Country Mappers**
+  - `CountryCodeMapper` - Short codes → country names ("US" → "United States")
+  - `CountryNameMapper` - Long names → standardized names/codes ("Scotland" → "United Kingdom")
+  - `USStateCodeMapper` - State abbreviations → full names ("CO" → "Colorado")
+  - Support for 50+ countries worldwide
+  
+- [x] **Processing Priority Algorithm**
+  - **Step 1**: If all data exists → clean format only (no geocoding)
+  - **Step 2**: If GPS exists → reverse geocode for state/country
+  - **Step 3**: If no GPS → parse "City, XX" format (state code / country code / country name)
+  - **Step 4**: If insufficient data → report error with actionable message
+  - Process master Locations first, then "Other" Events
+  - Skip named-location Events (inherit from master)
+  - Skip already-geocoded Events (`isGeocoded == true`)
+
+- [x] **Import Fix - Location ID Remapping**
+  - Fixed orphaned events issue during merge imports
+  - Import now remaps old location IDs to current store IDs
+  - Special handling for "Other" location (always maps to current "Other")
+  - Graceful fallback: assigns to "Other" if location not found
+  - Prevents all orphaned events on import
+  - "Fix Orphaned Events" tool moved to DEBUG-only (issue resolved)
+
 ### Short Term
 - [ ] Unit tests (Swift Testing) for DataStore CRUD and ImportExport
+- [ ] Unit tests for migration service
 - [ ] Accessibility audit — VoiceOver labels on all new views
-- [ ] Remove/gate debug print statements before App Store build
+- [x] **Debug System Integration** — Centralized debug framework with granular logging
+  - All uncategorized print statements converted to `DebugConfig.shared.log()`
+  - New categories: `.charts`, `.parser`, `.startup`
+  - Toggle debug output via Debug Settings (Settings → Debug Settings in DEBUG builds)
 - [ ] Surface **Golfshot CSV Import** in Options menu (code is ready, just hidden)
 
 ### Medium Term
@@ -579,6 +744,8 @@ Older version-specific docs (v1.1-v1.3), build fix notes, and feature proposals 
 - [ ] Localization (i18n)
 - [ ] macOS Catalyst or native macOS version
 - [ ] Persist exported backups in `Documents/Backups/` instead of temp directory
+- [ ] Timezone support per location (v1.6+)
+- [ ] Hierarchical location picker (Country → State → City)
 
 ---
 

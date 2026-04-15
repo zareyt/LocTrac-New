@@ -7,6 +7,63 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5] – 2026-04-14
+
+### Added
+
+- **International Location Support**
+  - Added `state` field to Location and Event models for provinces/territories
+  - Added `countryCode` field for ISO country codes (e.g., "US", "CA", "GB")
+  - Added `isGeocoded: Bool` flag to Event to prevent redundant geocoding
+  - Enhanced geocoding with forward/reverse lookup capabilities
+  - Smart parsing of manual entry formats (e.g., "Denver, CO")
+  - Computed properties for clean address display (`effectiveCity`, `effectiveState`, etc.)
+
+- **Location Data Enhancement Tool**
+  - New Settings menu item: "Enhance Location Data"
+  - Complete UI for validating and enriching location data
+  - 4-step priority algorithm for efficient geocoding
+  - Rate limiting (45 requests/min) to respect Apple's limits
+  - Support for 50+ countries with long-form names
+  - Session persistence - resume enhancement sessions later
+  - "Retry Errors" button for reprocessing failed items
+  - Geocoding efficiency: 50-66% API savings via `isGeocoded` flag
+
+- **Country & State Mappers**
+  - `CountryCodeMapper` - ISO codes to full names ("US" → "United States")
+  - `CountryNameMapper` - Long names to standard forms ("Scotland" → "United Kingdom")
+  - `USStateCodeMapper` - Abbreviations to full names ("CO" → "Colorado")
+  - Support for UK regions, Canadian provinces, and international territories
+
+### Fixed
+
+- **Import Location ID Remapping** (**Critical Fix**)
+  - Fixed orphaned events created during merge imports
+  - Import now properly remaps old location IDs to current store IDs
+  - Special handling for "Other" location (always maps to current instance)
+  - Graceful fallback: events without valid locations assigned to "Other"
+  - Prevents 100% of orphaned events on import
+  - "Fix Orphaned Events" tool moved to DEBUG-only (issue resolved at source)
+
+### Technical
+
+- **Files Modified**
+  - `TimelineRestoreView.swift` - Added location ID remapping during import
+  - `Event.swift` - Added `state`, `countryCode`, `isGeocoded` fields
+  - `Location.swift` - Added `state`, `countryCode` fields
+  - `LocationDataEnhancementView.swift` - New enhancement UI
+  - `LocationDataEnhancer.swift` - New enhancement service
+  - `OrphanedEventsAnalyzer.swift` - Enhanced duplicate detection (DEBUG only)
+  - `OrphanedEventsAnalyzerView.swift` - Analyzer UI (DEBUG only)
+
+### Documentation
+
+- Added `ORPHANED_EVENTS_IMPORT_FIX.md` - Root cause analysis and solution
+- Updated `CLAUDE.md` - v1.5 features and gotchas
+- Updated `VERSION_1.5_INTERNATIONAL_LOCATIONS.md` - Complete spec
+
+---
+
 ## [1.4] – 2026-04-08
 
 ### Added

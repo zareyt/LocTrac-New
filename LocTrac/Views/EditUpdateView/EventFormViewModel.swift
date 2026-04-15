@@ -5,6 +5,8 @@ class EventFormViewModel: ObservableObject {
     @Published var eventType: Event.EventType = Event.EventType.allCases.first ?? .unspecified
     @Published var location: Location?
     @Published var city: String?
+    @Published var state: String?  // v1.5: State/province
+    @Published var country: String?  // v1.5: Country (auto-populated but can be overridden)
     @Published var latitude: Double = 0
     @Published var longitude: Double = 0
     @Published var note = ""
@@ -26,6 +28,8 @@ class EventFormViewModel: ObservableObject {
         id = event.id
         location = event.location
         city = event.city
+        state = event.state  // v1.5: Load state
+        country = event.country  // v1.5: Load country
         latitude = event.latitude
         longitude = event.longitude
         note = event.note
@@ -39,6 +43,8 @@ class EventFormViewModel: ObservableObject {
          location: Location? = nil,
          id: String? = nil,
          city: String?,
+         state: String? = nil,  // v1.5: State parameter
+         country: String? = nil,  // v1.5: Country parameter
          latitude: Double,
          longitude: Double,
          note: String) {
@@ -49,6 +55,8 @@ class EventFormViewModel: ObservableObject {
         self.location = location
         self.id = id
         self.city = city
+        self.state = state  // v1.5: Initialize state
+        self.country = country  // v1.5: Initialize country
         self.latitude = latitude
         self.longitude = longitude
         self.note = note

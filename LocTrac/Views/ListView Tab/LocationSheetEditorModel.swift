@@ -12,6 +12,7 @@ import Combine
 final class LocationSheetEditorModel: ObservableObject {
     @Published var name: String
     @Published var city: String
+    @Published var state: String        // v1.5: State/province
     @Published var country: String
     @Published var latitude: Double
     @Published var longitude: Double
@@ -22,6 +23,7 @@ final class LocationSheetEditorModel: ObservableObject {
     init(location: Location, isDefault: Bool) {
         self.name = location.name
         self.city = location.city ?? ""
+        self.state = location.state ?? ""  // v1.5: Load state
         self.country = location.country ?? ""
         self.latitude = location.latitude
         self.longitude = location.longitude

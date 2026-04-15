@@ -5,18 +5,9 @@
       location = "self:">
    </FileRef>
    <FileRef
-      location = "group:LocTracWidgetExtensionBundle_FIX.swift">
+      location = "group:DEBUG_WORKING_SOLUTION.md">
    </FileRef>
    <FileRef
-      location = "group:RELEASE_NOTES_v1.4.md">
-   </FileRef>
-   <FileRef
-      location = "group:NotificationManager.swift">
-   </FileRef>
-   <FileRef
-      location = "group:LOCTRAC_V1.4_COMPLETE_SUMMARY.md">
-   </FileRef>
-   <FileRef
-      location = "group:NOTIFICATIONS_SETUP_GUIDE.md">
+      location = "group:DEBUG_FINAL_CHECKPOINT.md">
    </FileRef>
 </Workspace>

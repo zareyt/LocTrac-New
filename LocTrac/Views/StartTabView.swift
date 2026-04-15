@@ -19,6 +19,13 @@ struct StartTabView: View {
     @State private var showCountryUpdater: Bool = false // For updating event countries
     @State private var showLocationSync: Bool = false // For syncing event coordinates
     @State private var showWhatsNew: Bool = false     // For "What's New" on version upgrade
+    @State private var showLocationEnhancement: Bool = false // For location data enhancement
+    @State private var showDebugSettings: Bool = false // For debug system settings (DEBUG only)
+    @State private var showOrphanedEventsAnalyzer: Bool = false // For orphaned events management
+    @State private var showNotificationSettings: Bool = false // For notification settings
+    
+    // Debug configuration
+    @StateObject private var debugConfig = DebugConfig.shared
     
     // Drives TripConfirmationView sheet
     @State private var pendingItem: PendingTripItem?
@@ -31,9 +38,9 @@ struct StartTabView: View {
                     onAddEvent: { selection = 1 },
                     onShowOtherCities: { showTravelHistory = true },
                     onOpenCalendar: { selection = 1 },
-                    onOpenLocations: { selection = 3 },
+                    onOpenLocationsManagement: { showLocationsManagement = true },
                     onOpenInfographics: { selection = 4 },
-                    onSwitchToMapTab: { selection = 2 }  // NEW: Switch to Charts tab (map view)
+                    onSwitchToMapTab: { selection = 2 }
                 )
                 .tabItem {
                     Label("Home", systemImage: "house.fill")
@@ -72,9 +79,11 @@ struct StartTabView: View {
             // Centralized title based on selected tab
             .navigationTitle(navigationTitleForSelection(selection))
             .onAppear {
-                print("🚀 StartTabView appeared")
-                print("📝 isFirstLaunch: \(store.isFirstLaunch)")
-                print("📦 Locations count: \(store.locations.count)")
+                #if DEBUG
+                DebugConfig.shared.log(.startup, "StartTabView appeared")
+                DebugConfig.shared.log(.startup, "isFirstLaunch: \(store.isFirstLaunch)")
+                DebugConfig.shared.log(.startup, "Locations count: \(store.locations.count)")
+                #endif
                 print("✅ hasCompletedFirstLaunch: \(UserDefaults.standard.bool(forKey: "hasCompletedFirstLaunch"))")
                 
                 let backupURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("backup.json")
@@ -110,6 +119,12 @@ struct StartTabView: View {
                             Label("About LocTrac", systemImage: "info.circle")
                         }
                         
+                        Button {
+                            showNotificationSettings = true
+                        } label: {
+                            Label("Notifications", systemImage: "bell.fill")
+                        }
+                        
                         // Travel History option (moved here)
                         Button {
                             showTravelHistory = true
@@ -118,6 +133,8 @@ struct StartTabView: View {
                         }
                         
                         Divider()
+                        
+                        // MARK: - Location & Activity Management
                         
                         // Manage Locations option
                         Button {
@@ -138,6 +155,38 @@ struct StartTabView: View {
                             Label("Manage Trips", systemImage: "airplane")
                         }
                         
+                        Divider()
+                        
+                        // MARK: - Data Management Section
+                        
+                        Menu {
+                            Button {
+                                showBackupExport = true
+                            } label: {
+                                Label("Backup & Import", systemImage: "square.and.arrow.up")
+                            }
+                            
+                            Button {
+                                showLocationEnhancement = true
+                            } label: {
+                                Label("Enhance Location Data", systemImage: "wand.and.stars")
+                            }
+                            
+                            // HIDDEN: Fix Orphaned Events (code kept for debugging)
+                            // Issue fixed in v1.5 - import now properly remaps location IDs
+                            #if DEBUG
+                            Button {
+                                showOrphanedEventsAnalyzer = true
+                            } label: {
+                                Label("Fix Orphaned Events (Debug)", systemImage: "wrench.and.screwdriver")
+                            }
+                            #endif
+                            
+                            // Future data management features can go here
+                        } label: {
+                            Label("Data Management", systemImage: "externaldrive.fill")
+                        }
+                        
                         // DISABLED: Sync Event Coordinates
                         // TODO: Re-enable once use case is clarified
                         // Button {
@@ -146,21 +195,23 @@ struct StartTabView: View {
                         //     Label("Sync Event Coordinates", systemImage: "arrow.triangle.2.circlepath")
                         // }
                         
-                        Divider()
-                        
-                        // Backup & Import option
-                        Button {
-                            showBackupExport = true
-                        } label: {
-                            Label("Backup & Import", systemImage: "square.and.arrow.up")
-                        }
-                        
                         // Update Event Countries - HIDDEN for now
                         // Button {
                         //     showCountryUpdater = true
                         // } label: {
                         //     Label("Update Event Countries", systemImage: "globe.americas")
                         // }
+                        
+                        #if DEBUG
+                        Divider()
+                        
+                        // Debug Settings (DEBUG builds only)
+                        Button {
+                            showDebugSettings = true
+                        } label: {
+                            Label("Debug Settings", systemImage: "hammer.fill")
+                        }
+                        #endif
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
@@ -194,6 +245,10 @@ struct StartTabView: View {
             .sheet(isPresented: $showAbout) {
                 AboutLocTracView()
             }
+            .sheet(isPresented: $showNotificationSettings) {
+                NotificationSettingsView()
+                    .environmentObject(store)
+            }
             .sheet(isPresented: $showFirstLaunchWizard) {
                 FirstLaunchWizard()
                     .environmentObject(store)
@@ -212,9 +267,7 @@ struct StartTabView: View {
                     .environmentObject(store)
             }
             .sheet(isPresented: $showBackupExport) {
-                print("🔷 [StartTabView] Presenting BackupExportView sheet")
-                // Present Backup & Import view (renamed)
-                return BackupExportView()
+                BackupExportView()
                     .environmentObject(store)
             }
             .sheet(isPresented: $showImportGolfshot) {
@@ -229,12 +282,27 @@ struct StartTabView: View {
                 LocationSyncUtilityView()
                     .environmentObject(store)
             }
+            .sheet(isPresented: $showLocationEnhancement) {
+                LocationDataEnhancementView()
+                    .environmentObject(store)
+            }
+            .sheet(isPresented: $showOrphanedEventsAnalyzer) {
+                OrphanedEventsAnalyzerView()
+                    .environmentObject(store)
+            }
             // "What's New" version upgrade sheet
             .sheet(isPresented: $showWhatsNew, onDismiss: {
                 AppVersionManager.markCurrentVersionSeen()
             }) {
                 WhatsNewView()
             }
+            // Debug Settings sheet (DEBUG only)
+            #if DEBUG
+            .sheet(isPresented: $showDebugSettings) {
+                DebugSettingsView()
+                    .environmentObject(debugConfig)
+            }
+            #endif
             // Trip confirmation sheet
             .sheet(item: $pendingItem, onDismiss: {
                 store.pendingTrip = nil

@@ -29,7 +29,7 @@ struct AppEntry: App {
                     NotificationManager.shared.checkAuthorizationStatus()
                     
                     // Clear badge when app opens
-                    UIApplication.shared.applicationIconBadgeNumber = 0
+                    UNUserNotificationCenter.current().setBadgeCount(0)
                 }
         }
     }

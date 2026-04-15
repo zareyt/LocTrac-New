@@ -13,21 +13,29 @@ struct WhatsNewView: View {
     @Environment(\.dismiss) private var dismiss
 
     let features: [WhatsNewFeature]
-
+    let bugFixes: [WhatsNewFeature]
+    
     @State private var currentIndex: Int = 0
 
     // Convenience initialiser — looks up features for the running version
     init() {
-        self.features = WhatsNewFeature.features(for: AppVersionManager.currentVersion)
+        let content = WhatsNewFeature.content(for: AppVersionManager.currentVersion)
+        self.features = content.features
+        self.bugFixes = content.bugFixes
     }
 
     // Designated initialiser (useful for previews / testing)
-    init(features: [WhatsNewFeature]) {
+    init(features: [WhatsNewFeature], bugFixes: [WhatsNewFeature] = []) {
         self.features = features
+        self.bugFixes = bugFixes
+    }
+    
+    private var totalPages: Int {
+        features.count + (bugFixes.isEmpty ? 0 : 1)
     }
 
     private var isLastPage: Bool {
-        currentIndex == features.count - 1
+        currentIndex == totalPages - 1
     }
 
     var body: some View {
@@ -36,11 +44,18 @@ struct WhatsNewView: View {
                 // ── Header ───────────────────────────────────────────────
                 headerView
 
-                // ── Feature pages ────────────────────────────────────────
+                // ── Feature pages + Bug fixes page ───────────────────────
                 TabView(selection: $currentIndex) {
+                    // Feature pages
                     ForEach(Array(features.enumerated()), id: \.element.id) { index, feature in
                         FeaturePageView(feature: feature)
                             .tag(index)
+                    }
+                    
+                    // Consolidated bug fixes page (if any)
+                    if !bugFixes.isEmpty {
+                        BugFixesPageView(bugFixes: bugFixes)
+                            .tag(features.count)
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .always))
@@ -180,13 +195,93 @@ private struct FeaturePageView: View {
     }
 }
 
-// MARK: - Preview
+// MARK: - Bug Fixes Page
 
-#Preview("What's New — 1.3") {
-    WhatsNewView(features: WhatsNewFeature.features(for: "1.3"))
+private struct BugFixesPageView: View {
+    let bugFixes: [WhatsNewFeature]
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Header
+                VStack(spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.green.opacity(0.15))
+                            .frame(width: 80, height: 80)
+                        
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 36, weight: .medium))
+                            .foregroundStyle(.green)
+                    }
+                    
+                    Text("Bugs Fixed in v\(AppVersionManager.currentVersion)")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .multilineTextAlignment(.center)
+                    
+                    Text("\(bugFixes.count) issue\(bugFixes.count == 1 ? "" : "s") resolved")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.top, 20)
+                
+                // Bug fixes list
+                VStack(spacing: 16) {
+                    ForEach(bugFixes) { bug in
+                        BugFixRowView(bug: bug)
+                    }
+                }
+                .padding(.horizontal, 20)
+                
+                Spacer(minLength: 20)
+            }
+        }
+    }
 }
 
-#Preview("Single Feature") {
+private struct BugFixRowView: View {
+    let bug: WhatsNewFeature
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            // Icon
+            Image(systemName: bug.symbolName)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundStyle(bug.symbolColor)
+                .frame(width: 32, height: 32)
+            
+            // Content
+            VStack(alignment: .leading, spacing: 4) {
+                Text(bug.title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                
+                Text(bug.description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+        )
+    }
+}
+
+// MARK: - Preview
+
+#Preview("What's New — 1.5") {
+    let content = WhatsNewFeature.content(for: "1.5")
+    return WhatsNewView(features: content.features, bugFixes: content.bugFixes)
+}
+
+#Preview("Features Only") {
     WhatsNewView(features: [
         WhatsNewFeature(
             symbolName: "star.fill",
@@ -195,4 +290,31 @@ private struct FeaturePageView: View {
             description: "This is a sample description for a great new feature."
         )
     ])
+}
+
+#Preview("With Bug Fixes") {
+    WhatsNewView(
+        features: [
+            WhatsNewFeature(
+                symbolName: "star.fill",
+                symbolColor: .yellow,
+                title: "New Feature",
+                description: "A great new feature."
+            )
+        ],
+        bugFixes: [
+            WhatsNewFeature(
+                symbolName: "checkmark.circle.fill",
+                symbolColor: .green,
+                title: "Fixed Bug",
+                description: "This bug is now fixed."
+            ),
+            WhatsNewFeature(
+                symbolName: "paintbrush.fill",
+                symbolColor: .pink,
+                title: "UI Fix",
+                description: "Visual issue resolved."
+            )
+        ]
+    )
 }

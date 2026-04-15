@@ -225,12 +225,14 @@ struct TripManagementRow: View {
             }
             
             // Route
-            HStack(spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(fromEvent?.location.name ?? "Unknown")
+                    Text(displayName(for: fromEvent))
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                    if let city = fromEvent?.city {
+                    
+                    // Show city subtitle only for non-Other locations
+                    if let city = fromEvent?.city, fromEvent?.location.name != "Other" {
                         Text(city)
                             .font(.caption2)
                             .foregroundColor(.secondary)
@@ -240,12 +242,15 @@ struct TripManagementRow: View {
                 Image(systemName: "arrow.right")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .offset(y: -2) // Adjust to align with text baseline
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(toEvent?.location.name ?? "Unknown")
+                    Text(displayName(for: toEvent))
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                    if let city = toEvent?.city {
+                    
+                    // Show city subtitle only for non-Other locations
+                    if let city = toEvent?.city, toEvent?.location.name != "Other" {
                         Text(city)
                             .font(.caption2)
                             .foregroundColor(.secondary)
@@ -307,6 +312,17 @@ struct TripManagementRow: View {
         case .other: return .gray
         }
     }
+    
+    private func displayName(for event: Event?) -> String {
+        guard let event = event else { return "Unknown" }
+        
+        // If location name is "Other", use city name instead
+        if event.location.name == "Other" {
+            return event.city ?? "Other"
+        }
+        
+        return event.location.name
+    }
 }
 
 // MARK: - Trip Editor Sheet
@@ -341,11 +357,13 @@ struct TripEditorSheet: View {
             Form {
                 // Route info (read-only)
                 Section("Route") {
-                    HStack {
+                    HStack(alignment: .firstTextBaseline) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(fromEvent.location.name)
+                            Text(displayLocationName(fromEvent))
                                 .fontWeight(.semibold)
-                            if let city = fromEvent.city {
+                            
+                            // Show city subtitle only for non-Other locations
+                            if let city = fromEvent.city, fromEvent.location.name != "Other" {
                                 Text(city)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -356,13 +374,16 @@ struct TripEditorSheet: View {
                         
                         Image(systemName: "arrow.right")
                             .foregroundColor(.blue)
+                            .offset(y: -2) // Adjust to align with text baseline
                         
                         Spacer()
                         
                         VStack(alignment: .trailing, spacing: 4) {
-                            Text(toEvent.location.name)
+                            Text(displayLocationName(toEvent))
                                 .fontWeight(.semibold)
-                            if let city = toEvent.city {
+                            
+                            // Show city subtitle only for non-Other locations
+                            if let city = toEvent.city, toEvent.location.name != "Other" {
                                 Text(city)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -462,6 +483,14 @@ struct TripEditorSheet: View {
         
         store.save()
         dismiss()
+    }
+    
+    private func displayLocationName(_ event: Event) -> String {
+        // If location name is "Other", use city name instead
+        if event.location.name == "Other" {
+            return event.city ?? "Other"
+        }
+        return event.location.name
     }
 }
 
