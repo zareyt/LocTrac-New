@@ -34,3 +34,6 @@ build/
 LocTrac.xcodeproj/*.md
 LocTrac.xcodeproj/*OLD*
 LocTrac.xcodeproj/*CORRECTED*
+LocTrac/Archived/
+LocTrac/WEEK*.md
+LocTrac/VERSION_*_SUMMARY.md
