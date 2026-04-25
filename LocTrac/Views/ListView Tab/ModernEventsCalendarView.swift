@@ -8,6 +8,7 @@
 import SwiftUI
 import Contacts
 import CoreLocation
+import PhotosUI
 
 enum CalendarFilterMode: String, CaseIterable {
     case location = "Location"
@@ -198,7 +199,9 @@ struct ModernCalendarView: UIViewRepresentable {
         
         // Only reload the visible 3-month window when the filter mode or explicit refresh trigger changes
         if filterModeChanged || refreshTriggerChanged {
-            print("🔄 [ModernCalendarView] Filter/trigger changed → reloading decorations window")
+            if DebugConfig.shared.isEnabled && DebugConfig.shared.logCalendar {
+                print("📅 [calendar] Filter/trigger changed → reloading decorations window")
+            }
             context.coordinator.reloadThreeMonthWindow()
         }
     }
@@ -274,14 +277,9 @@ struct ModernCalendarView: UIViewRepresentable {
                 let eventColor = UIColor(singleEvent.location.effectiveColor)
                 
                 #if DEBUG
-                print("📅 [Calendar Decoration] Rendering decoration for date: \(dateComponents)")
-                print("   Event location: \(singleEvent.location.name)")
-                print("   Event location ID: \(singleEvent.location.id)")
-                print("   Event location theme: \(singleEvent.location.theme.rawValue)")
-                print("   Event location customColorHex: \(singleEvent.location.customColorHex ?? "nil")")
-                print("   Store location theme: \(locationFromStore.theme.rawValue)")
-                print("   Store location customColorHex: \(locationFromStore.customColorHex ?? "nil")")
-                print("   Using color from event.location.effectiveColor")
+                if DebugConfig.shared.isEnabled && DebugConfig.shared.logCalendar {
+                    print("📅 [calendar] Decoration for \(dateComponents): \(singleEvent.location.name) theme=\(singleEvent.location.theme.rawValue) customHex=\(singleEvent.location.customColorHex ?? "nil")")
+                }
                 #endif
                 
                 return UICalendarView.Decoration.default(color: eventColor, size: .large)
@@ -371,7 +369,9 @@ struct ModernCalendarView: UIViewRepresentable {
             let totalEnd = nextMonth.end
             
             #if DEBUG
-            print("🔄 [Coordinator] Reloading decorations from \(totalStart.formatted(date: .abbreviated, time: .omitted)) to \(totalEnd.formatted(date: .abbreviated, time: .omitted))")
+            if DebugConfig.shared.isEnabled && DebugConfig.shared.logCalendar {
+                print("📅 [calendar] Reloading decorations from \(totalStart.formatted(date: .abbreviated, time: .omitted)) to \(totalEnd.formatted(date: .abbreviated, time: .omitted))")
+            }
             #endif
             
             var comps: [DateComponents] = []
@@ -383,12 +383,15 @@ struct ModernCalendarView: UIViewRepresentable {
             }
             
             #if DEBUG
-            print("🔄 [Coordinator] Reloading \(comps.count) days of decorations")
+            if DebugConfig.shared.isEnabled && DebugConfig.shared.logCalendar {
+                print("📅 [calendar] Reloading \(comps.count) days of decorations")
+            }
             #endif
             view.reloadDecorations(forDateComponents: comps, animated: true)
             #if DEBUG
-            print("🔄 [Coordinator] Reload complete!")
-            print("🔄 ========== CALENDAR RELOAD END ==========\n")
+            if DebugConfig.shared.isEnabled && DebugConfig.shared.logCalendar {
+                print("📅 [calendar] Reload complete!")
+            }
             #endif
         }
     }
@@ -419,7 +422,7 @@ struct ModernDaysEventsListView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle(dateSelected?.date?.formatted(date: .long, time: .omitted) ?? "")
+            .navigationTitle(dateSelected?.date?.utcLongDateString ?? "")
             .navigationBarTitleDisplayMode(.inline)
             .sheet(item: $selectedEvent) { event in
                 ModernEventEditorSheet(event: event)
@@ -608,6 +611,23 @@ struct ModernEventRow: View {
                     .foregroundColor(.secondary)
                     .lineLimit(2)
             }
+
+            // Photos thumbnail strip
+            if !event.imageIDs.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 4) {
+                        ForEach(event.imageIDs, id: \.self) { imageID in
+                            if let uiImage = ImageStore.load(filename: imageID) {
+                                Image(uiImage: uiImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 40, height: 40)
+                                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                            }
+                        }
+                    }
+                }
+            }
         }
         .padding(.vertical, 4)
     }
@@ -622,23 +642,29 @@ struct ModernEventEditorSheet: View {
     
     @State private var selectedLocation: Location
     @State private var eventDate: Date
-    @State private var eventType: Event.EventType
+    @State private var eventType: String
     @State private var city: String
     @State private var state: String  // v1.5: State/province
     @State private var country: String
     @State private var notes: String
     @State private var selectedPeople: [Person]
-    @State private var selectedActivityIDs: Set<String>
+    @State private var selectedActivityIDs: [String]
     @State private var selectedAffirmationIDs: Set<String>
     @State private var showingContactsPicker = false
     @State private var showingAffirmationsSelector = false
+    @State private var showingActivitiesPicker = false
     @State private var latitude: Double
     @State private var longitude: Double
     @State private var latitudeText: String
     @State private var longitudeText: String
     @StateObject private var locationManager = LocationManager()
     @State private var geocodeError: String?
-    
+    @State private var showCopyEvent = false
+    @State private var imageIDs: [String]
+    @State private var photoItems: [PhotosPickerItem] = []
+    @State private var imageToDelete: String?
+    @State private var showDeleteImageConfirm = false
+
     // UTC calendar for consistent date handling (no timezone issues)
     private var utcCalendar: Calendar {
         var cal = Calendar(identifier: .gregorian)
@@ -663,19 +689,20 @@ struct ModernEventEditorSheet: View {
         self.event = event
         _selectedLocation = State(initialValue: event.location)
         _eventDate = State(initialValue: event.date.startOfDay)  // Normalize to start of day
-        _eventType = State(initialValue: Event.EventType(rawValue: event.eventType) ?? .unspecified)
+        _eventType = State(initialValue: event.eventType)
         _city = State(initialValue: event.city ?? "")
         _state = State(initialValue: event.state ?? "")  // v1.5: Initialize state
         _country = State(initialValue: event.country ?? "")
         _notes = State(initialValue: event.note)
         _selectedPeople = State(initialValue: event.people)
-        _selectedActivityIDs = State(initialValue: Set(event.activityIDs))
+        _selectedActivityIDs = State(initialValue: event.activityIDs)
         _selectedAffirmationIDs = State(initialValue: Set(event.affirmationIDs))
         _latitude = State(initialValue: event.latitude)
         _longitude = State(initialValue: event.longitude)
         _latitudeText = State(initialValue: String(event.latitude))
         _longitudeText = State(initialValue: String(event.longitude))
-        
+        _imageIDs = State(initialValue: event.imageIDs)
+
         #if DEBUG
         print("📅   - Initialized eventDate: \(event.date.startOfDay)")
         #endif
@@ -707,23 +734,38 @@ struct ModernEventEditorSheet: View {
                         Image(systemName: "building.2.fill")
                             .foregroundColor(.orange)
                             .frame(width: 30)
-                        TextField("City", text: $city)
+                        if isOtherSelected {
+                            TextField("City", text: $city)
+                        } else {
+                            Text(city.isEmpty ? "" : city)
+                                .foregroundColor(.secondary)
+                        }
                     }
-                    
+
                     // State field with icon
                     HStack {
                         Image(systemName: "map.fill")
                             .foregroundColor(.green)
                             .frame(width: 30)
-                        TextField("State/Province", text: $state)
+                        if isOtherSelected {
+                            TextField("State/Province", text: $state)
+                        } else {
+                            Text(state.isEmpty ? "" : state)
+                                .foregroundColor(.secondary)
+                        }
                     }
-                    
+
                     // Country field with icon
                     HStack {
                         Image(systemName: "globe")
                             .foregroundColor(.purple)
                             .frame(width: 30)
-                        TextField("Country", text: $country)
+                        if isOtherSelected {
+                            TextField("Country", text: $country)
+                        } else {
+                            Text(country.isEmpty ? "" : country)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 } header: {
                     Label("Location Details", systemImage: "map")
@@ -732,7 +774,7 @@ struct ModernEventEditorSheet: View {
                         Text("For 'Other' locations, enter city/state manually. Country will auto-populate from coordinates but can be overridden.")
                             .font(.caption)
                     } else {
-                        Text("Location details inherited from '\(selectedLocation.name)'. You can override any field.")
+                        Text("Location details inherited from '\(selectedLocation.name)'. Edit in Manage Locations.")
                             .font(.caption)
                     }
                 }
@@ -764,9 +806,10 @@ struct ModernEventEditorSheet: View {
                 // Stay Type Section
                 Section {
                     Picker("Stay Type", selection: $eventType) {
-                        ForEach(Event.EventType.allCases) { type in
-                            Text("\(type.icon) \(type.rawValue.capitalized)")
-                                .tag(type)
+                        ForEach(store.eventTypes) { item in
+                            Label(item.displayName, systemImage: item.sfSymbol)
+                                .foregroundStyle(item.color)
+                                .tag(item.name)
                         }
                     }
                     .pickerStyle(.navigationLink)
@@ -782,30 +825,47 @@ struct ModernEventEditorSheet: View {
                         Text("No activities available")
                             .foregroundColor(.secondary)
                             .font(.subheadline)
-                    } else {
-                        ForEach(store.activities, id: \.id) { activity in
-                            Toggle(isOn: Binding(
-                                get: { selectedActivityIDs.contains(activity.id) },
-                                set: { isSelected in
-                                    if isSelected {
-                                        selectedActivityIDs.insert(activity.id)
-                                    } else {
-                                        selectedActivityIDs.remove(activity.id)
-                                    }
-                                }
-                            )) {
-                                HStack {
-                                    Image(systemName: "figure.walk")
-                                        .foregroundColor(.green)
-                                    Text(activity.name)
-                                }
+                    } else if selectedActivityIDs.isEmpty {
+                        Button {
+                            showingActivitiesPicker = true
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "figure.walk")
+                                    .foregroundColor(.green)
+                                Text("Add Activities")
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
+                        }
+                    } else {
+                        ActivityChipsView(
+                            activityIDs: $selectedActivityIDs,
+                            activities: store.activities
+                        )
+
+                        Button {
+                            showingActivitiesPicker = true
+                        } label: {
+                            Label("Edit Activities", systemImage: "pencil.circle")
+                        }
+
+                        Button(role: .destructive) {
+                            selectedActivityIDs.removeAll()
+                        } label: {
+                            Label("Clear All", systemImage: "xmark.circle")
                         }
                     }
                 } header: {
-                    Text("Activities")
-                } footer: {
-                    Text("\(selectedActivityIDs.count) selected")
+                    HStack {
+                        Label("Activities", systemImage: "figure.walk")
+                        Spacer()
+                        Text("\(selectedActivityIDs.count) selected")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
                 // Affirmations Section
@@ -900,9 +960,124 @@ struct ModernEventEditorSheet: View {
                     TextEditor(text: $notes)
                         .frame(minHeight: 80)
                 }
+
+                // Photos Section (editable)
+                Section {
+                    if !imageIDs.isEmpty {
+                        TabView {
+                            ForEach(imageIDs, id: \.self) { imageID in
+                                ZStack(alignment: .topTrailing) {
+                                    if let uiImage = ImageStore.load(filename: imageID) {
+                                        Image(uiImage: uiImage)
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 260)
+                                            .clipped()
+                                            .cornerRadius(12)
+                                    } else {
+                                        Color.gray.opacity(0.2)
+                                            .overlay(
+                                                Image(systemName: "photo")
+                                                    .imageScale(.large)
+                                                    .foregroundColor(.secondary)
+                                            )
+                                            .frame(height: 260)
+                                            .cornerRadius(12)
+                                    }
+                                    Button {
+                                        imageToDelete = imageID
+                                        showDeleteImageConfirm = true
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .font(.headline)
+                                            .foregroundColor(.white)
+                                            .padding(8)
+                                            .background(Color.red.opacity(0.8))
+                                            .clipShape(Capsule())
+                                            .padding()
+                                    }
+                                    .accessibilityLabel("Delete Photo")
+                                }
+                            }
+                        }
+                        .frame(height: 260)
+                        .tabViewStyle(PageTabViewStyle())
+                        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                    }
+
+                    let remaining = 6 - imageIDs.count
+                    if remaining > 0 {
+                        PhotosPicker(
+                            selection: $photoItems,
+                            maxSelectionCount: remaining,
+                            matching: .images
+                        ) {
+                            Label(
+                                imageIDs.isEmpty ? "Add Photos" : "Add More (\(remaining) remaining)",
+                                systemImage: "photo.badge.plus"
+                            )
+                        }
+                        .onChange(of: photoItems) { _, items in
+                            guard !items.isEmpty else { return }
+                            Task {
+                                await saveEditorPhotos(items)
+                            }
+                        }
+                    }
+                } header: {
+                    Label("Photos (\(imageIDs.count)/6)", systemImage: "camera.fill")
+                } footer: {
+                    Text("Swipe to browse photos. Add up to 6 per stay.")
+                        .font(.caption)
+                }
+                .confirmationDialog("Delete Photo?", isPresented: $showDeleteImageConfirm, titleVisibility: .visible) {
+                    Button("Delete", role: .destructive) {
+                        if let id = imageToDelete {
+                            imageIDs.removeAll { $0 == id }
+                            ImageStore.delete(filename: id)
+                            imageToDelete = nil
+                        }
+                    }
+                }
+
+                // Copy to Other Dates Section
+                Section {
+                    Button {
+                        DebugConfig.shared.log(.dataStore, "📋 [CopyEvent] 'Copy to Other Dates' tapped from ModernEventEditorSheet, event=\(event.id)")
+                        showCopyEvent = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "doc.on.doc")
+                                .foregroundColor(.blue)
+                            Text("Copy to Other Dates...")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                } header: {
+                    Label("Copy", systemImage: "doc.on.doc")
+                } footer: {
+                    Text("Copy this stay's data to a range of other dates with conflict resolution")
+                        .font(.caption)
+                }
             }
             .navigationTitle("Edit Event")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                // Refresh city/state/country from the current store location
+                // The event's embedded snapshot may be stale (missing fields added later)
+                if selectedLocation.name != "Other",
+                   let currentLocation = store.locations.first(where: { $0.id == selectedLocation.id }) {
+                    if city == (event.city ?? "") && state == (event.state ?? "") && country == (event.country ?? "") {
+                        populateFieldsFromLocation(currentLocation)
+                        selectedLocation = currentLocation
+                    }
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -915,6 +1090,12 @@ struct ModernEventEditorSheet: View {
                         saveChanges()
                     }
                 }
+            }
+            .sheet(isPresented: $showingActivitiesPicker) {
+                ActivityPickerSheet(
+                    selectedIDs: $selectedActivityIDs,
+                    activities: store.activities
+                )
             }
             .sheet(isPresented: $showingContactsPicker) {
                 ContactsSearchPicker { contacts in
@@ -939,7 +1120,32 @@ struct ModernEventEditorSheet: View {
                 ))
                 .environmentObject(store)
             }
+            .sheet(isPresented: $showCopyEvent) {
+                CopyEventView(sourceEvent: buildCurrentEventForCopy())
+                    .environmentObject(store)
+            }
         }
+    }
+
+    /// Build an Event from the current editor state for use as CopyEventView source.
+    private func buildCurrentEventForCopy() -> Event {
+        return Event(
+            id: event.id,
+            eventTypeRaw: eventType,
+            date: eventDate.startOfDay,
+            location: selectedLocation,
+            city: city,
+            latitude: latitude,
+            longitude: longitude,
+            country: country,
+            state: state,
+            note: notes,
+            people: selectedPeople,
+            activityIDs: selectedActivityIDs,
+            affirmationIDs: Array(selectedAffirmationIDs),
+            isGeocoded: event.isGeocoded,
+            imageIDs: imageIDs
+        )
     }
     
     // MARK: - Coordinates Section
@@ -1118,6 +1324,21 @@ struct ModernEventEditorSheet: View {
         }
     }
     
+    private func saveEditorPhotos(_ items: [PhotosPickerItem]) async {
+        for item in items {
+            guard let data = try? await item.loadTransferable(type: Data.self),
+                  let uiImage = UIImage(data: data) else { continue }
+            if let filename = try? ImageStore.save(image: uiImage) {
+                await MainActor.run {
+                    imageIDs.append(filename)
+                }
+            }
+        }
+        await MainActor.run {
+            photoItems = []
+        }
+    }
+
     private func saveChanges() {
         #if DEBUG
         print("🔍 [ModernEventEditorSheet] Saving event:")
@@ -1134,16 +1355,17 @@ struct ModernEventEditorSheet: View {
         var updatedEvent = event
         updatedEvent.location = selectedLocation
         updatedEvent.date = eventDate.startOfDay  // Normalize to start of day in UTC
-        updatedEvent.eventType = eventType.rawValue  // Save the event type
+        updatedEvent.eventType = eventType  // Save the event type
         updatedEvent.city = city
         updatedEvent.state = state  // v1.5: Save state
         updatedEvent.country = country
         updatedEvent.note = notes
         updatedEvent.people = selectedPeople
-        updatedEvent.activityIDs = Array(selectedActivityIDs)
+        updatedEvent.activityIDs = selectedActivityIDs
         updatedEvent.affirmationIDs = Array(selectedAffirmationIDs)
         updatedEvent.latitude = latitude
         updatedEvent.longitude = longitude
+        updatedEvent.imageIDs = imageIDs
         
         #if DEBUG
         print("   Updated Event - Date: \(updatedEvent.date)")

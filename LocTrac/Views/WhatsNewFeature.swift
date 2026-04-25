@@ -157,31 +157,109 @@ struct WhatsNewFeature: Identifiable {
             ]
 
         // ── Add future versions below ──────────────────────────────────────
-        case "1.5":
+        case "2.0":
             return [
                 WhatsNewFeature(
-                    symbolName: "calendar.badge.clock",
+                    symbolName: "person.badge.key.fill",
                     symbolColor: .blue,
-                    title: "Date-Only Tracking",
-                    description: "LocTrac now focuses purely on calendar dates. Time displays removed from events — track which day you were somewhere, not the exact hour."
+                    title: "Sign In with Apple",
+                    description: "Securely sign in with your Apple ID. Your credentials are stored safely in the Keychain — no passwords to remember."
                 ),
                 WhatsNewFeature(
-                    symbolName: "map.fill",
+                    symbolName: "envelope.badge.shield.half.filled.fill",
                     symbolColor: .green,
-                    title: "State & Province Support",
-                    description: "New state/province field for both locations and events provides more precise location tracking, especially useful for domestic travel."
+                    title: "Email & Password Accounts",
+                    description: "Create a local account with email and password. All authentication stays on your device — no servers, no cloud, fully private."
                 ),
                 WhatsNewFeature(
-                    symbolName: "doc.text.fill",
+                    symbolName: "person.crop.circle.fill",
                     symbolColor: .purple,
-                    title: "Enhanced Documentation",
-                    description: "Comprehensive developer documentation added, including detailed guidelines for date handling, architecture patterns, and project structure."
+                    title: "Profile & Preferences",
+                    description: "New profile hub with customizable preferences — set your default location, choose miles or kilometers, and pick a default transport mode."
                 ),
                 WhatsNewFeature(
-                    symbolName: "clock.fill",
+                    symbolName: "faceid",
                     symbolColor: .orange,
-                    title: "Consistent UTC Handling",
-                    description: "All dates now stored and compared in UTC timezone, eliminating date-shifting issues when traveling or changing time zones."
+                    title: "Face ID & Touch ID",
+                    description: "Enable biometric unlock for quick, secure access to your travel data. Optional convenience feature you can enable in Security Settings."
+                ),
+                WhatsNewFeature(
+                    symbolName: "lock.shield.fill",
+                    symbolColor: .red,
+                    title: "Two-Factor Authentication",
+                    description: "Add an extra layer of security with TOTP-based two-factor authentication. Works with any authenticator app and includes backup codes."
+                ),
+                WhatsNewFeature(
+                    symbolName: "paintbrush.fill",
+                    symbolColor: .red,
+                    title: "Event Type Visual Revamp",
+                    description: "Event types now use SF Symbol icons and a consistent color palette across the entire app — charts, forms, calendar, maps, and location rows."
+                ),
+                WhatsNewFeature(
+                    symbolName: "tag.fill",
+                    symbolColor: .indigo,
+                    title: "Custom Event Types",
+                    description: "Create, edit, and delete custom event types with your own name, icon, and color. Set a default event type in Preferences to pre-fill new stay forms."
+                ),
+                WhatsNewFeature(
+                    symbolName: "calendar.badge.exclamationmark",
+                    symbolColor: .orange,
+                    title: "One Stay Per Day",
+                    description: "Batch event creation now prevents duplicate stays on the same date. Existing dates are automatically skipped with a summary alert."
+                ),
+                WhatsNewFeature(
+                    symbolName: "brain.head.profile",
+                    symbolColor: .blue,
+                    title: "Smart Add Stay Button",
+                    description: "The Home screen button now adapts to your timeline. It adds today's stay, fills the most recent gap, or lets you edit today's event when you're all caught up."
+                ),
+                WhatsNewFeature(
+                    symbolName: "doc.on.doc.fill",
+                    symbolColor: .teal,
+                    title: "Copy Stay to Dates",
+                    description: "Copy a stay's data to a range of dates. Choose which fields to copy — same-location dates merge automatically, while different-location conflicts let you skip or replace."
+                ),
+                WhatsNewFeature(
+                    symbolName: "figure.walk",
+                    symbolColor: .green,
+                    title: "Compact Activity Picker",
+                    description: "Activities now use a compact chip-based design. Selected activities appear as small tags, and a picker sheet lets you browse and select from all available activities."
+                ),
+                WhatsNewFeature(
+                    symbolName: "camera.fill",
+                    symbolColor: .cyan,
+                    title: "Event Photos",
+                    description: "Add up to 6 photos to any individual stay. Photos are separate from location images — capture moments and activities for specific dates."
+                ),
+                WhatsNewFeature(
+                    symbolName: "archivebox.fill",
+                    symbolColor: .purple,
+                    title: "Photo Backup & Import",
+                    description: "Export photos alongside your data in a .zip archive. Import detects format automatically with conflict resolution — skip, replace, or rename existing photos."
+                ),
+                WhatsNewFeature(
+                    symbolName: "arrow.triangle.2.circlepath",
+                    symbolColor: .teal,
+                    title: "Seamless Migration",
+                    description: "Existing users keep all their data — no migration needed. Optionally create an account to secure your data and prepare for future cloud sync."
+                ),
+                WhatsNewFeature(
+                    symbolName: "mappin.and.ellipse",
+                    symbolColor: .teal,
+                    title: "Smarter \"Other\" Location Display",
+                    description: "Trips and data enhancement views now show the actual city name instead of \"Other\" for events at non-standard locations."
+                ),
+                WhatsNewFeature(
+                    symbolName: "point.topleft.down.to.point.bottomright.curvepath.fill",
+                    symbolColor: .blue,
+                    title: "Smarter Trip Generation",
+                    description: "Fixed trip refresh generating phantom trips between \"Other\" location events in the same city. Trip refresh now shows full details for each addition, modification, and deletion."
+                ),
+                WhatsNewFeature(
+                    symbolName: "bell.badge.clock.fill",
+                    symbolColor: .orange,
+                    title: "Stay Reminder Timezone Fix",
+                    description: "Fixed stay reminder notification incorrectly reporting missing stays due to timezone mismatch. The missing-days count now refreshes on every app launch and event change."
                 ),
             ]
 

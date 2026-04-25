@@ -53,59 +53,67 @@ struct TripMigrationUtility {
         return generatedTrips
     }
     
-    /// Check if event has valid coordinates
+    /// Check if event has valid coordinates using the same resolution as getCoordinates.
+    /// For "Other" events, checks event-level coords. For named locations, checks location coords.
     private static func hasValidCoordinates(_ event: Event) -> Bool {
-        let hasEventCoords = event.latitude != 0.0 && event.longitude != 0.0
-        let hasLocationCoords = event.location.latitude != 0.0 && event.location.longitude != 0.0
-        return hasEventCoords || hasLocationCoords
+        let coords = event.effectiveCoordinates
+        return coords.latitude != 0.0 && coords.longitude != 0.0
     }
-    
+
     /// Determine if a trip should be created between two events
     private static func shouldCreateTrip(from current: Event, to next: Event) -> Bool {
         let currentLocationID = current.location.id
         let nextLocationID = next.location.id
-        
+
         let currentIsOther = current.location.name == "Other"
         let nextIsOther = next.location.name == "Other"
-        
-        print("   [shouldCreateTrip] Current location: '\(current.location.name)' (isOther: \(currentIsOther))")
-        print("   [shouldCreateTrip] Next location: '\(next.location.name)' (isOther: \(nextIsOther))")
-        
-        // Check if locations are different
+
         if currentIsOther && nextIsOther {
-            // Both are "Other" - check if coordinates are significantly different
+            // Both are "Other" — first compare city names (case-insensitive)
+            let currentCity = current.effectiveCity?.trimmingCharacters(in: .whitespaces).lowercased()
+            let nextCity = next.effectiveCity?.trimmingCharacters(in: .whitespaces).lowercased()
+
+            if let cc = currentCity, let nc = nextCity, !cc.isEmpty, !nc.isEmpty, cc == nc {
+                return false
+            }
+
+            // Different or unknown cities — fall back to distance check
             let distance = calculateDistance(from: current, to: next)
-            print("   [shouldCreateTrip] Both 'Other' - distance: \(String(format: "%.2f", distance)) miles (need > 1.0)")
-            return distance > 1.0 // More than 1 mile apart
+            return distance > 1.0
         } else if currentIsOther || nextIsOther {
-            // One is "Other" and one is a named location - always different
-            print("   [shouldCreateTrip] One is 'Other', one is named → CREATE TRIP")
+            // One is "Other" and one is named — compare by effective city + location city
+            let otherEvent = currentIsOther ? current : next
+            let namedEvent = currentIsOther ? next : current
+            let otherCity = otherEvent.effectiveCity?.trimmingCharacters(in: .whitespaces).lowercased()
+            let namedCity = namedEvent.location.city?.trimmingCharacters(in: .whitespaces).lowercased()
+
+            if let oc = otherCity, let nc = namedCity, !oc.isEmpty, !nc.isEmpty, oc == nc {
+                // Same city — use distance to confirm it's actually different
+                let distance = calculateDistance(from: current, to: next)
+                return distance > 1.0
+            }
+
             return true
         } else {
             // Both are named locations - check location IDs
-            let different = currentLocationID != nextLocationID
-            print("   [shouldCreateTrip] Both named locations - different IDs: \(different)")
-            return different
+            return currentLocationID != nextLocationID
         }
     }
-    
+
     /// Calculate distance between two events in miles
     private static func calculateDistance(from current: Event, to next: Event) -> Double {
         let currentCoord = getCoordinates(for: current)
         let nextCoord = getCoordinates(for: next)
-        
+
         let location1 = CLLocation(latitude: currentCoord.latitude, longitude: currentCoord.longitude)
         let location2 = CLLocation(latitude: nextCoord.latitude, longitude: nextCoord.longitude)
-        
+
         let distanceInMeters = location1.distance(from: location2)
-        let distanceInMiles = distanceInMeters * 0.000621371
-        
-        return distanceInMiles
+        return distanceInMeters * 0.000621371
     }
-    
+
     /// Get coordinates for an event (from event or location based on location type)
     private static func getCoordinates(for event: Event) -> CLLocationCoordinate2D {
-        // Use the effective coordinates logic
         let coords = event.effectiveCoordinates
         return CLLocationCoordinate2D(latitude: coords.latitude, longitude: coords.longitude)
     }

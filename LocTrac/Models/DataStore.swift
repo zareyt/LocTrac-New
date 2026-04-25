@@ -14,6 +14,7 @@ class DataStore: ObservableObject {
     @Published var activities: [Activity] = [] // NEW: global list of activities
     @Published var affirmations: [Affirmation] = [] // NEW: global list of affirmations
     @Published var trips: [Trip] = [] // NEW: travel trips between locations
+    @Published var eventTypes: [EventTypeItem] = [] // v2.0: user-manageable event types
     @Published var preview: Bool = false
     @Published var changedEvent: Event?
     @Published var movedEvent: Event?
@@ -60,6 +61,17 @@ class DataStore: ObservableObject {
     }
     
     func delete(_ location: Location) {
+        // Clean up associated image files from disk
+        if let imageIDs = location.imageIDs, !imageIDs.isEmpty {
+            for imageID in imageIDs {
+                ImageStore.delete(filename: imageID)
+            }
+            #if DEBUG
+            Task { @MainActor in
+                DebugConfig.shared.log(.dataStore, "📸 [Delete Location] Cleaned up \(imageIDs.count) image(s) for '\(location.name)'")
+            }
+            #endif
+        }
         if let index = locations.firstIndex(where: {$0.id == location.id}) {
             changedLocation = locations.remove(at: index)
         }
@@ -72,6 +84,17 @@ class DataStore: ObservableObject {
             DebugConfig.shared.log(.dataStore, "delete(Event) called for id=\(event.id)")
         }
         #endif
+        // Clean up associated image files from disk
+        if !event.imageIDs.isEmpty {
+            for imageID in event.imageIDs {
+                ImageStore.delete(filename: imageID)
+            }
+            #if DEBUG
+            Task { @MainActor in
+                DebugConfig.shared.log(.dataStore, "📸 [Delete Event] Cleaned up \(event.imageIDs.count) image(s) for event on \(event.date.utcMediumDateString)")
+            }
+            #endif
+        }
         if let index = events.firstIndex(where: {$0.id == event.id}) {
             changedEvent = events.remove(at: index)
             invalidateCacheForEvent(event, isDelete: true)
@@ -153,6 +176,7 @@ class DataStore: ObservableObject {
             locations[index].theme = location.theme
             locations[index].imageIDs = location.imageIDs
             locations[index].customColorHex = location.customColorHex // NEW: Update custom color
+            locations[index].isGeocoded = location.isGeocoded // v2.0: Preserve geocoded flag
             changedLocation = location
             
             #if DEBUG
@@ -189,7 +213,7 @@ class DataStore: ObservableObject {
                     #if DEBUG
                     eventsUpdated += 1
                     let eventID = events[i].id
-                    let eventDate = events[i].date.formatted(date: .abbreviated, time: .omitted)
+                    let eventDate = events[i].date.utcMediumDateString
                     let newTheme = events[i].location.theme.rawValue
                     let newColorHex = events[i].location.customColorHex
                     Task { @MainActor in
@@ -260,6 +284,9 @@ class DataStore: ObservableObject {
             events[index].note = event.note
             events[index].people = event.people
             events[index].activityIDs = event.activityIDs
+            events[index].affirmationIDs = event.affirmationIDs
+            events[index].isGeocoded = event.isGeocoded
+            events[index].imageIDs = event.imageIDs
             changedEvent = event
             storeData()
             invalidateCacheForEvent(event)
@@ -311,6 +338,59 @@ class DataStore: ObservableObject {
         invalidateCacheForActivity(activity)
     }
     
+    // MARK: - Event Types CRUD
+
+    func addEventType(_ eventType: EventTypeItem) {
+        eventTypes.append(eventType)
+        storeData()
+    }
+
+    func updateEventType(_ eventType: EventTypeItem) {
+        if let idx = eventTypes.firstIndex(where: { $0.id == eventType.id }) {
+            let oldName = eventTypes[idx].name
+            eventTypes[idx] = eventType
+            // If the name changed, update all events that reference the old name
+            if oldName != eventType.name {
+                for i in events.indices {
+                    if events[i].eventType == oldName {
+                        events[i].eventType = eventType.name
+                    }
+                }
+            }
+            storeData()
+        }
+    }
+
+    func deleteEventType(_ eventType: EventTypeItem) {
+        guard !eventType.isBuiltIn else { return } // Prevent deleting built-in types
+        eventTypes.removeAll { $0.id == eventType.id }
+        // Reset events using this type to "unspecified"
+        for i in events.indices {
+            if events[i].eventType == eventType.name {
+                events[i].eventType = "unspecified"
+            }
+        }
+        storeData()
+    }
+
+    /// Look up a stored EventTypeItem by its raw name, falling back to built-in defaults
+    func eventTypeItem(for rawValue: String) -> EventTypeItem {
+        if let stored = eventTypes.first(where: { $0.name == rawValue }) {
+            return stored
+        }
+        // Fallback to built-in defaults
+        if let builtIn = EventTypeItem.defaults.first(where: { $0.name == rawValue }) {
+            return builtIn
+        }
+        // Ultimate fallback
+        return EventTypeItem(name: rawValue, displayName: rawValue.capitalized, sfSymbol: "questionmark.circle", colorName: "gray")
+    }
+
+    private func seedDefaultEventTypes() {
+        self.eventTypes = EventTypeItem.defaults
+        storeData()
+    }
+
     // MARK: - Affirmations CRUD
     
     func addAffirmation(_ affirmation: Affirmation) {
@@ -358,7 +438,7 @@ class DataStore: ObservableObject {
     // MARK: - Persistence
     
     func storeData() -> Void {
-        let export = Export(locations: self.locations, events: self.events, activities: self.activities, affirmations: self.affirmations, trips: self.trips)
+        let export = Export(locations: self.locations, events: self.events, activities: self.activities, affirmations: self.affirmations, trips: self.trips, eventTypes: self.eventTypes)
         
         #if DEBUG
         // Debug: Check affirmation IDs in events before export
@@ -507,7 +587,8 @@ class DataStore: ObservableObject {
                   note: event.note,
                   people: event.people ?? [],
                   activityIDs: event.activityIDs ?? [],
-                  affirmationIDs: event.affirmationIDs ?? [])
+                  affirmationIDs: event.affirmationIDs ?? [],
+                  imageIDs: event.imageIDs ?? [])
         })
         // Activities may or may not be present in older seeds; seed defaults if empty
         if let importedActivities = decodedImport.activities {
@@ -554,10 +635,23 @@ class DataStore: ObservableObject {
             print("📝 No trips in backup - will run migration if needed")
         }
         
+        // Event types — optional in older backups, seed defaults if missing
+        if let importedEventTypes = decodedImport.eventTypes {
+            self.eventTypes = importedEventTypes.map {
+                EventTypeItem(id: $0.id, name: $0.name, displayName: $0.displayName, sfSymbol: $0.sfSymbol, colorName: $0.colorName, isBuiltIn: $0.isBuiltIn)
+            }
+        } else {
+            self.eventTypes = []
+        }
+
+        if self.eventTypes.isEmpty {
+            seedDefaultEventTypes()
+        }
+
         if self.activities.isEmpty {
             seedDefaultActivities()
         }
-        
+
         if self.affirmations.isEmpty {
             seedDefaultAffirmations()
         }
@@ -620,7 +714,7 @@ class DataStore: ObservableObject {
     /// Check if a new event should create a trip from the previous event
     private func checkAndCreateTripForNewEvent(_ newEvent: Event) {
         print("\n🚗 [Auto-Trip] Checking if new event creates a trip...")
-        print("   New event: at location '\(newEvent.location.name)' on \(newEvent.date.formatted(date: .abbreviated, time: .omitted))")
+        print("   New event: at location '\(newEvent.location.name)' on \(newEvent.date.utcMediumDateString)")
         print("   New event STORED coords: (\(newEvent.latitude), \(newEvent.longitude))")
         print("   New event EFFECTIVE coords: (\(newEvent.effectiveCoordinates.latitude), \(newEvent.effectiveCoordinates.longitude))")
         
@@ -633,7 +727,7 @@ class DataStore: ObservableObject {
         }
         
         let previousEvent = sortedEvents[newEventIndex - 1]
-        print("   Previous event: at location '\(previousEvent.location.name)' on \(previousEvent.date.formatted(date: .abbreviated, time: .omitted))")
+        print("   Previous event: at location '\(previousEvent.location.name)' on \(previousEvent.date.utcMediumDateString)")
         print("   Previous event STORED coords: (\(previousEvent.latitude), \(previousEvent.longitude))")
         print("   Previous event EFFECTIVE coords: (\(previousEvent.effectiveCoordinates.latitude), \(previousEvent.effectiveCoordinates.longitude))")
         print("   Location comparison: '\(previousEvent.location.id)' vs '\(newEvent.location.id)' (same: \(previousEvent.location.id == newEvent.location.id))")
@@ -708,7 +802,7 @@ class DataStore: ObservableObject {
     /// Check if deleting an event affects any trips and remove them
     private func checkAndUpdateTripsForDeletedEvent(_ deletedEvent: Event) {
         print("\n🗑️ [Auto-Trip] Checking if deleted event affects trips...")
-        print("   Deleted event: \(deletedEvent.location.name) on \(deletedEvent.date.formatted(date: .abbreviated, time: .omitted))")
+        print("   Deleted event: \(deletedEvent.location.name) on \(deletedEvent.date.utcMediumDateString)")
         
         // Find trips that reference this event
         let affectedTrips = trips.filter { trip in
@@ -972,7 +1066,7 @@ class DataStore: ObservableObject {
         let targetDay = date.startOfDay
         let eventsForDate = events.filter { $0.date.startOfDay == targetDay }
         
-        print("\n📅 DEBUG: Events for \(date.formatted(date: .abbreviated, time: .omitted))")
+        print("\n📅 DEBUG: Events for \(date.utcMediumDateString)")
         print("   Target start of day: \(targetDay)")
         print("   Total events found: \(eventsForDate.count)")
         

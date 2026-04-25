@@ -9,6 +9,7 @@ import SwiftUI
 
 struct TripConfirmationView: View {
     @EnvironmentObject var store: DataStore
+    @EnvironmentObject var debugConfig: DebugConfig
     @Environment(\.dismiss) private var dismiss
     
     let trip: Trip
@@ -69,7 +70,7 @@ struct TripConfirmationView: View {
                             .foregroundStyle(.purple)
                         Text("Date")
                         Spacer()
-                        Text(trip.departureDate.formatted(date: .abbreviated, time: .omitted))
+                        Text(trip.departureDate.utcMediumDateString)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -145,6 +146,7 @@ struct TripConfirmationView: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        .debugViewName("TripConfirmationView")
     }
 }
 

@@ -49,7 +49,10 @@ struct LocationLiistViewRow: View {
                             let typeBreakdown = perYearTypeBreakdown(for: year)
                             ForEach(typeBreakdown, id: \.type.id) { entry in
                                 HStack(spacing: 6) {
-                                    Text("• \(entry.type.icon) \(entry.type.rawValue.capitalized): \(entry.count) (\(percentString(entry.percent)))")
+                                    Image(systemName: entry.type.sfSymbol)
+                                        .font(.footnote)
+                                        .foregroundStyle(entry.type.color)
+                                    Text("\(entry.type.displayName): \(entry.count) (\(percentString(entry.percent)))")
                                         .font(.footnote)
                                         .foregroundColor(.secondary)
                                 }
@@ -99,23 +102,22 @@ struct LocationLiistViewRow: View {
         return (count, percent)
     }
     
-    private func perYearTypeBreakdown(for year: Int) -> [(type: Event.EventType, count: Int, percent: Float)] {
+    private func perYearTypeBreakdown(for year: Int) -> [(type: EventTypeItem, count: Int, percent: Float)] {
         let locationEventsInYear = store.events.filter {
             utcCalendar.component(.year, from: $0.date) == year && $0.location.id == location.id
         }
         let totalForLocationInYear = locationEventsInYear.count
         guard totalForLocationInYear > 0 else { return [] }
-        var result: [(type: Event.EventType, count: Int, percent: Float)] = []
-        for t in Event.EventType.allCases {
-            let count = locationEventsInYear.filter { Event.EventType(rawValue: $0.eventType) == t }.count
-            let percent = totalForLocationInYear > 0 ? Float(count) / Float(totalForLocationInYear) : 0
-            if count > 0 {
-                result.append((t, count, percent))
-            }
+        var result: [(type: EventTypeItem, count: Int, percent: Float)] = []
+        let grouped = Dictionary(grouping: locationEventsInYear) { $0.eventType }
+        for (rawValue, events) in grouped {
+            let item = store.eventTypeItem(for: rawValue)
+            let percent = Float(events.count) / Float(totalForLocationInYear)
+            result.append((item, events.count, percent))
         }
         result.sort { lhs, rhs in
             if lhs.count == rhs.count {
-                return lhs.type.rawValue < rhs.type.rawValue
+                return lhs.type.name < rhs.type.name
             }
             return lhs.count > rhs.count
         }

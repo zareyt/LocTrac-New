@@ -2,9 +2,10 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var store: DataStore
-    
+    @EnvironmentObject var debugConfig: DebugConfig
+
     // Callbacks provided by StartTabView
-    let onAddEvent: () -> Void
+    let onSmartStayAction: (SmartStayAction) -> Void
     let onShowOtherCities: () -> Void
     let onOpenCalendar: () -> Void
     let onOpenLocationsManagement: () -> Void  // CHANGED: From onOpenLocations to manage locations
@@ -189,6 +190,7 @@ struct HomeView: View {
                 }
             }
         }
+        .debugViewName("HomeView")
     }
     
     // MARK: - Sections
@@ -204,13 +206,17 @@ struct HomeView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
     
+    private var smartAction: SmartStayAction {
+        SmartStayAction.determine(events: store.events)
+    }
+
     private var quickActions: some View {
         Button {
-            onAddEvent()
+            onSmartStayAction(smartAction)
         } label: {
             HStack {
-                Image(systemName: "calendar.badge.plus")
-                Text("Add Stay")
+                Image(systemName: smartAction.buttonIcon)
+                Text(smartAction.buttonLabel)
             }
             .frame(maxWidth: .infinity)
         }

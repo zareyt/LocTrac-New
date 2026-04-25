@@ -8,9 +8,11 @@
 import SwiftUI
 import CoreLocation
 import ContactsUI
+import PhotosUI
 
 struct ModernEventFormView: View {
     @EnvironmentObject var store: DataStore
+    @EnvironmentObject var debugConfig: DebugConfig
     @StateObject var viewModel: EventFormViewModel
     @Environment(\.dismiss) var dismiss
     @FocusState private var focus: Bool?
@@ -20,8 +22,17 @@ struct ModernEventFormView: View {
     @State private var longitudeText = ""
     @State private var showContactsSearch = false
     @State private var showAffirmationsSelector = false
+    @State private var showActivitiesPicker = false
     @StateObject var locationManager = LocationManager()
     @State private var geocodeError: String?
+    @State private var skippedDays: Int = 0
+    @State private var showDuplicateAlert = false
+    @State private var showCopyEvent = false
+    @State private var dismissAfterCopy = false
+    @State private var hasSetupInitialValues = false
+    @State private var photoItems: [PhotosPickerItem] = []
+    @State private var imageToDelete: String?
+    @State private var showDeleteImageConfirm = false
     
     // UTC calendar for consistent date handling (no timezone issues)
     private var utcCalendar: Calendar {
@@ -65,7 +76,15 @@ struct ModernEventFormView: View {
                 
                 // Notes Section
                 notesSection
-                
+
+                // Photos Section
+                photosSection
+
+                // Copy to Dates — edit mode only (add mode auto-popups via performSave)
+                if viewModel.updating {
+                    copyToDatesSection
+                }
+
                 // Save Button Section
                 saveButtonSection
             }
@@ -86,11 +105,50 @@ struct ModernEventFormView: View {
                     addPeopleFromContacts(contacts)
                 }
             }
+            .sheet(isPresented: $showActivitiesPicker) {
+                ActivityPickerSheet(
+                    selectedIDs: $viewModel.activityIDs,
+                    activities: store.activities
+                )
+            }
             .sheet(isPresented: $showAffirmationsSelector) {
                 AffirmationSelectorView(selectedAffirmationIDs: $viewModel.affirmationIDs)
                     .environmentObject(store)
             }
+            .sheet(isPresented: $showCopyEvent, onDismiss: {
+                if dismissAfterCopy {
+                    DebugConfig.shared.log(.dataStore, "📋 [CopyEvent] CopyEventView dismissed in add mode — dismissing form")
+                    dismissAfterCopy = false
+                    dismiss()
+                }
+            }) {
+                if let sourceEvent = buildCurrentEvent() {
+                    if dismissAfterCopy {
+                        // Add mode: cover full date range, create ALL dates including start
+                        CopyEventView(
+                            sourceEvent: sourceEvent,
+                            skipSourceDate: false,
+                            overrideStartDate: viewModel.date.startOfDay,
+                            overrideEndDate: toDate.startOfDay
+                        )
+                        .environmentObject(store)
+                    } else {
+                        // Edit mode: default behavior (skip source date, user picks range)
+                        CopyEventView(sourceEvent: sourceEvent)
+                            .environmentObject(store)
+                    }
+                }
+            }
+            .alert("Days Skipped", isPresented: $showDuplicateAlert) {
+                Button("OK") {
+                    dismiss()
+                }
+            } message: {
+                let created = calculateDurationDays() + 1 - skippedDays
+                Text("\(skippedDays) day\(skippedDays == 1 ? " was" : "s were") skipped because a stay already exists on \(skippedDays == 1 ? "that date" : "those dates"). \(created) stay\(created == 1 ? " was" : "s were") created.")
+            }
         }
+        .debugViewName("ModernEventFormView")
     }
     
     // MARK: - Location Section
@@ -123,32 +181,47 @@ struct ModernEventFormView: View {
                 Image(systemName: "building.2.fill")
                     .foregroundColor(.orange)
                     .frame(width: 30)
-                TextField("City", text: Binding(
-                    get: { viewModel.city ?? "" },
-                    set: { viewModel.city = $0.isEmpty ? nil : $0 }
-                ))
+                if isOtherSelected {
+                    TextField("City", text: Binding(
+                        get: { viewModel.city ?? "" },
+                        set: { viewModel.city = $0.isEmpty ? nil : $0 }
+                    ))
+                } else {
+                    Text(viewModel.city ?? "")
+                        .foregroundColor(.secondary)
+                }
             }
-            
+
             // State field
             HStack {
                 Image(systemName: "map.fill")
                     .foregroundColor(.green)
                     .frame(width: 30)
-                TextField("State/Province", text: Binding(
-                    get: { viewModel.state ?? "" },
-                    set: { viewModel.state = $0.isEmpty ? nil : $0 }
-                ))
+                if isOtherSelected {
+                    TextField("State/Province", text: Binding(
+                        get: { viewModel.state ?? "" },
+                        set: { viewModel.state = $0.isEmpty ? nil : $0 }
+                    ))
+                } else {
+                    Text(viewModel.state ?? "")
+                        .foregroundColor(.secondary)
+                }
             }
-            
+
             // Country field
             HStack {
                 Image(systemName: "globe")
                     .foregroundColor(.purple)
                     .frame(width: 30)
-                TextField("Country", text: Binding(
-                    get: { viewModel.country ?? "" },
-                    set: { viewModel.country = $0.isEmpty ? nil : $0 }
-                ))
+                if isOtherSelected {
+                    TextField("Country", text: Binding(
+                        get: { viewModel.country ?? "" },
+                        set: { viewModel.country = $0.isEmpty ? nil : $0 }
+                    ))
+                } else {
+                    Text(viewModel.country ?? "")
+                        .foregroundColor(.secondary)
+                }
             }
         } header: {
             Label("Location Details", systemImage: "map")
@@ -157,7 +230,7 @@ struct ModernEventFormView: View {
                 Text("For 'Other' locations, enter city/state manually. Country will auto-populate from coordinates but can be overridden.")
                     .font(.caption)
             } else if viewModel.location != nil {
-                Text("Location details inherited from '\(viewModel.location?.name ?? "")'. You can override any field.")
+                Text("Location details inherited from '\(viewModel.location?.name ?? "")'. Edit in Manage Locations.")
                     .font(.caption)
             } else {
                 Text("Select a location to auto-populate location details")
@@ -239,9 +312,10 @@ struct ModernEventFormView: View {
     private var eventTypeSection: some View {
         Section {
             Picker("Stay Type", selection: $viewModel.eventType) {
-                ForEach(Event.EventType.allCases) { eventType in
-                    Text("\(eventType.icon) \(eventType.rawValue.capitalized)")
-                        .tag(eventType)
+                ForEach(store.eventTypes) { item in
+                    Label(item.displayName, systemImage: item.sfSymbol)
+                        .foregroundStyle(item.color)
+                        .tag(item.name)
                 }
             }
             .pickerStyle(.navigationLink)
@@ -262,33 +336,39 @@ struct ModernEventFormView: View {
                         .foregroundColor(.orange)
                     Text("No activities available")
                         .foregroundColor(.secondary)
-                    Spacer()
-                    Button("Manage") {
-                        // Optional: open activities management
+                }
+            } else if viewModel.activityIDs.isEmpty {
+                Button {
+                    showActivitiesPicker = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "figure.walk")
+                            .foregroundColor(.green)
+                        Text("Add Activities")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
-                    .font(.subheadline)
                 }
             } else {
-                ForEach(store.activities) { activity in
-                    Toggle(isOn: Binding(
-                        get: { viewModel.activityIDs.contains(activity.id) },
-                        set: { _ in toggleActivity(activity.id) }
-                    )) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "figure.walk")
-                                .foregroundColor(.green)
-                            Text(activity.name)
-                        }
-                    }
-                    .toggleStyle(SwitchToggleStyle(tint: .green))
+                // Selected activities as compact chips
+                ActivityChipsView(
+                    activityIDs: $viewModel.activityIDs,
+                    activities: store.activities
+                )
+
+                Button {
+                    showActivitiesPicker = true
+                } label: {
+                    Label("Edit Activities", systemImage: "pencil.circle")
                 }
-                
-                if !viewModel.activityIDs.isEmpty {
-                    Button(role: .destructive) {
-                        viewModel.activityIDs.removeAll()
-                    } label: {
-                        Label("Clear All Activities", systemImage: "xmark.circle")
-                    }
+
+                Button(role: .destructive) {
+                    viewModel.activityIDs.removeAll()
+                } label: {
+                    Label("Clear All", systemImage: "xmark.circle")
                 }
             }
         } header: {
@@ -625,7 +705,164 @@ struct ModernEventFormView: View {
             Label("Notes", systemImage: "note.text")
         }
     }
-    
+
+    // MARK: - Photos Section
+    private var photosSection: some View {
+        Section {
+            if !viewModel.imageIDs.isEmpty {
+                TabView {
+                    ForEach(viewModel.imageIDs, id: \.self) { imageID in
+                        ZStack(alignment: .topTrailing) {
+                            if let uiImage = ImageStore.load(filename: imageID) {
+                                Image(uiImage: uiImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 260)
+                                    .clipped()
+                                    .cornerRadius(12)
+                            } else {
+                                Color.gray.opacity(0.2)
+                                    .overlay(
+                                        Image(systemName: "photo")
+                                            .imageScale(.large)
+                                            .foregroundColor(.secondary)
+                                    )
+                                    .frame(height: 260)
+                                    .cornerRadius(12)
+                            }
+                            Button {
+                                imageToDelete = imageID
+                                showDeleteImageConfirm = true
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .padding(8)
+                                    .background(Color.red.opacity(0.8))
+                                    .clipShape(Capsule())
+                                    .padding()
+                            }
+                            .accessibilityLabel("Delete Photo")
+                        }
+                    }
+                }
+                .frame(height: 260)
+                .tabViewStyle(PageTabViewStyle())
+                .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+            }
+
+            let remaining = 6 - viewModel.imageIDs.count
+            if remaining > 0 {
+                PhotosPicker(
+                    selection: $photoItems,
+                    maxSelectionCount: remaining,
+                    matching: .images
+                ) {
+                    Label(
+                        viewModel.imageIDs.isEmpty ? "Add Photos" : "Add More (\(remaining) remaining)",
+                        systemImage: "photo.badge.plus"
+                    )
+                }
+                .onChange(of: photoItems) { _, items in
+                    guard !items.isEmpty else { return }
+                    Task {
+                        await saveEventPhotos(items)
+                    }
+                }
+            }
+        } header: {
+            Label("Photos (\(viewModel.imageIDs.count)/6)", systemImage: "camera.fill")
+        } footer: {
+            Text("Swipe to browse photos. Add up to 6 per stay.")
+                .font(.caption)
+        }
+        .confirmationDialog("Delete Photo?", isPresented: $showDeleteImageConfirm, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                if let imageID = imageToDelete {
+                    deleteEventImage(imageID)
+                }
+            }
+        }
+    }
+
+    private func saveEventPhotos(_ items: [PhotosPickerItem]) async {
+        for item in items {
+            guard let data = try? await item.loadTransferable(type: Data.self),
+                  let uiImage = UIImage(data: data) else { continue }
+            if let filename = try? ImageStore.save(image: uiImage) {
+                await MainActor.run {
+                    viewModel.imageIDs.append(filename)
+                }
+                DebugConfig.shared.log(.dataStore, "📸 [EventForm] Saved photo: \(filename)")
+            }
+        }
+        await MainActor.run {
+            photoItems = []
+        }
+    }
+
+    private func deleteEventImage(_ imageID: String) {
+        viewModel.imageIDs.removeAll { $0 == imageID }
+        ImageStore.delete(filename: imageID)
+        imageToDelete = nil
+        DebugConfig.shared.log(.dataStore, "📸 [EventForm] Deleted photo: \(imageID)")
+    }
+
+    // MARK: - Copy to Dates Section
+    private var copyToDatesSection: some View {
+        Section {
+            Button {
+                DebugConfig.shared.log(.dataStore, "📋 [CopyEvent] 'Copy to Other Dates' tapped, updating=\(viewModel.updating), duration=\(calculateDurationDays()) days")
+                showCopyEvent = true
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "doc.on.doc")
+                        .foregroundColor(.blue)
+                    Text("Copy to Other Dates...")
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .disabled(viewModel.location == nil)
+        } header: {
+            Label("Copy", systemImage: "doc.on.doc")
+        } footer: {
+            Text("Copy this stay's data to a range of other dates with conflict resolution")
+                .font(.caption)
+        }
+    }
+
+    /// Build an Event from the current form state (for copy source).
+    private func buildCurrentEvent() -> Event? {
+        guard let location = viewModel.location else {
+            DebugConfig.shared.log(.dataStore, "📋 [CopyEvent] buildCurrentEvent: no location selected, returning nil")
+            return nil
+        }
+        let eventID = viewModel.id ?? UUID().uuidString
+        DebugConfig.shared.log(.dataStore, "📋 [CopyEvent] buildCurrentEvent: id=\(eventID), location='\(location.name)', date=\(viewModel.date.utcMediumDateString)")
+        return Event(
+            id: eventID,
+            eventTypeRaw: viewModel.eventType,
+            date: viewModel.date.startOfDay,
+            location: location,
+            city: viewModel.city,
+            latitude: viewModel.latitude,
+            longitude: viewModel.longitude,
+            country: viewModel.country,
+            state: viewModel.state,
+            note: viewModel.note,
+            people: viewModel.people,
+            activityIDs: viewModel.activityIDs,
+            affirmationIDs: viewModel.affirmationIDs,
+            isGeocoded: viewModel.id.flatMap { id in store.events.first(where: { $0.id == id })?.isGeocoded } ?? false,
+            imageIDs: viewModel.imageIDs
+        )
+    }
+
     // MARK: - Save Button Section
     private var saveButtonSection: some View {
         Section {
@@ -652,6 +889,8 @@ struct ModernEventFormView: View {
     // MARK: - Helper Functions
     
     private func setupInitialValues() {
+        guard !hasSetupInitialValues else { return }
+        hasSetupInitialValues = true
         focus = true
         if viewModel.updating {
             print("📅 [DATE DEBUG] === EDITING EXISTING EVENT ===")
@@ -674,23 +913,26 @@ struct ModernEventFormView: View {
             latitudeText = String(viewModel.latitude)
             longitudeText = String(viewModel.longitude)
             
-            // For named locations (not "Other"), refresh from current location data
-            if let location = viewModel.location, location.name != "Other" {
-                // Check if user had manually overridden values
-                // If not, refresh from current location
-                if viewModel.city == location.city &&
-                   viewModel.state == location.state &&
-                   viewModel.country == location.country {
-                    // Values match location, so refresh from current location data
-                    populateFieldsFromLocation(location)
+            // For named locations (not "Other"), refresh from current store location data
+            // The event's embedded location snapshot may be stale (e.g., missing city/state
+            // added after the event was created). Look up the live location from the store.
+            if let embeddedLocation = viewModel.location, embeddedLocation.name != "Other",
+               let currentLocation = store.locations.first(where: { $0.id == embeddedLocation.id }) {
+                // Check if user had manually overridden values vs the embedded snapshot
+                // If values match the stale snapshot (or are nil), refresh from current store data
+                if viewModel.city == embeddedLocation.city &&
+                   viewModel.state == embeddedLocation.state &&
+                   viewModel.country == embeddedLocation.country {
+                    populateFieldsFromLocation(currentLocation)
+                    viewModel.location = currentLocation
                 }
-                // Otherwise keep the overridden values from the event
+                // Otherwise keep the user's overridden values
             }
         } else if let selected = viewModel.dateSelected {
             // When creating from a selected date, use UTC start of day
             // DatePicker binding will convert to local for display
             viewModel.date = selected.startOfDay
-            toDate = selected.startOfDay
+            toDate = viewModel.toDateSelected?.startOfDay ?? selected.startOfDay
             latitudeText = String(viewModel.latitude)
             longitudeText = String(viewModel.longitude)
         } else {
@@ -824,18 +1066,61 @@ struct ModernEventFormView: View {
     private func performSave() {
         Task { @MainActor in
             if viewModel.updating {
+                DebugConfig.shared.log(.dataStore, "📋 [CopyEvent] performSave: updating existing event \(viewModel.id ?? "nil")")
                 await updateExistingEvent()
+                dismiss()
             } else {
+                let duration = calculateDurationDays()
+                DebugConfig.shared.log(.dataStore, "📋 [CopyEvent] performSave: new event, duration=\(duration) days")
+
+                // For multi-day ranges, redirect to CopyEventView so user can
+                // choose which fields to copy and resolve any conflicts per-date
+                if duration > 0 {
+                    DebugConfig.shared.log(.dataStore, "📋 [CopyEvent] Redirecting to CopyEventView for field selection (add mode, \(duration + 1) days)")
+                    dismissAfterCopy = true
+                    showCopyEvent = true
+                    return
+                }
                 await createNewEvents()
+                // If days were skipped, show alert before dismissing
+                if skippedDays == 0 {
+                    dismiss()
+                }
+                // Otherwise the duplicate alert's OK button will dismiss
             }
-            dismiss()
         }
+    }
+
+    /// Check if any dates in the multi-day range already have events.
+    private func hasConflictsInRange() -> Bool {
+        var utcCal = Calendar(identifier: .gregorian)
+        utcCal.timeZone = TimeZone(secondsFromGMT: 0)!
+        let start = viewModel.date.startOfDay
+        let days = utcCal.dateComponents([.day], from: start, to: toDate.startOfDay).day ?? 0
+        let existingDates = Set(store.events.map { $0.date.startOfDay })
+
+        for n in 0...days {
+            guard let date = utcCal.date(byAdding: .day, value: n, to: start) else { continue }
+            if existingDates.contains(date) {
+                DebugConfig.shared.log(.dataStore, "📋 [CopyEvent] Conflict found on \(date.utcMediumDateString)")
+                return true
+            }
+        }
+        DebugConfig.shared.log(.dataStore, "📋 [CopyEvent] No conflicts in date range")
+        return false
     }
     
     private func updateExistingEvent() async {
         guard let id = viewModel.id else { return }
         guard let selectedLocation = viewModel.location else { return }
-        
+
+        // Detect if location changed — reset isGeocoded so Enhance Location Data re-processes
+        let originalEvent = store.events.first(where: { $0.id == id })
+        let locationChanged = originalEvent?.location.id != selectedLocation.id
+        if locationChanged {
+            DebugConfig.shared.log(.dataStore, "🔄 [EventForm] Location changed from '\(originalEvent?.location.name ?? "nil")' to '\(selectedLocation.name)' — resetting isGeocoded")
+        }
+
         // Use manually entered country if available, otherwise auto-detect
         let country: String?
         if let manualCountry = viewModel.country, !manualCountry.isEmpty {
@@ -843,7 +1128,7 @@ struct ModernEventFormView: View {
         } else {
             country = await store.updateEventCountry(Event(
                 id: id,
-                eventType: viewModel.eventType,
+                eventTypeRaw: viewModel.eventType,
                 date: viewModel.date.startOfDay,
                 location: selectedLocation,
                 city: viewModel.city ?? "",
@@ -852,10 +1137,14 @@ struct ModernEventFormView: View {
                 note: viewModel.note
             ))
         }
-        
+
+        // Preserve isGeocoded unless location changed
+        let shouldKeepGeocoded = !locationChanged && (originalEvent?.isGeocoded ?? false)
+        DebugConfig.shared.log(.dataStore, "📍 [EventForm] Updating event \(id): isGeocoded=\(shouldKeepGeocoded) (locationChanged=\(locationChanged), original=\(originalEvent?.isGeocoded ?? false))")
+
         let event = Event(
             id: id,
-            eventType: viewModel.eventType,
+            eventTypeRaw: viewModel.eventType,
             date: viewModel.date.startOfDay,
             location: selectedLocation,
             city: viewModel.city ?? "",
@@ -866,9 +1155,11 @@ struct ModernEventFormView: View {
             note: viewModel.note,
             people: viewModel.people,
             activityIDs: viewModel.activityIDs,
-            affirmationIDs: viewModel.affirmationIDs
+            affirmationIDs: viewModel.affirmationIDs,
+            isGeocoded: shouldKeepGeocoded,
+            imageIDs: viewModel.imageIDs
         )
-        
+
         store.update(event)
     }
     
@@ -879,14 +1170,14 @@ struct ModernEventFormView: View {
         let end = toDate.startOfDay
         let days = utcCalendar.dateComponents([.day], from: start, to: end).day ?? 0
         guard let selectedLocation = viewModel.location else { return }
-        
+
         // Use manually entered country if available, otherwise auto-detect
         let country: String?
         if let manualCountry = viewModel.country, !manualCountry.isEmpty {
             country = manualCountry
         } else {
             country = await store.updateEventCountry(Event(
-                eventType: viewModel.eventType,
+                eventTypeRaw: viewModel.eventType,
                 date: start,
                 location: selectedLocation,
                 city: viewModel.city ?? "",
@@ -895,11 +1186,25 @@ struct ModernEventFormView: View {
                 note: viewModel.note
             ))
         }
-        
+
+        // Build set of dates that already have events for quick lookup
+        let existingEventDates = Set(store.events.map { $0.date.startOfDay })
+        var skipped = 0
+
         for n in 0...days {
             guard let nextDate = utcCalendar.date(byAdding: .day, value: n, to: start) else { continue }
+
+            // Skip days that already have an event (one stay per day rule)
+            if existingEventDates.contains(nextDate) {
+                skipped += 1
+                #if DEBUG
+                print("⚠️ [EventForm] Skipped \(nextDate) — event already exists on this date")
+                #endif
+                continue
+            }
+
             let newEvent = Event(
-                eventType: viewModel.eventType,
+                eventTypeRaw: viewModel.eventType,
                 date: nextDate,
                 location: selectedLocation,
                 city: viewModel.city ?? "",
@@ -910,11 +1215,149 @@ struct ModernEventFormView: View {
                 note: viewModel.note,
                 people: viewModel.people,
                 activityIDs: viewModel.activityIDs,
-                affirmationIDs: viewModel.affirmationIDs
+                affirmationIDs: viewModel.affirmationIDs,
+                imageIDs: n == 0 ? viewModel.imageIDs : []  // Photos on first day only
             )
             store.add(newEvent)
         }
+
+        skippedDays = skipped
+        if skipped > 0 {
+            showDuplicateAlert = true
+        }
+
         store.bumpCalendarRefresh()
+    }
+}
+
+// MARK: - Activity Chips (inline display)
+struct ActivityChipsView: View {
+    @Binding var activityIDs: [String]
+    let activities: [Activity]
+
+    var body: some View {
+        FlowLayoutActivities(spacing: 6) {
+            ForEach(selectedActivities) { activity in
+                HStack(spacing: 4) {
+                    Text(activity.name)
+                        .font(.system(size: 13, weight: .medium))
+                    Button {
+                        activityIDs.removeAll { $0 == activity.id }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 9, weight: .bold))
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.green.opacity(0.15))
+                .foregroundStyle(.green)
+                .clipShape(Capsule())
+            }
+        }
+    }
+
+    private var selectedActivities: [Activity] {
+        activityIDs.compactMap { id in activities.first { $0.id == id } }
+    }
+}
+
+// MARK: - Activity Picker Sheet
+struct ActivityPickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var selectedIDs: [String]
+    let activities: [Activity]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                FlowLayoutActivities(spacing: 8) {
+                    ForEach(activities) { activity in
+                        let isSelected = selectedIDs.contains(activity.id)
+                        Button {
+                            toggleActivity(activity.id)
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 14))
+                                Text(activity.name)
+                                    .font(.system(size: 14, weight: .medium))
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(isSelected ? Color.green.opacity(0.15) : Color(.systemGray6))
+                            .foregroundStyle(isSelected ? .green : .primary)
+                            .clipShape(Capsule())
+                        }
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Select Activities")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Clear All", role: .destructive) {
+                        selectedIDs.removeAll()
+                    }
+                    .disabled(selectedIDs.isEmpty)
+                }
+            }
+        }
+    }
+
+    private func toggleActivity(_ id: String) {
+        if let idx = selectedIDs.firstIndex(of: id) {
+            selectedIDs.remove(at: idx)
+        } else {
+            selectedIDs.append(id)
+        }
+    }
+}
+
+// MARK: - Flow Layout for Activity Chips
+struct FlowLayoutActivities: Layout {
+    var spacing: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let result = layout(in: proposal.width ?? 0, subviews: subviews)
+        return result.size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = layout(in: bounds.width, subviews: subviews)
+        for (index, position) in result.positions.enumerated() {
+            subviews[index].place(
+                at: CGPoint(x: bounds.minX + position.x, y: bounds.minY + position.y),
+                proposal: ProposedViewSize(subviews[index].sizeThatFits(.unspecified))
+            )
+        }
+    }
+
+    private func layout(in width: CGFloat, subviews: Subviews) -> (size: CGSize, positions: [CGPoint]) {
+        var positions: [CGPoint] = []
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var maxWidth: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x + size.width > width, x > 0 {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            positions.append(CGPoint(x: x, y: y))
+            rowHeight = max(rowHeight, size.height)
+            x += size.width + spacing
+            maxWidth = max(maxWidth, x)
+        }
+
+        return (CGSize(width: maxWidth, height: y + rowHeight), positions)
     }
 }
 

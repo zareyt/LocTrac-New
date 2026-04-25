@@ -389,7 +389,7 @@ struct LocationSyncUtilityView: View {
                     print("   [DEBUG Event \(index + 1)]")
                     print("      Event coords: (\(event.latitude), \(event.longitude))")
                     print("      City: \(event.city ?? "nil")")
-                    print("      Date: \(event.date.formatted(date: .abbreviated, time: .omitted))")
+                    print("      Date: \(event.date.utcMediumDateString)")
                     print("      Diff from location: lat=\(abs(event.latitude - location.latitude)), lon=\(abs(event.longitude - location.longitude))")
                 }
                 

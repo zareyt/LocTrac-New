@@ -37,3 +37,6 @@ LocTrac.xcodeproj/*CORRECTED*
 LocTrac/Archived/
 LocTrac/WEEK*.md
 LocTrac/VERSION_*_SUMMARY.md
+
+# Debug log files (generated at runtime)
+DebugLogs/

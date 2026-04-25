@@ -9,6 +9,7 @@ import SwiftUI
 
 struct OrphanedEventsAnalyzerView: View {
     @EnvironmentObject var store: DataStore
+    @EnvironmentObject var debugConfig: DebugConfig
     @Environment(\.dismiss) private var dismiss
     
     @State private var report: OrphanedEventsReport?
@@ -92,6 +93,7 @@ struct OrphanedEventsAnalyzerView: View {
                 }
             }
         }
+        .debugViewName("OrphanedEventsAnalyzerView")
     }
     
     // MARK: - Empty State
@@ -234,7 +236,7 @@ struct OrphanedEventsAnalyzerView: View {
                                         .foregroundColor(.red)
                                     VStack(alignment: .leading, spacing: 2) {
                                         HStack {
-                                            Text(pair.orphan.date.formatted(date: .abbreviated, time: .omitted))
+                                            Text(pair.orphan.date.utcMediumDateString)
                                                 .font(.caption)
                                                 .fontWeight(.medium)
                                             Text("(Orphan)")
@@ -284,7 +286,7 @@ struct OrphanedEventsAnalyzerView: View {
                                         .foregroundColor(.green)
                                     VStack(alignment: .leading, spacing: 2) {
                                         HStack {
-                                            Text(pair.validEvent.date.formatted(date: .abbreviated, time: .omitted))
+                                            Text(pair.validEvent.date.utcMediumDateString)
                                                 .font(.caption)
                                                 .fontWeight(.medium)
                                             Text("(Valid)")
@@ -374,7 +376,7 @@ struct OrphanedEventsAnalyzerView: View {
                         ForEach(report.orphansWithoutDuplicates.prefix(5)) { event in
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
-                                    Text(event.date.formatted(date: .abbreviated, time: .omitted))
+                                    Text(event.date.utcMediumDateString)
                                         .font(.subheadline)
                                         .fontWeight(.medium)
                                     Spacer()
@@ -504,7 +506,7 @@ struct OrphanedEventsAnalyzerView: View {
                     ForEach(report.orphanedEvents.prefix(10)) { event in
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
-                                Text(event.date.formatted(date: .abbreviated, time: .omitted))
+                                Text(event.date.utcMediumDateString)
                                     .font(.subheadline)
                                     .fontWeight(.medium)
                                 

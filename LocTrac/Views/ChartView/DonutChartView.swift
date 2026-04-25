@@ -16,6 +16,7 @@ enum RegionFilter: String, CaseIterable, Identifiable {
 
 struct DonutChartView: View {
     @EnvironmentObject var store: DataStore
+    @EnvironmentObject var debugConfig: DebugConfig
     @State var indexOfTappedSlice = -1
     @State var yearSelection: String = "Total"
     @State var regionFilter: RegionFilter = .all    // New: region filter
@@ -152,6 +153,7 @@ struct DonutChartView: View {
             #endif
             refreshID = UUID()  // Force recomputation of charDataObj
         }
+        .debugViewName("DonutChartView")
     }
 
     // MARK: - Subviews

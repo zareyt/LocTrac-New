@@ -29,6 +29,9 @@
 		3D1E896C2F8D99710068BD33 /* DebugConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D1E896B2F8D99710068BD33 /* DebugConfig.swift */; };
 		3D2CC2572F7B599E00CC0BF1 /* TimelineRestoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D2CC2562F7B599E00CC0BF1 /* TimelineRestoreView.swift */; };
 		3D32CE772F6F112500CEC497 /* ReverseGeocoderHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D32CE762F6F112500CEC497 /* ReverseGeocoderHelper.swift */; };
+		3D3EFD922F9930E3005C019A /* EventTypeItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D3EFD912F9930E3005C019A /* EventTypeItem.swift */; };
+		3D3EFD942F993186005C019A /* EventTypesManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D3EFD932F993186005C019A /* EventTypesManagementView.swift */; };
+		3D3EFD9A2F9965CC005C019A /* SmartStayAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D3EFD992F9965CC005C019A /* SmartStayAction.swift */; };
 		3D43857B29E5B5D900ED1E6A /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D43857A29E5B5D900ED1E6A /* LocationManager.swift */; };
 		3D481E9229B8D7D00016C6ED /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D481E9129B8D7D00016C6ED /* Theme.swift */; };
 		3D481E9429B8DB0E0016C6ED /* ThemePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D481E9329B8DB0E0016C6ED /* ThemePicker.swift */; };
@@ -41,6 +44,9 @@
 		3D742BDB2F7A15D200DCD5B5 /* TripRefreshView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D742BDA2F7A15D200DCD5B5 /* TripRefreshView.swift */; };
 		3D7C1B932F8FD41F008032B9 /* ReleaseNotesParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7C1B8F2F8FCD16008032B9 /* ReleaseNotesParser.swift */; };
 		3D7C1B992F8FD98D008032B9 /* VERSION_1.5_RELEASE_NOTES.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D7C1B982F8FD98D008032B9 /* VERSION_1.5_RELEASE_NOTES.md */; };
+		3D7FE6872F9BD6D100E7C299 /* CopyEventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7FE6862F9BD6D100E7C299 /* CopyEventView.swift */; };
+		3D7FE6892F9C0DB900E7C299 /* BulkPersonAssignView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7FE6882F9C0DB900E7C299 /* BulkPersonAssignView.swift */; };
+		3D7FE6912F9C1DF700E7C299 /* BackupArchiveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7FE6902F9C1DF700E7C299 /* BackupArchiveService.swift */; };
 		3D955C3C2F8AC3B3001B06DF /* LOCATION_MANAGEMENT_ENHANCEMENTS.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D955C3B2F8AC3B3001B06DF /* LOCATION_MANAGEMENT_ENHANCEMENTS.md */; };
 		3D955C3E2F8AC583001B06DF /* LOCATION_MANAGEMENT_ENHANCEMENTS 2.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D955C3D2F8AC583001B06DF /* LOCATION_MANAGEMENT_ENHANCEMENTS 2.md */; };
 		3D955C402F8AD50D001B06DF /* LOCATION_UI_FIXES_AND_ARCHITECTURE_CHANGE.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D955C3F2F8AD50D001B06DF /* LOCATION_UI_FIXES_AND_ARCHITECTURE_CHANGE.md */; };
@@ -62,6 +68,12 @@
 		3D98ECB02F74368100C5B8C0 /* DefaultLocationSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D98ECAF2F74368100C5B8C0 /* DefaultLocationSettingsView.swift */; };
 		3DA34F792EFC9FF900C9255D /* ImageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DA34F782EFC9FF800C9255D /* ImageStore.swift */; };
 		3DA34F7B2EFD9B5100C9255D /* Person.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DA34F7A2EFD9B5100C9255D /* Person.swift */; };
+		3DA3D6942F96E546000A0AFC /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DA3D6932F96E546000A0AFC /* KeychainHelper.swift */; };
+		3DA3D6962F96E546000A0AFC /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DA3D6952F96E546000A0AFC /* UserProfile.swift */; };
+		3DA3D6982F96E574000A0AFC /* AuthenticationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DA3D6972F96E574000A0AFC /* AuthenticationService.swift */; };
+		3DA3D69A2F96E574000A0AFC /* AuthState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DA3D6992F96E574000A0AFC /* AuthState.swift */; };
+		3DA3D69C2F96E583000A0AFC /* BiometricService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DA3D69B2F96E583000A0AFC /* BiometricService.swift */; };
+		3DA3D69E2F96E584000A0AFC /* TOTPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DA3D69D2F96E584000A0AFC /* TOTPService.swift */; };
 		3DA98F3F2F86F0E2003B46BA /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3DA98F3E2F86F0E2003B46BA /* WidgetKit.framework */; };
 		3DA98F412F86F0E2003B46BA /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3DA98F402F86F0E2003B46BA /* SwiftUI.framework */; };
 		3DA98F502F86F0E5003B46BA /* LocTracWidgetExtensionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3DA98F3C2F86F0E2003B46BA /* LocTracWidgetExtensionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -98,7 +110,6 @@
 		3DD0AAA129A6EAB8003625C1 /* Event.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DD0AA9C29A6EAB8003625C1 /* Event.swift */; };
 		3DD0AABA29A6EAD1003625C1 /* LocationFormViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DD0AAA729A6EAD1003625C1 /* LocationFormViewModel.swift */; };
 		3DD0AABB29A6EAD1003625C1 /* EventFormViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DD0AAA829A6EAD1003625C1 /* EventFormViewModel.swift */; };
-		3DD0AABC29A6EAD1003625C1 /* EventFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DD0AAA929A6EAD1003625C1 /* EventFormView.swift */; };
 		3DD0AABD29A6EAD1003625C1 /* LocationFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DD0AAAA29A6EAD1003625C1 /* LocationFormView.swift */; };
 		3DD0AABE29A6EAD1003625C1 /* LocationFormType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DD0AAAB29A6EAD1003625C1 /* LocationFormType.swift */; };
 		3DD0AABF29A6EAD1003625C1 /* EventFormType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DD0AAAC29A6EAD1003625C1 /* EventFormType.swift */; };
@@ -132,6 +143,20 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		3D3EFDA72F9A93CA005C019A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3DD0AA7D29A6EA0C003625C1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3DD0AA8429A6EA0C003625C1;
+			remoteInfo = LocTrac;
+		};
+		3D7FE69F2F9C5A3800E7C299 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3DD0AA7D29A6EA0C003625C1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3DD0AA8429A6EA0C003625C1;
+			remoteInfo = LocTrac;
+		};
 		3DA98F4E2F86F0E5003B46BA /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 3DD0AA7D29A6EA0C003625C1 /* Project object */;
@@ -178,6 +203,11 @@
 		3D2CC24F2F7B54CA00CC0BF1 /* BACKLOG.MD */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = BACKLOG.MD; sourceTree = "<group>"; };
 		3D2CC2562F7B599E00CC0BF1 /* TimelineRestoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineRestoreView.swift; sourceTree = "<group>"; };
 		3D32CE762F6F112500CEC497 /* ReverseGeocoderHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReverseGeocoderHelper.swift; sourceTree = "<group>"; };
+		3D3EFD912F9930E3005C019A /* EventTypeItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventTypeItem.swift; sourceTree = "<group>"; };
+		3D3EFD932F993186005C019A /* EventTypesManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventTypesManagementView.swift; sourceTree = "<group>"; };
+		3D3EFD992F9965CC005C019A /* SmartStayAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartStayAction.swift; sourceTree = "<group>"; };
+		3D3EFD9C2F9A936D005C019A /* LocTrac.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = LocTrac.xctestplan; sourceTree = "<group>"; };
+		3D3EFDA12F9A93CA005C019A /* LocTracUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LocTracUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3D43857A29E5B5D900ED1E6A /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		3D481E9129B8D7D00016C6ED /* Theme.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		3D481E9329B8DB0E0016C6ED /* ThemePicker.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ThemePicker.swift; sourceTree = "<group>"; };
@@ -192,6 +222,10 @@
 		3D742BDA2F7A15D200DCD5B5 /* TripRefreshView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripRefreshView.swift; sourceTree = "<group>"; };
 		3D7C1B8F2F8FCD16008032B9 /* ReleaseNotesParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseNotesParser.swift; sourceTree = "<group>"; };
 		3D7C1B982F8FD98D008032B9 /* VERSION_1.5_RELEASE_NOTES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = VERSION_1.5_RELEASE_NOTES.md; sourceTree = "<group>"; };
+		3D7FE6862F9BD6D100E7C299 /* CopyEventView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopyEventView.swift; sourceTree = "<group>"; };
+		3D7FE6882F9C0DB900E7C299 /* BulkPersonAssignView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BulkPersonAssignView.swift; sourceTree = "<group>"; };
+		3D7FE6902F9C1DF700E7C299 /* BackupArchiveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupArchiveService.swift; sourceTree = "<group>"; };
+		3D7FE69B2F9C5A3800E7C299 /* LocTracTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LocTracTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3D85466F2F81F2F000E9FF13 /* CHANGELOG.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
 		3D918BD329ABFEB5004A724C /* Seed.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = Seed.json; sourceTree = "<group>"; };
 		3D955C3B2F8AC3B3001B06DF /* LOCATION_MANAGEMENT_ENHANCEMENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LOCATION_MANAGEMENT_ENHANCEMENTS.md; sourceTree = "<group>"; };
@@ -215,6 +249,12 @@
 		3D98ECAF2F74368100C5B8C0 /* DefaultLocationSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultLocationSettingsView.swift; sourceTree = "<group>"; };
 		3DA34F782EFC9FF800C9255D /* ImageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageStore.swift; sourceTree = "<group>"; };
 		3DA34F7A2EFD9B5100C9255D /* Person.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Person.swift; sourceTree = "<group>"; };
+		3DA3D6932F96E546000A0AFC /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		3DA3D6952F96E546000A0AFC /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
+		3DA3D6972F96E574000A0AFC /* AuthenticationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationService.swift; sourceTree = "<group>"; };
+		3DA3D6992F96E574000A0AFC /* AuthState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthState.swift; sourceTree = "<group>"; };
+		3DA3D69B2F96E583000A0AFC /* BiometricService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricService.swift; sourceTree = "<group>"; };
+		3DA3D69D2F96E584000A0AFC /* TOTPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOTPService.swift; sourceTree = "<group>"; };
 		3DA98EEB2F8606AE003B46BA /* INFOGRAPHICS_SHARE_FIX.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INFOGRAPHICS_SHARE_FIX.md; sourceTree = "<group>"; };
 		3DA98EED2F8607B8003B46BA /* SHARE_BUTTON_ACTUAL_FIX.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SHARE_BUTTON_ACTUAL_FIX.md; sourceTree = "<group>"; };
 		3DA98F3C2F86F0E2003B46BA /* LocTracWidgetExtensionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LocTracWidgetExtensionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -260,7 +300,6 @@
 		3DD0AA9C29A6EAB8003625C1 /* Event.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Event.swift; sourceTree = "<group>"; };
 		3DD0AAA729A6EAD1003625C1 /* LocationFormViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LocationFormViewModel.swift; sourceTree = "<group>"; };
 		3DD0AAA829A6EAD1003625C1 /* EventFormViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EventFormViewModel.swift; sourceTree = "<group>"; };
-		3DD0AAA929A6EAD1003625C1 /* EventFormView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EventFormView.swift; sourceTree = "<group>"; };
 		3DD0AAAA29A6EAD1003625C1 /* LocationFormView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LocationFormView.swift; sourceTree = "<group>"; };
 		3DD0AAAB29A6EAD1003625C1 /* LocationFormType.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LocationFormType.swift; sourceTree = "<group>"; };
 		3DD0AAAC29A6EAD1003625C1 /* EventFormType.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EventFormType.swift; sourceTree = "<group>"; };
@@ -321,6 +360,13 @@
 			);
 			target = 3DD0AA8429A6EA0C003625C1 /* LocTrac */;
 		};
+		3D7FE6CA2F9C665100E7C299 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"Fixtures/LocTrac_Backup_2026-04-24_163827.zip",
+			);
+			target = 3D7FE69A2F9C5A3800E7C299 /* LocTracTests */;
+		};
 		3DA98F512F86F0E5003B46BA /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -332,12 +378,30 @@
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		3D1E89712F8D9CDD0068BD33 /* Debug */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Debug; sourceTree = "<group>"; };
+		3D3EFDA22F9A93CA005C019A /* LocTracUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = LocTracUITests; sourceTree = "<group>"; };
 		3D7C1B902F8FCD16008032B9 /* Documentation */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (3D7C1B912F8FCD80008032B9 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Documentation; sourceTree = "<group>"; };
+		3D7FE6C12F9C5D1C00E7C299 /* LocTracTests */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (3D7FE6CA2F9C665100E7C299 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = LocTracTests; sourceTree = "<group>"; };
 		3D85466E2F7F0BB700E9FF13 /* Trips */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Trips; sourceTree = "<group>"; };
+		3DA3D6802F96DCC9000A0AFC /* Profile */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Profile; sourceTree = "<group>"; };
+		3DA3D68B2F96DD13000A0AFC /* Auth */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Auth; sourceTree = "<group>"; };
 		3DA98F422F86F0E2003B46BA /* LocTracWidgetExtension */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (3DA98F512F86F0E5003B46BA /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = LocTracWidgetExtension; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		3D3EFD9E2F9A93CA005C019A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3D7FE6982F9C5A3800E7C299 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		3DA98F392F86F0E2003B46BA /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -395,6 +459,12 @@
 				3DEA7F3B29B15BE0004F67EF /* ImportExport.swift */,
 				3D918BD329ABFEB5004A724C /* Seed.json */,
 				3DD040B12F88B550006C2A9A /* EnhancedGeocoder.swift */,
+				3DA3D68B2F96DD13000A0AFC /* Auth */,
+				3DA3D6932F96E546000A0AFC /* KeychainHelper.swift */,
+				3DA3D6972F96E574000A0AFC /* AuthenticationService.swift */,
+				3DA3D69B2F96E583000A0AFC /* BiometricService.swift */,
+				3DA3D69D2F96E584000A0AFC /* TOTPService.swift */,
+				3D7FE6902F9C1DF700E7C299 /* BackupArchiveService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -411,8 +481,11 @@
 		3DD0AA7C29A6EA0C003625C1 = {
 			isa = PBXGroup;
 			children = (
+				3D3EFD9C2F9A936D005C019A /* LocTrac.xctestplan */,
 				3DD0AA8729A6EA0C003625C1 /* LocTrac */,
 				3DA98F422F86F0E2003B46BA /* LocTracWidgetExtension */,
+				3D3EFDA22F9A93CA005C019A /* LocTracUITests */,
+				3D7FE6C12F9C5D1C00E7C299 /* LocTracTests */,
 				3DA98F3D2F86F0E2003B46BA /* Frameworks */,
 				3DD0AA8629A6EA0C003625C1 /* Products */,
 				3D7C1B982F8FD98D008032B9 /* VERSION_1.5_RELEASE_NOTES.md */,
@@ -424,6 +497,8 @@
 			children = (
 				3DD0AA8529A6EA0C003625C1 /* LocTrac.app */,
 				3DA98F3C2F86F0E2003B46BA /* LocTracWidgetExtensionExtension.appex */,
+				3D3EFDA12F9A93CA005C019A /* LocTracUITests.xctest */,
+				3D7FE69B2F9C5A3800E7C299 /* LocTracTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -476,6 +551,10 @@
 				3D51768B2F71CBC000231C27 /* RootView.swift */,
 				3D742BDA2F7A15D200DCD5B5 /* TripRefreshView.swift */,
 				3DD040AF2F88B543006C2A9A /* GeocodeResult.swift */,
+				3DA3D6952F96E546000A0AFC /* UserProfile.swift */,
+				3DA3D6992F96E574000A0AFC /* AuthState.swift */,
+				3D3EFD912F9930E3005C019A /* EventTypeItem.swift */,
+				3D3EFD992F9965CC005C019A /* SmartStayAction.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -521,6 +600,10 @@
 				3DD5BC662F8E8B2B00C8A195 /* VERSION_1.5_CHECKLIST.md */,
 				3DD5BC722F8E93EE00C8A195 /* OrphanedEventsAnalyzer.swift */,
 				3DD5BC742F8E98D800C8A195 /* OrphanedEventsAnalyzerView.swift */,
+				3DA3D6802F96DCC9000A0AFC /* Profile */,
+				3D3EFD932F993186005C019A /* EventTypesManagementView.swift */,
+				3D7FE6862F9BD6D100E7C299 /* CopyEventView.swift */,
+				3D7FE6882F9C0DB900E7C299 /* BulkPersonAssignView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -529,7 +612,6 @@
 			isa = PBXGroup;
 			children = (
 				3DD0AAA829A6EAD1003625C1 /* EventFormViewModel.swift */,
-				3DD0AAA929A6EAD1003625C1 /* EventFormView.swift */,
 				3DD0AAAC29A6EAD1003625C1 /* EventFormType.swift */,
 				3DD0AAA729A6EAD1003625C1 /* LocationFormViewModel.swift */,
 				3DD0AAAA29A6EAD1003625C1 /* LocationFormView.swift */,
@@ -609,6 +691,49 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		3D3EFDA02F9A93CA005C019A /* LocTracUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3D3EFDA92F9A93CA005C019A /* Build configuration list for PBXNativeTarget "LocTracUITests" */;
+			buildPhases = (
+				3D3EFD9D2F9A93CA005C019A /* Sources */,
+				3D3EFD9E2F9A93CA005C019A /* Frameworks */,
+				3D3EFD9F2F9A93CA005C019A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				3D3EFDA82F9A93CA005C019A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				3D3EFDA22F9A93CA005C019A /* LocTracUITests */,
+			);
+			name = LocTracUITests;
+			packageProductDependencies = (
+			);
+			productName = LocTracUITests;
+			productReference = 3D3EFDA12F9A93CA005C019A /* LocTracUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		3D7FE69A2F9C5A3800E7C299 /* LocTracTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3D7FE6A12F9C5A3800E7C299 /* Build configuration list for PBXNativeTarget "LocTracTests" */;
+			buildPhases = (
+				3D7FE6972F9C5A3800E7C299 /* Sources */,
+				3D7FE6982F9C5A3800E7C299 /* Frameworks */,
+				3D7FE6992F9C5A3800E7C299 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				3D7FE6A02F9C5A3800E7C299 /* PBXTargetDependency */,
+			);
+			name = LocTracTests;
+			packageProductDependencies = (
+			);
+			productName = LocTracTests;
+			productReference = 3D7FE69B2F9C5A3800E7C299 /* LocTracTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		3DA98F3B2F86F0E2003B46BA /* LocTracWidgetExtensionExtension */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 3DA98F522F86F0E5003B46BA /* Build configuration list for PBXNativeTarget "LocTracWidgetExtensionExtension" */;
@@ -648,6 +773,8 @@
 			fileSystemSynchronizedGroups = (
 				3D1E89712F8D9CDD0068BD33 /* Debug */,
 				3D85466E2F7F0BB700E9FF13 /* Trips */,
+				3DA3D6802F96DCC9000A0AFC /* Profile */,
+				3DA3D68B2F96DD13000A0AFC /* Auth */,
 			);
 			name = LocTrac;
 			productName = LocTrac;
@@ -661,9 +788,17 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2610;
+				LastSwiftUpdateCheck = 2640;
 				LastUpgradeCheck = 2610;
 				TargetAttributes = {
+					3D3EFDA02F9A93CA005C019A = {
+						CreatedOnToolsVersion = 26.4;
+						TestTargetID = 3DD0AA8429A6EA0C003625C1;
+					};
+					3D7FE69A2F9C5A3800E7C299 = {
+						CreatedOnToolsVersion = 26.4;
+						TestTargetID = 3DD0AA8429A6EA0C003625C1;
+					};
 					3DA98F3B2F86F0E2003B46BA = {
 						CreatedOnToolsVersion = 26.1;
 					};
@@ -687,11 +822,27 @@
 			targets = (
 				3DD0AA8429A6EA0C003625C1 /* LocTrac */,
 				3DA98F3B2F86F0E2003B46BA /* LocTracWidgetExtensionExtension */,
+				3D3EFDA02F9A93CA005C019A /* LocTracUITests */,
+				3D7FE69A2F9C5A3800E7C299 /* LocTracTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		3D3EFD9F2F9A93CA005C019A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3D7FE6992F9C5A3800E7C299 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		3DA98F3A2F86F0E2003B46BA /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -737,6 +888,20 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		3D3EFD9D2F9A93CA005C019A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3D7FE6972F9C5A3800E7C299 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		3DA98F382F86F0E2003B46BA /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -771,21 +936,27 @@
 				3D1E89562F8D80CD0068BD33 /* CountryNameMapper.swift in Sources */,
 				3D98EC9C2F742E4700C5B8C0 /* ModernEventsCalendarView.swift in Sources */,
 				3DD0AABA29A6EAD1003625C1 /* LocationFormViewModel.swift in Sources */,
+				3D3EFD922F9930E3005C019A /* EventTypeItem.swift in Sources */,
 				3D5176882F71CB8B00231C27 /* FirstLaunchWizard.swift in Sources */,
 				3DB2C2BE2F82C97D0048A585 /* AppVersionManager.swift in Sources */,
 				3D98ECA82F74320300C5B8C0 /* ModernEventFormView.swift in Sources */,
 				3D955C8F2F8B119D001B06DF /* CountryCodeMapper.swift in Sources */,
 				3DD040AA2F88AE18006C2A9A /* LocationCoordinateReviewView.swift in Sources */,
+				3D7FE6912F9C1DF700E7C299 /* BackupArchiveService.swift in Sources */,
 				3DD0AAC729A6EAD1003625C1 /* ListViewRow.swift in Sources */,
 				3DB2C2C42F82C9A10048A585 /* MarkdownDocumentView.swift in Sources */,
+				3DA3D6962F96E546000A0AFC /* UserProfile.swift in Sources */,
 				3D7C1B932F8FD41F008032B9 /* ReleaseNotesParser.swift in Sources */,
 				3DD4F8A02F7821CB00AD9370 /* HomeView.swift in Sources */,
+				3DA3D6942F96E546000A0AFC /* KeychainHelper.swift in Sources */,
 				3DD0AABD29A6EAD1003625C1 /* LocationFormView.swift in Sources */,
 				3DB4B3362F74816A00E0A42C /* LocationsManagementView.swift in Sources */,
 				3D481E9629B8DC8D0016C6ED /* ThemeView.swift in Sources */,
 				3DD040B22F88B550006C2A9A /* EnhancedGeocoder.swift in Sources */,
 				3D32CE772F6F112500CEC497 /* ReverseGeocoderHelper.swift in Sources */,
+				3D3EFD9A2F9965CC005C019A /* SmartStayAction.swift in Sources */,
 				3DA34F7B2EFD9B5100C9255D /* Person.swift in Sources */,
+				3D7FE6892F9C0DB900E7C299 /* BulkPersonAssignView.swift in Sources */,
 				3DD5BC752F8E98D800C8A195 /* OrphanedEventsAnalyzerView.swift in Sources */,
 				3DD0409E2F88ABFA006C2A9A /* StartTabView.swift in Sources */,
 				3D51768C2F71CBC000231C27 /* RootView.swift in Sources */,
@@ -794,7 +965,9 @@
 				3DB2C2C22F82C9980048A585 /* WhatsNewView.swift in Sources */,
 				3DD0AAC429A6EAD1003625C1 /* EventsCalendarView.swift in Sources */,
 				3DEB4FF72F70634A004B6339 /* LocationsUnifiedView.swift in Sources */,
+				3DA3D6982F96E574000A0AFC /* AuthenticationService.swift in Sources */,
 				3D1E00172F7997E7004BC4D3 /* TravelHistoryView.swift in Sources */,
+				3DA3D69E2F96E584000A0AFC /* TOTPService.swift in Sources */,
 				3DB2C2C02F82C9890048A585 /* WhatsNewFeature.swift in Sources */,
 				3DB4B3422F74824A00E0A42C /* LOCATION_MANAGEMENT_VISUAL_GUIDE.swift in Sources */,
 				3D008D4229B67F8300AD3565 /* DonutChartView.swift in Sources */,
@@ -814,11 +987,11 @@
 				3DEB50132F709068004B6339 /* TravelJourneyView.swift in Sources */,
 				3D008D3D29B67B8300AD3565 /* Charts.swift in Sources */,
 				3DD0AAC529A6EAD1003625C1 /* CalendarView.swift in Sources */,
+				3DA3D69C2F96E583000A0AFC /* BiometricService.swift in Sources */,
 				3D065F5129DD02200078E77A /* LocationsMapListView.swift in Sources */,
 				3D19B6952F7CB50F00F17C49 /* AffirmationsLibraryView.swift in Sources */,
 				3DEA7F1629B0E57F004F67EF /* DataStore.swift in Sources */,
 				3D19B6932F7CB47100F17C49 /* Affirmation.swift in Sources */,
-				3DD0AABC29A6EAD1003625C1 /* EventFormView.swift in Sources */,
 				3DD040A02F88AC24006C2A9A /* ContactsSearchPicker.swift in Sources */,
 				3D481E9229B8D7D00016C6ED /* Theme.swift in Sources */,
 				3DD0AAA029A6EAB8003625C1 /* Locations.swift in Sources */,
@@ -833,18 +1006,31 @@
 				3D19B6982F7D624700F17C49 /* AffirmationSelectorView.swift in Sources */,
 				3DD040B02F88B543006C2A9A /* GeocodeResult.swift in Sources */,
 				3D19B6992F7D624700F17C49 /* AffirmationEditorView.swift in Sources */,
+				3DA3D69A2F96E574000A0AFC /* AuthState.swift in Sources */,
 				3DEB50092F707CE9004B6339 /* OtherCityDetailView.swift in Sources */,
 				3DD0AABB29A6EAD1003625C1 /* EventFormViewModel.swift in Sources */,
 				3D955C932F8C0285001B06DF /* LocationDataEnhancementView.swift in Sources */,
+				3D3EFD942F993186005C019A /* EventTypesManagementView.swift in Sources */,
 				3DEB50032F707936004B6339 /* OtherEventDetailView.swift in Sources */,
 				3DB4B3382F74817000E0A42C /* DefaultLocationHelper.swift in Sources */,
 				3D19B69F2F7DA49200F17C49 /* ManagementView.swift in Sources */,
+				3D7FE6872F9BD6D100E7C299 /* CopyEventView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		3D3EFDA82F9A93CA005C019A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3DD0AA8429A6EA0C003625C1 /* LocTrac */;
+			targetProxy = 3D3EFDA72F9A93CA005C019A /* PBXContainerItemProxy */;
+		};
+		3D7FE6A02F9C5A3800E7C299 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3DD0AA8429A6EA0C003625C1 /* LocTrac */;
+			targetProxy = 3D7FE69F2F9C5A3800E7C299 /* PBXContainerItemProxy */;
+		};
 		3DA98F4F2F86F0E5003B46BA /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 3DA98F3B2F86F0E2003B46BA /* LocTracWidgetExtensionExtension */;
@@ -853,6 +1039,106 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		3D3EFDAA2F9A93CA005C019A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P9SQ5C2UHQ;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = TimOrg.LocTracUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LocTrac;
+			};
+			name = Debug;
+		};
+		3D3EFDAB2F9A93CA005C019A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P9SQ5C2UHQ;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = TimOrg.LocTracUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LocTrac;
+			};
+			name = Release;
+		};
+		3D7FE6A22F9C5A3800E7C299 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P9SQ5C2UHQ;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = TimOrg.LocTracTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LocTrac.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LocTrac";
+			};
+			name = Debug;
+		};
+		3D7FE6A32F9C5A3800E7C299 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P9SQ5C2UHQ;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = TimOrg.LocTracTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LocTrac.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LocTrac";
+			};
+			name = Release;
+		};
 		3DA98F532F86F0E5003B46BA /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1057,6 +1343,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSContactsUsageDescription = "Access your contacts to easily tag people in your location events.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "LocTrac uses Face ID to securely unlock your account and verify your identity for password resets.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "LocTrac uses your location to automatically detect and populate location details when adding new places and events.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "LocTrac needs access to your photo library so you can add photos to your locations and events to remember special moments";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1064,12 +1351,12 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = TimOrg.LocTrac;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1095,6 +1382,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSContactsUsageDescription = "Access your contacts to easily tag people in your location events.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "LocTrac uses Face ID to securely unlock your account and verify your identity for password resets.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "LocTrac uses your location to automatically detect and populate location details when adding new places and events.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "LocTrac needs access to your photo library so you can add photos to your locations and events to remember special moments";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -1102,12 +1390,12 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = TimOrg.LocTrac;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1119,6 +1407,24 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		3D3EFDA92F9A93CA005C019A /* Build configuration list for PBXNativeTarget "LocTracUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3D3EFDAA2F9A93CA005C019A /* Debug */,
+				3D3EFDAB2F9A93CA005C019A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3D7FE6A12F9C5A3800E7C299 /* Build configuration list for PBXNativeTarget "LocTracTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3D7FE6A22F9C5A3800E7C299 /* Debug */,
+				3D7FE6A32F9C5A3800E7C299 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		3DA98F522F86F0E5003B46BA /* Build configuration list for PBXNativeTarget "LocTracWidgetExtensionExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

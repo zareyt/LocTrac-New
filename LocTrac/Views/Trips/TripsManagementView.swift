@@ -9,6 +9,7 @@ import SwiftUI
 
 struct TripsManagementView: View {
     @EnvironmentObject var store: DataStore
+    @EnvironmentObject var debugConfig: DebugConfig
     @Environment(\.dismiss) private var dismiss
     @State private var selectedYear: String = "All Time"
     @State private var selectedTrip: Trip?
@@ -30,8 +31,8 @@ struct TripsManagementView: View {
             trips = trips.filter { trip in
                 let fromEvent = store.events.first(where: { $0.id == trip.fromEventID })
                 let toEvent = store.events.first(where: { $0.id == trip.toEventID })
-                let fromName = fromEvent?.location.name ?? ""
-                let toName = toEvent?.location.name ?? ""
+                let fromName = tripDisplayName(for: fromEvent)
+                let toName = tripDisplayName(for: toEvent)
                 return fromName.localizedCaseInsensitiveContains(searchText) ||
                        toName.localizedCaseInsensitiveContains(searchText) ||
                        trip.mode.rawValue.localizedCaseInsensitiveContains(searchText)
@@ -89,6 +90,7 @@ struct TripsManagementView: View {
                     .environmentObject(store)
             }
         }
+        .debugViewName("TripsManagementView")
     }
     
     private var searchBar: some View {
@@ -204,7 +206,7 @@ struct TripManagementRow: View {
         VStack(alignment: .leading, spacing: 12) {
             // Header with date and badges
             HStack {
-                Text(trip.departureDate.formatted(date: .abbreviated, time: .omitted))
+                Text(trip.departureDate.utcMediumDateString)
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
@@ -314,14 +316,7 @@ struct TripManagementRow: View {
     }
     
     private func displayName(for event: Event?) -> String {
-        guard let event = event else { return "Unknown" }
-        
-        // If location name is "Other", use city name instead
-        if event.location.name == "Other" {
-            return event.city ?? "Other"
-        }
-        
-        return event.location.name
+        tripDisplayName(for: event)
     }
 }
 
@@ -486,12 +481,22 @@ struct TripEditorSheet: View {
     }
     
     private func displayLocationName(_ event: Event) -> String {
-        // If location name is "Other", use city name instead
-        if event.location.name == "Other" {
-            return event.city ?? "Other"
-        }
-        return event.location.name
+        tripDisplayName(for: event)
     }
+}
+
+// MARK: - Shared Helper
+
+/// Returns a display-friendly name for an event's location.
+/// For "Other" locations, uses the event's city (or country) instead of "Other".
+private func tripDisplayName(for event: Event?) -> String {
+    guard let event = event else { return "Unknown" }
+    if event.location.name == "Other" {
+        return event.effectiveCity
+            ?? event.effectiveCountry
+            ?? "Unknown City"
+    }
+    return event.location.name
 }
 
 // MARK: - Stat Box

@@ -7,6 +7,154 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.0] – 2026-04-25
+
+### Added
+
+- **Authentication System (Phase A)**
+  - Optional sign-in with Apple Sign-In and Email/Password
+  - Credentials stored securely in Keychain (`com.loctrac.auth`)
+  - `AuthenticationService` actor for all auth logic (async/await)
+  - `AuthState` ObservableObject injected alongside DataStore
+  - Session persistence via Keychain — stays logged in across launches
+  - CryptoKit password hashing (SHA256 + salt)
+  - Apple credential validation on session restore
+
+- **Sign-In Views (Phase B)**
+  - `WelcomeView` — first launch prompt (Skip or Sign In)
+  - `SignInView` — Apple Sign-In + email/password login
+  - `SignUpView` — account registration
+  - `ForgotPasswordView` — password reset flow
+  - Non-intrusive banner prompt for existing users with data
+
+- **User Profile & Preferences (Phase C)**
+  - New `UserProfile` model with Codable persistence to `profile.json`
+  - Separate from `backup.json` — auth data never leaks into exports
+  - `ProfileView` — account hub with profile, preferences, security, and notifications
+  - `EditProfileView` — edit display name, photo, email
+  - `PreferencesView` — travel-specific: default location, distance unit (mi/km), default transport mode
+
+- **Existing User Migration (Phase E)**
+  - One-time prompt for users with existing data to create an account
+  - Zero data loss — `backup.json` format completely unchanged
+  - "Skip for now" always available — never blocks the user
+  - Rollback-safe — deleting `profile.json` returns to guest mode
+
+- **Biometric Authentication & App Lock (Phase D)**
+  - Face ID / Touch ID via `LocalAuthentication` framework
+  - `BiometricLockView` — full-screen lock overlay in `AppEntry.swift`
+  - App auto-locks on background when biometrics enabled + authenticated
+  - Auto-attempts biometric unlock when returning to foreground
+  - scenePhase monitoring in AppEntry for lock/unlock lifecycle
+  - `BiometricService` with enable/disable helpers and graceful fallback
+
+- **Two-Factor Authentication (Phase D)**
+  - Real TOTP using CryptoKit HMAC-SHA1 (RFC 6238)
+  - Data-based secrets (20-byte random), not String-based
+  - Verification with +/-1 period clock drift tolerance
+  - QR code generation via `otpauth://` URI
+  - Backup codes generated on setup, stored in Keychain as JSON
+  - `TwoFactorSetupView` — QR code + manual key + backup codes
+  - `TwoFactorVerifyView` — 6-digit code entry with backup code fallback
+  - 2FA gates email sign-in: `requiresTwoFactor` flag set before `isAuthenticated`
+
+- **Event Type Visual Revamp**
+  - Event types now use SF Symbol icons and a consistent color palette across the entire app
+  - Stay (red), Host (blue), Vacation (green), Family (purple), Business (brown), Unspecified (gray)
+  - Donut chart legend features modern colored capsule badges with icons
+  - Colors and icons driven by `EventType.color` and `EventType.sfSymbol` — single source of truth
+
+- **Custom Event Types**
+  - New "Manage Event Types" screen in Settings menu for creating, editing, and deleting event types
+  - Each type gets a custom name, SF Symbol icon, and color
+  - Built-in types can be customized but not deleted
+  - Set a default event type in Profile > Preferences to pre-fill new stay forms
+
+- **Smart Add Stay Button**
+  - Home screen "Add Stay" button is now context-aware
+  - Checks if today has a stay, finds most recent gap in timeline, adapts label and action
+  - Three modes: add today's stay, fill missing date range, or edit today's event
+
+- **Copy Stay to Dates**
+  - Copy an existing stay's data to a range of other dates
+  - Choose which fields to copy (location, type, people, activities, affirmations, notes)
+  - Same-location dates merge automatically; different-location conflicts offer skip or replace
+  - Adding a multi-day stay auto-opens the copy view for field selection
+
+- **Compact Activity Picker**
+  - Activities in event forms now use a compact chip-based design instead of a long toggle list
+  - Selected activities appear as small capsule tags; "Add More" button opens a dedicated picker sheet
+  - Works consistently across new stay, edit stay, and calendar inline editor forms
+
+- **Event Photos**
+  - Add up to 6 photos to any individual stay, separate from location-level images
+  - Horizontal gallery in the event form; optionally include when copying stays
+  - Photos automatically cleaned up when events or locations are deleted
+
+- **Photo Backup & Import**
+  - "Include Photos" toggle in Backup & Import creates a .zip archive with backup.json and all photos
+  - Auto-detects .zip vs .json format on import
+  - Conflict resolution: skip, replace, or rename existing photos
+  - Selective date-range import applies to photos too
+
+- **One Stay Per Day Enforcement**
+  - Batch event creation prevents duplicate stays on the same date
+  - Existing dates automatically skipped with summary alert showing skipped vs. created counts
+
+- **Bulk Person Assignment Utility**
+  - Select a contact and update events for a date range with that person
+  - Skips events where the person already exists; one-off utility for cleaning up large data sets
+
+- **Testing Strategy & Test Suite**
+  - Created comprehensive `TESTING_MASTER_GUIDE.md` covering unit, data, and regression testing
+  - Added test files for DataStore CRUD, ImportExport, TripMigration, EventForm, UTC dates, and more
+  - Uses Swift Testing framework (`@Test`, `@Suite`, `#expect`)
+
+### Changed
+
+- **AppEntry.swift** — AuthState creation, environment injection, biometric lock overlay with scenePhase monitoring, stay reminder refresh on launch and foreground
+- **StartTabView.swift** — Added Profile & Account as first menu item, menu reorganization, tab name change
+- **Info.plist** — Added `NSFaceIDUsageDescription` for Face ID access (required, crashes without it)
+- **Menu Reorganization**:
+  - "Profile & Account" added as first menu item with divider
+  - "Notifications" moved from main menu to ProfileView (under ACCOUNT for signed-in, SETTINGS for signed-out)
+  - "Travel History" moved to be directly below "Manage Trips"
+- **Tab Rename**: "Locations" tab renamed to "Travel Map" with updated map icon
+- **LocationsManagementView**: Removed filter bar (abc A-Z, Most Used, Country) — simplified for typical location counts
+
+### Fixed
+
+- **Data Safety Guaranteed** — Authentication system completely isolated from travel data; deleting account removes only profile data
+- **Preferences Sync Fix** — Default location, event type, and transport mode in Profile > Preferences now persist correctly for guest users and sync with global defaults
+- **Read-Only Location Fields** — City, state, and country fields in event form now read-only when a named location is selected; editable only in Manage Locations
+- **Smarter "Other" Location Display** — Trips and data enhancement views now show actual city name instead of "Other" for events at non-standard locations
+- **Date Display Timezone Fix** — Fixed dates appearing off by one day in Enhance Location Data, Travel History details, trip views, and other screens; all date display now uses UTC-pinned formatters
+- **Smarter Trip Generation** — Fixed trip refresh generating phantom trips between "Other" location events in the same city; trip engine now compares city names before falling back to distance; fixed coordinate resolution mismatch for "Other" events; trip refresh shows full details for each addition, modification, and deletion
+- **Stay Reminder Timezone Fix** — Fixed stay reminder notification incorrectly reporting missing stays due to timezone mismatch; uses UTC calendar to match stored event dates; missing-days count now refreshes on app launch, foreground return, and event change
+- **Event Type Graph & Legend Sync** — Fixed Infographic donut chart colors not matching legend; all event type display now driven by single source of truth
+- **Edit Stay City/State Population** — Fixed event form not displaying city and state from parent location for named locations
+- **Travel History Location Jumping** — Fixed location list reordering when expanding/collapsing entries; now sorted by most event stays with stable ordering
+- **Debug View Names** — Fixed Show View Names debug option not displaying in the app UI; comprehensive analysis and implementation of all debug options
+
+### Technical
+
+- **New Files**: 16+ (4 Services, 2 Models, 7 Auth Views in `Services/Auth/`, 4 Profile Views in `Views/Profile/`, plus EventTypeItem, SmartStayAction, test files)
+- **Modified Files**: 4 core (AppEntry, StartTabView, Info.plist, LocTrac.entitlements) plus numerous view and model updates
+- **Data Layer**: Unchanged — DataStore and backup.json unaffected
+- **Auth views location**: `Services/Auth/` (not `Views/Auth/`)
+- **Key gotcha**: `.accent` is not a valid ShapeStyle — always use `Color.accentColor`
+
+### Documentation
+
+- Added `DocumentationV2.0_IMPLEMENTATION_PLAN.md` — complete implementation plan
+- Added `VERSION_2.0_RELEASE_NOTES.md` — user-facing release notes
+- Added `TESTING_MASTER_GUIDE.md` — comprehensive testing strategy
+- Updated `CLAUDE.md` — v2.0 architecture, gotchas, menu structure, all phases marked complete
+- Updated `CHANGELOG.md` — v2.0 entry with all features, fixes, and improvements
+- Updated `WhatsNewFeature.swift` — v2.0 features and bug fixes, removed v1.5 hardcoded features
+
+---
+
 ## [1.5] – 2026-04-14
 
 ### Added

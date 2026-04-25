@@ -9,7 +9,8 @@ import SwiftUI
 
 struct ManagementView: View {
     @EnvironmentObject var store: DataStore
-    
+    @EnvironmentObject var debugConfig: DebugConfig
+
     enum ManagementTab: String, CaseIterable, Identifiable {
         case activities = "Activities"
         case affirmations = "Affirmations"
@@ -52,6 +53,7 @@ struct ManagementView: View {
             .navigationTitle("Manage")
             .navigationBarTitleDisplayMode(.large)
         }
+        .debugViewName("ManagementView")
     }
     
     private var tabSelector: some View {

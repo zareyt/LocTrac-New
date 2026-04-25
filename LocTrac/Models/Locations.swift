@@ -20,6 +20,7 @@ struct Location: Identifiable, Hashable, Codable {
     var theme: Theme
     var imageIDs: [String]?     // optional, absent means no photos
     var customColorHex: String? // optional custom color (full spectrum)
+    var isGeocoded: Bool = false // v2.0: Prevents re-geocoding in Enhance Location Data
 
     init(id: String = UUID().uuidString,
          name: String,
@@ -31,7 +32,8 @@ struct Location: Identifiable, Hashable, Codable {
          countryCode: String? = nil, // v1.5: ISO country code
          theme: Theme,
          imageIDs: [String]? = nil,
-         customColorHex: String? = nil) {
+         customColorHex: String? = nil,
+         isGeocoded: Bool = false) {
         self.id = id
         self.name = name
         self.city = city
@@ -43,8 +45,26 @@ struct Location: Identifiable, Hashable, Codable {
         self.theme = theme
         self.imageIDs = imageIDs
         self.customColorHex = customColorHex
+        self.isGeocoded = isGeocoded
     }
     
+    // Custom decoder to handle missing isGeocoded in older backup.json files
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        city = try container.decodeIfPresent(String.self, forKey: .city)
+        state = try container.decodeIfPresent(String.self, forKey: .state)
+        latitude = try container.decode(Double.self, forKey: .latitude)
+        longitude = try container.decode(Double.self, forKey: .longitude)
+        country = try container.decodeIfPresent(String.self, forKey: .country)
+        countryCode = try container.decodeIfPresent(String.self, forKey: .countryCode)
+        theme = try container.decode(Theme.self, forKey: .theme)
+        imageIDs = try container.decodeIfPresent([String].self, forKey: .imageIDs)
+        customColorHex = try container.decodeIfPresent(String.self, forKey: .customColorHex)
+        isGeocoded = (try? container.decode(Bool.self, forKey: .isGeocoded)) ?? false
+    }
+
     // Computed property for effective display color
     var effectiveColor: Color {
         if let hex = customColorHex {

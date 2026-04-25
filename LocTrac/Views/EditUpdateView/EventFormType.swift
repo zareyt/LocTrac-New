@@ -11,12 +11,15 @@ import SwiftUI
 
 enum EventFormType: Identifiable, View, Hashable {
     case new(DateComponents)
+    case newWithViewModel(EventFormViewModel)
     case update(Event)
 
     var id: String {
         switch self {
         case .new:
             return "new"
+        case .newWithViewModel:
+            return "newWithViewModel"
         case .update(let event):
             return event.id
         }
@@ -27,6 +30,8 @@ enum EventFormType: Identifiable, View, Hashable {
         switch (lhs, rhs) {
         case (.new(let l), .new(let r)):
             return l.year == r.year && l.month == r.month && l.day == r.day
+        case (.newWithViewModel, .newWithViewModel):
+            return true
         case (.update(let le), .update(let re)):
             return le.id == re.id
         default:
@@ -41,6 +46,8 @@ enum EventFormType: Identifiable, View, Hashable {
             hasher.combine(comps.year)
             hasher.combine(comps.month)
             hasher.combine(comps.day)
+        case .newWithViewModel:
+            hasher.combine("newWithViewModel")
         case .update(let event):
             hasher.combine("update")
             hasher.combine(event.id)
@@ -56,6 +63,8 @@ enum EventFormType: Identifiable, View, Hashable {
             let GMTDateComponents = calendar.dateComponents(in: GMT, from: localDate)
             let GMTDate = calendar.date(from: GMTDateComponents)!
             return ModernEventFormView(viewModel: EventFormViewModel(dateSelected: GMTDate.startOfDay))
+        case .newWithViewModel(let viewModel):
+            return ModernEventFormView(viewModel: viewModel)
         case .update(let event):
             return ModernEventFormView(viewModel: EventFormViewModel(event))
         }

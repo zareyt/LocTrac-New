@@ -55,13 +55,13 @@ class OrphanedEventsAnalyzer {
         
         for orphan in sortedOrphans {
             // DEBUG: Look for our specific test case
-            let isTestCase = orphan.date.formatted(date: .abbreviated, time: .omitted).contains("Apr 2, 2022") &&
+            let isTestCase = orphan.date.utcMediumDateString.contains("Apr 2, 2022") &&
                             (orphan.city ?? "").lowercased().contains("chicago") &&
                             orphan.note.contains("Catherine")
             
             if isTestCase {
                 print("\n🔍 DEBUG: Found test case orphan (Apr 2):")
-                print("   Date: \(orphan.date.formatted(date: .abbreviated, time: .omitted))")
+                print("   Date: \(orphan.date.utcMediumDateString)")
                 print("   FULL DATE: \(orphan.date)")
                 print("   Start of Day: \(orphan.date.startOfDay)")
                 print("   Event ID: \(orphan.id)")
@@ -76,7 +76,7 @@ class OrphanedEventsAnalyzer {
             let nextDay = Calendar.current.date(byAdding: .day, value: 1, to: orphan.date.startOfDay)!
             
             if isTestCase {
-                print("\n   Looking for ORPHAN matches on: \(nextDay.formatted(date: .abbreviated, time: .omitted))")
+                print("\n   Looking for ORPHAN matches on: \(nextDay.utcMediumDateString)")
                 
                 // DEBUG: Show ALL events on Apr 3, 2022 (valid AND orphaned)
                 let apr3Events = store.events.filter { event in
@@ -175,8 +175,8 @@ class OrphanedEventsAnalyzer {
                 
                 if isTestCase {
                     print("   ✅ MATCH ADDED with similarity: \(similarity)%")
-                    print("      Phantom (delete): \(orphan.date.formatted(date: .abbreviated, time: .omitted))")
-                    print("      Correct (keep): \(match.date.formatted(date: .abbreviated, time: .omitted))\n")
+                    print("      Phantom (delete): \(orphan.date.utcMediumDateString)")
+                    print("      Correct (keep): \(match.date.utcMediumDateString)\n")
                 }
             }
         }
@@ -237,7 +237,7 @@ class OrphanedEventsAnalyzer {
             print("\n📋 DUPLICATE PAIRS (Orphan → Valid Event Day+1):")
             for pair in report.duplicatePairs.prefix(20) {
                 print("\n   ⚠️  ORPHAN:")
-                print("      Date: \(pair.orphan.date.formatted(date: .abbreviated, time: .omitted))")
+                print("      Date: \(pair.orphan.date.utcMediumDateString)")
                 print("      Location: \(pair.orphan.location.name)")
                 print("      City: \(pair.orphan.city ?? "none")")
                 print("      State: \(pair.orphan.state ?? "none")")
@@ -245,7 +245,7 @@ class OrphanedEventsAnalyzer {
                 print("      Note: \(pair.orphan.note.isEmpty ? "(empty)" : pair.orphan.note.prefix(50).description)")
                 
                 print("   ✅  VALID EVENT (Day+1):")
-                print("      Date: \(pair.validEvent.date.formatted(date: .abbreviated, time: .omitted))")
+                print("      Date: \(pair.validEvent.date.utcMediumDateString)")
                 print("      Location: \(pair.validEvent.location.name)")
                 print("      City: \(pair.validEvent.city ?? "none")")
                 print("      State: \(pair.validEvent.state ?? "none")")
@@ -262,7 +262,7 @@ class OrphanedEventsAnalyzer {
         if !report.orphansWithoutDuplicates.isEmpty {
             print("\n⚠️  ORPHANS WITHOUT MATCHING DUPLICATES (\(report.orphansWithoutDuplicates.count)):")
             for orphan in report.orphansWithoutDuplicates.prefix(10) {
-                print("   - \(orphan.date.formatted(date: .abbreviated, time: .omitted)): \(orphan.location.name) in \(orphan.city ?? "unknown"), \(orphan.country ?? "unknown")")
+                print("   - \(orphan.date.utcMediumDateString): \(orphan.location.name) in \(orphan.city ?? "unknown"), \(orphan.country ?? "unknown")")
                 if !orphan.note.isEmpty {
                     print("     Note: \(orphan.note.prefix(50))")
                 }

@@ -1,9 +1,36 @@
 import Foundation
+import SwiftUI
 
 struct Event: Identifiable {
     enum EventType: String, Identifiable, Codable, CaseIterable {
         case stay, host, vacation, family, business, unspecified
         var id: String { self.rawValue }
+
+        /// SF Symbol icon for this event type
+        var sfSymbol: String {
+            switch self {
+            case .stay: return "bed.double.fill"
+            case .host: return "house.fill"
+            case .vacation: return "airplane"
+            case .family: return "figure.2.and.child.holdinghands"
+            case .business: return "briefcase.fill"
+            case .unspecified: return "questionmark.circle"
+            }
+        }
+
+        /// Canonical color for this event type — use everywhere for consistency
+        var color: Color {
+            switch self {
+            case .stay: return .red
+            case .host: return .blue
+            case .vacation: return .green
+            case .family: return .purple
+            case .business: return .brown
+            case .unspecified: return .gray
+            }
+        }
+
+        /// Legacy emoji icon (kept for backward compatibility in data display)
         var icon: String {
             switch self {
             case .stay: return "🟥"
@@ -30,7 +57,8 @@ struct Event: Identifiable {
     var activityIDs: [String] = [] // references Activity.id
     var affirmationIDs: [String] = [] // references Affirmation.id
     var isGeocoded: Bool = false    // v1.5: Flag to prevent re-geocoding successfully processed events
-    
+    var imageIDs: [String] = []     // v2.0: References image filenames stored by ImageStore
+
     init(id: String = UUID().uuidString,
          eventType: EventType = .unspecified,
          date: Date,
@@ -44,7 +72,8 @@ struct Event: Identifiable {
          people: [Person] = [],
          activityIDs: [String] = [],
          affirmationIDs: [String] = [],
-         isGeocoded: Bool = false) {  // v1.5: Default to false for new events
+         isGeocoded: Bool = false,
+         imageIDs: [String] = []) {
         self.eventType = eventType.rawValue
         self.date = date
         self.id = id
@@ -59,8 +88,42 @@ struct Event: Identifiable {
         self.activityIDs = activityIDs
         self.affirmationIDs = affirmationIDs
         self.isGeocoded = isGeocoded  // v1.5
+        self.imageIDs = imageIDs
     }
-    
+
+    /// v2.0: Init with raw string eventType for custom types
+    init(id: String = UUID().uuidString,
+         eventTypeRaw: String,
+         date: Date,
+         location: Location,
+         city: String? = nil,
+         latitude: Double,
+         longitude: Double,
+         country: String? = nil,
+         state: String? = nil,
+         note: String,
+         people: [Person] = [],
+         activityIDs: [String] = [],
+         affirmationIDs: [String] = [],
+         isGeocoded: Bool = false,
+         imageIDs: [String] = []) {
+        self.eventType = eventTypeRaw
+        self.date = date
+        self.id = id
+        self.location = location
+        self.city = city
+        self.latitude = latitude
+        self.longitude = longitude
+        self.country = country
+        self.state = state
+        self.note = note
+        self.people = people
+        self.activityIDs = activityIDs
+        self.affirmationIDs = affirmationIDs
+        self.isGeocoded = isGeocoded
+        self.imageIDs = imageIDs
+    }
+
     var dateComponents: DateComponents {
         var dateComponents = Calendar.current.dateComponents(
             [.month, .day, .year, .hour, .minute],

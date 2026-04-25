@@ -12,8 +12,9 @@ import SwiftUI
 
 struct LocationDataEnhancementView: View {
     @EnvironmentObject var store: DataStore
+    @EnvironmentObject var debugConfig: DebugConfig
     @Environment(\.dismiss) var dismiss
-    
+
     @State private var isProcessing = false
     @State private var currentIndex = 0
     @State private var totalItems = 0
@@ -210,6 +211,7 @@ struct LocationDataEnhancementView: View {
                 loadSavedResults()
             }
         }
+        .debugViewName("LocationDataEnhancementView")
     }
     
     private var startView: some View {
@@ -519,10 +521,10 @@ struct LocationDataEnhancementView: View {
                             HStack {
                                 Image(systemName: "calendar")
                                     .foregroundColor(.blue)
-                                Text(result.eventDate.formatted(date: .abbreviated, time: .omitted))
+                                Text(result.eventDate.utcMediumDateString)
                                     .font(.headline)
                                 Spacer()
-                                Text(result.locationName)
+                                Text(eventDisplayName(for: result))
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -592,7 +594,7 @@ struct LocationDataEnhancementView: View {
                 
                 Section {
                     // Location samples
-                    ForEach(successfulLocations.prefix(5)) { result in
+                    ForEach(successfulLocations) { result in
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
                                 Image(systemName: "mappin.circle.fill")
@@ -640,12 +642,12 @@ struct LocationDataEnhancementView: View {
                     }
                     
                     // Event samples
-                    ForEach(successfulEvents.prefix(5)) { result in
+                    ForEach(successfulEvents) { result in
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
                                 Image(systemName: "calendar")
                                     .foregroundColor(.blue)
-                                Text(result.eventDate.formatted(date: .abbreviated, time: .omitted))
+                                Text(result.eventDate.utcMediumDateString)
                                     .font(.headline)
                                 Spacer()
                                 Image(systemName: "checkmark.circle.fill")
@@ -699,6 +701,14 @@ struct LocationDataEnhancementView: View {
         }
     }
     
+    /// Returns city name instead of "Other" for Other-location events
+    private func eventDisplayName(for result: EventResult) -> String {
+        if result.locationName == "Other" {
+            return result.newCity ?? result.originalCity ?? result.newCountry ?? result.originalCountry ?? "Other"
+        }
+        return result.locationName
+    }
+
     private func processAllData() async {
         isProcessing = true
         locationResults = []
@@ -720,6 +730,11 @@ struct LocationDataEnhancementView: View {
         
         // PHASE 1: Process Locations
         print("\n📍 PHASE 1: Processing Locations")
+        let namedLocationsCount = store.locations.filter { $0.name != "Other" }.count
+        let alreadyGeocodedLocationsCount = store.locations.filter { $0.name != "Other" && $0.isGeocoded }.count
+        print("   📊 Found \(namedLocationsCount) named locations total")
+        print("   ✅ Already geocoded: \(alreadyGeocodedLocationsCount)")
+        print("   🔄 Need processing: \(namedLocationsCount - alreadyGeocodedLocationsCount)")
         for (index, location) in store.locations.enumerated() {
             await MainActor.run {
                 currentIndex = index + 1
@@ -746,8 +761,12 @@ struct LocationDataEnhancementView: View {
                 ))
                 
                 if case .success = result {
-                    print("   ✅ Updated location '\(location.name)'")
+                    print("   ✅ Updated location '\(location.name)' — isGeocoded=\(mutableLocation.isGeocoded)")
                     store.update(mutableLocation)
+                    // Verify the flag was persisted
+                    if let saved = store.locations.first(where: { $0.id == mutableLocation.id }) {
+                        print("   🔍 Verify after save: isGeocoded=\(saved.isGeocoded)")
+                    }
                 } else if case .retryLater = result {
                     print("   🔄 Rate limited - queuing '\(location.name)' for retry")
                     retryQueue.append(.location(mutableLocation))
@@ -800,15 +819,19 @@ struct LocationDataEnhancementView: View {
                 ))
                 
                 if case .success = result {
-                    print("   ✅ Updated event on \(event.date.formatted(date: .abbreviated, time: .omitted))")
+                    print("   ✅ Updated event on \(event.date.utcMediumDateString) — isGeocoded=\(mutableEvent.isGeocoded)")
                     store.update(mutableEvent)
+                    // Verify the flag was persisted
+                    if let saved = store.events.first(where: { $0.id == mutableEvent.id }) {
+                        print("   🔍 Verify after save: isGeocoded=\(saved.isGeocoded)")
+                    }
                 } else if case .retryLater = result {
-                    print("   🔄 Rate limited - queuing event on \(event.date.formatted(date: .abbreviated, time: .omitted)) for retry")
+                    print("   🔄 Rate limited - queuing event on \(event.date.utcMediumDateString) for retry")
                     retryQueue.append(.event(mutableEvent))
                 } else if case .skipped = result {
                     // Silent skip for named-location events (no spam)
                 } else if case .error(let msg) = result {
-                    print("   ❌ Event on \(event.date.formatted(date: .abbreviated, time: .omitted)) (location: '\(event.location.name)') error: \(msg)")
+                    print("   ❌ Event on \(event.date.utcMediumDateString) (location: '\(event.location.name)') error: \(msg)")
                 }
             }
             
@@ -863,7 +886,7 @@ struct LocationDataEnhancementView: View {
                     case .event(var event):
                         let result = await enhancer.processEvent(&event)
                         if case .success = result {
-                            print("   ✅ Retry success: event on \(event.date.formatted(date: .abbreviated, time: .omitted))")
+                            print("   ✅ Retry success: event on \(event.date.utcMediumDateString)")
                             store.update(event)
                             // Update result in eventResults
                             if let index = eventResults.firstIndex(where: { $0.eventID == event.id }) {
@@ -883,7 +906,7 @@ struct LocationDataEnhancementView: View {
                         } else if case .retryLater = result {
                             retryQueue.append(.event(event))
                         } else if case .error(let msg) = result {
-                            print("   ❌ Retry failed: event on \(event.date.formatted(date: .abbreviated, time: .omitted)) - \(msg)")
+                            print("   ❌ Retry failed: event on \(event.date.utcMediumDateString) - \(msg)")
                             // Update result in eventResults
                             if let index = eventResults.firstIndex(where: { $0.eventID == event.id }) {
                                 var updated = eventResults[index]
@@ -1032,7 +1055,7 @@ struct LocationDataEnhancementView: View {
             
             await MainActor.run {
                 if case .success = result {
-                    print("   ✅ Retry success: event on \(event.date.formatted(date: .abbreviated, time: .omitted))")
+                    print("   ✅ Retry success: event on \(event.date.utcMediumDateString)")
                     store.update(mutableEvent)
                     // Update result
                     eventResults[index] = EventResult(
@@ -1049,14 +1072,14 @@ struct LocationDataEnhancementView: View {
                     )
                     successCount += 1
                 } else if case .error(let msg) = result {
-                    print("   ❌ Still error: event on \(event.date.formatted(date: .abbreviated, time: .omitted)) - \(msg)")
+                    print("   ❌ Still error: event on \(event.date.utcMediumDateString) - \(msg)")
                     // Update with new error message
                     var updated = eventResults[index]
                     updated.result = .error(msg)
                     eventResults[index] = updated
                     stillErrorCount += 1
                 } else if case .retryLater = result {
-                    print("   ⏸️ Rate limited: event on \(event.date.formatted(date: .abbreviated, time: .omitted))")
+                    print("   ⏸️ Rate limited: event on \(event.date.utcMediumDateString)")
                     var updated = eventResults[index]
                     updated.result = .error("Rate limited - try again")
                     eventResults[index] = updated

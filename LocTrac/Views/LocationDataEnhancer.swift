@@ -84,7 +84,13 @@ class LocationDataEnhancer {
         if location.name == "Other" {
             return .skipped  // Silent skip
         }
-        
+
+        // SKIP: Already successfully geocoded locations - no need to process again
+        if location.isGeocoded {
+            print("⏭️ Skipping already geocoded location '\(location.name)'")
+            return .skipped
+        }
+
         // PROCESS: Named locations (Loft, Cabo, etc.) - clean up master data
         print("🔍 Processing Location: \(location.name)")
         print("   📍 Before: city=\(location.city ?? "nil"), state=\(location.state ?? "nil"), country=\(location.country ?? "nil")")
@@ -92,26 +98,33 @@ class LocationDataEnhancer {
         // Step 1: All data exists - just clean format
         if hasCompleteLocationData(location) {
             cleanLocationCityFormat(&location)
+            location.isGeocoded = true
             print("   ✅ Step 1: Cleaned format")
             print("   📍 After: city=\(location.city ?? "nil"), state=\(location.state ?? "nil"), country=\(location.country ?? "nil")")
             return .success
         }
-        
+
         // Step 2: Valid GPS - use reverse geocoding
         if hasValidLocationGPS(location) {
             print("   🌐 Step 2: Using GPS reverse geocoding")
             let result = await processLocationWithGPS(&location)
+            if case .success = result {
+                location.isGeocoded = true
+            }
             print("   📍 After: city=\(location.city ?? "nil"), state=\(location.state ?? "nil"), country=\(location.country ?? "nil")")
             if case .error(let msg) = result {
                 print("   ❌ Error: \(msg)")
             }
             return result
         }
-        
+
         // Step 3: No GPS - parse city format
         if !hasValidLocationGPS(location) {
             print("   📝 Step 3: Parsing city format (no GPS)")
             let result = await processLocationWithoutGPS(&location)
+            if case .success = result {
+                location.isGeocoded = true
+            }
             print("   📍 After: city=\(location.city ?? "nil"), state=\(location.state ?? "nil"), country=\(location.country ?? "nil")")
             if case .error(let msg) = result {
                 print("   ❌ Error: \(msg)")
@@ -140,12 +153,12 @@ class LocationDataEnhancer {
         
         // SKIP: Already successfully geocoded events - no need to process again
         if event.isGeocoded {
-            print("⏭️ Skipping already geocoded event on \(event.date.formatted(date: .abbreviated, time: .omitted))")
+            print("⏭️ Skipping already geocoded event on \(event.date.utcMediumDateString)")
             return .skipped
         }
         
         // PROCESS: "Other" events - each stores its own city/state/country/GPS
-        print("🔍 Processing 'Other' Event on \(event.date.formatted(date: .abbreviated, time: .omitted))")
+        print("🔍 Processing 'Other' Event on \(event.date.utcMediumDateString)")
         print("   📍 Before: city=\(event.city ?? "nil"), state=\(event.state ?? "nil"), country=\(event.country ?? "nil"), lat=\(event.latitude), lon=\(event.longitude)")
         
         // Step 1: All data exists - just clean format

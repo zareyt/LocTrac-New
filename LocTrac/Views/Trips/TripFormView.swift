@@ -9,6 +9,7 @@ import SwiftUI
 
 struct TripFormView: View {
     @EnvironmentObject var store: DataStore
+    @EnvironmentObject var debugConfig: DebugConfig
     @Environment(\.dismiss) private var dismiss
     
     let trip: Trip?
@@ -183,8 +184,9 @@ struct TripFormView: View {
                 }
             }
         }
+        .debugViewName("TripFormView")
     }
-    
+
     private func saveTrip() {
         if let existingTrip = trip {
             // Update existing trip

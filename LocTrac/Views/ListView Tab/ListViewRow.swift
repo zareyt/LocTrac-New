@@ -86,6 +86,32 @@ struct ListViewRow: View {
                             .foregroundColor(.secondary)
                     }
                 }
+
+                // Event photos, if any
+                if !event.imageIDs.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(event.imageIDs, id: \.self) { imageID in
+                                if let uiImage = ImageStore.load(filename: imageID) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 60, height: 60)
+                                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                                } else {
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color.gray.opacity(0.2))
+                                        .frame(width: 60, height: 60)
+                                        .overlay(
+                                            Image(systemName: "photo")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        )
+                                }
+                            }
+                        }
+                    }
+                }
             }
             Spacer()
             Button {

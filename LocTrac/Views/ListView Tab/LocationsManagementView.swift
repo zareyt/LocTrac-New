@@ -11,32 +11,16 @@ import PhotosUI
 
 struct LocationsManagementView: View {
     @EnvironmentObject var store: DataStore
+    @EnvironmentObject var debugConfig: DebugConfig
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
     @State private var selectedLocation: Location?
     @State private var showingLocationEditor = false
-    @State private var sortOrder: SortOrder = .alphabetical
     @AppStorage("defaultLocationID") private var defaultLocationID: String = ""
-    
-    enum SortOrder: String, CaseIterable {
-        case alphabetical = "A-Z"
-        case mostUsed = "Most Used"
-        case country = "Country"
-        
-        var icon: String {
-            switch self {
-            case .alphabetical: return "textformat.abc"
-            case .mostUsed: return "chart.bar.fill"
-            case .country: return "globe"
-            }
-        }
-    }
-    
 
-    
     private var filteredLocations: [Location] {
         var locations = store.locations.filter { $0.name != "Other" } // Hide "Other" from management
-        
+
         if !searchText.isEmpty {
             locations = locations.filter { location in
                 location.name.localizedCaseInsensitiveContains(searchText) ||
@@ -44,26 +28,10 @@ struct LocationsManagementView: View {
                 location.country?.localizedCaseInsensitiveContains(searchText) ?? false
             }
         }
-        
-        // Apply sorting
-        switch sortOrder {
-        case .alphabetical:
-            locations.sort { $0.name < $1.name }
-        case .mostUsed:
-            let eventCounts = Dictionary(grouping: store.events) { $0.location.id }
-                .mapValues { $0.count }
-            locations.sort { (eventCounts[$0.id] ?? 0) > (eventCounts[$1.id] ?? 0) }
-        case .country:
-            locations.sort { ($0.country ?? "") < ($1.country ?? "") }
-        }
-        
+
+        locations.sort { $0.name < $1.name }
+
         return locations
-    }
-    
-    private var locationsByCountry: [(country: String, locations: [Location])] {
-        let grouped = Dictionary(grouping: filteredLocations) { $0.country ?? "Unknown" }
-        return grouped.map { (country: $0.key, locations: $0.value.sorted { $0.name < $1.name }) }
-            .sorted { $0.country < $1.country }
     }
     
     var body: some View {
@@ -71,22 +39,12 @@ struct LocationsManagementView: View {
             List {
                 // Default Location Section
                 defaultLocationSection
-                
-                // Search bar
-                Section {
-                    searchBar
-                }
-                
-                // Sort options
-                Section {
-                    sortSection
-                }
-                
+
                 // Stats
                 Section {
                     statsSection
                 }
-                
+
                 // Locations list sections
                 if filteredLocations.isEmpty {
                     Section {
@@ -125,6 +83,7 @@ struct LocationsManagementView: View {
                     .environmentObject(store)
             }
         }
+        .debugViewName("LocationsManagementView")
     }
     
     // MARK: - Default Location Section
@@ -225,39 +184,6 @@ struct LocationsManagementView: View {
         }
     }
     
-    private var searchBar: some View {
-        // Search is now handled by .searchable modifier on the List
-        EmptyView()
-    }
-    
-    private var sortSection: some View {
-        HStack(spacing: 12) {
-            ForEach(SortOrder.allCases, id: \.self) { order in
-                Button {
-                    withAnimation(.spring(response: 0.3)) {
-                        sortOrder = order
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: order.icon)
-                            .font(.caption)
-                        Text(order.rawValue)
-                            .font(.subheadline)
-                    }
-                    .fontWeight(sortOrder == order ? .semibold : .regular)
-                    .foregroundColor(sortOrder == order ? .white : .primary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(sortOrder == order ? Color.blue : Color(.tertiarySystemBackground))
-                    )
-                }
-            }
-        }
-        .frame(maxWidth: .infinity)
-    }
-    
     private var statsSection: some View {
         HStack(spacing: 12) {
             StatBox(title: "Total", value: "\(filteredLocations.count)", color: .blue)
@@ -267,40 +193,18 @@ struct LocationsManagementView: View {
     }
     
     private var locationsListSections: some View {
-        Group {
-            if sortOrder == .country {
-                ForEach(locationsByCountry, id: \.country) { section in
-                    Section(header: Text(section.country)) {
-                        ForEach(section.locations) { location in
-                            LocationManagementRow(
-                                location: location,
-                                store: store
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                selectedLocation = location
-                            }
-                        }
-                        .onDelete { offsets in
-                            deleteLocations(section.locations, at: offsets)
-                        }
-                    }
-                }
-            } else {
-                Section {
-                    ForEach(filteredLocations) { location in
-                        LocationManagementRow(
-                            location: location,
-                            store: store
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedLocation = location
-                        }
-                    }
-                    .onDelete(perform: deleteFilteredLocations)
+        Section {
+            ForEach(filteredLocations) { location in
+                LocationManagementRow(
+                    location: location,
+                    store: store
+                )
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    selectedLocation = location
                 }
             }
+            .onDelete(perform: deleteFilteredLocations)
         }
     }
     
@@ -344,20 +248,6 @@ struct LocationsManagementView: View {
         }
     }
     
-    private func deleteLocations(_ locations: [Location], at offsets: IndexSet) {
-        for index in offsets {
-            let location = locations[index]
-            
-            // Don't allow deleting if events exist for this location
-            let hasEvents = store.events.contains { $0.location.id == location.id }
-            if hasEvents {
-                // TODO: Show alert
-                continue
-            }
-            
-            store.delete(location)
-        }
-    }
 }
 
 // MARK: - Location Management Row

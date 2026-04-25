@@ -9,6 +9,7 @@ import SwiftUI
 
 struct TripsListView: View {
     @EnvironmentObject var store: DataStore
+    @EnvironmentObject var debugConfig: DebugConfig
     @State private var selectedYear: String = "All Time"
     @State private var showingTripForm = false
     @State private var selectedTrip: Trip?
@@ -67,6 +68,7 @@ struct TripsListView: View {
                 }
             }
         }
+        .debugViewName("TripsListView")
     }
     
     private var yearFilterSection: some View {
@@ -197,7 +199,7 @@ struct TripRowView: View {
         VStack(alignment: .leading, spacing: 12) {
             // Date and mode
             HStack {
-                Text(trip.departureDate.formatted(date: .abbreviated, time: .omitted))
+                Text(trip.departureDate.utcMediumDateString)
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
@@ -219,25 +221,25 @@ struct TripRowView: View {
             // Route
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(fromEvent?.location.name ?? "Unknown")
+                    Text(displayName(for: fromEvent))
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                    if let city = fromEvent?.city {
+                    if let city = fromEvent?.effectiveCity, fromEvent?.location.name != "Other" {
                         Text(city)
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                 }
-                
+
                 Image(systemName: "arrow.right")
                     .foregroundColor(.secondary)
                     .font(.caption)
-                
+
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(toEvent?.location.name ?? "Unknown")
+                    Text(displayName(for: toEvent))
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                    if let city = toEvent?.city {
+                    if let city = toEvent?.effectiveCity, toEvent?.location.name != "Other" {
                         Text(city)
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -283,6 +285,16 @@ struct TripRowView: View {
             }
         }
         .padding(.vertical, 4)
+    }
+
+    private func displayName(for event: Event?) -> String {
+        guard let event = event else { return "Unknown" }
+        if event.location.name == "Other" {
+            return event.effectiveCity
+                ?? event.effectiveCountry
+                ?? "Unknown City"
+        }
+        return event.location.name
     }
 }
 

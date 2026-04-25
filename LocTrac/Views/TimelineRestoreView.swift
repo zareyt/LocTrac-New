@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 /// View for selectively restoring data from a backup using timeline filtering
 struct TimelineRestoreView: View {
     @EnvironmentObject var store: DataStore
+    @EnvironmentObject var debugConfig: DebugConfig
     @Environment(\.dismiss) private var dismiss
     
     init(isPresented: Binding<Bool>, preselectedURL: URL?) {
@@ -91,7 +92,14 @@ struct TimelineRestoreView: View {
     @State private var resultMessage = ""
     @State private var isSuccess = false
     @State private var showConfirmation = false
-    
+
+    // v2.0: Image import from .zip archives
+    @State private var archiveImageEntries: [String: Data] = [:]
+    @State private var isZipBackup = false
+    @State private var importImages = true
+    @State private var imageConflictCount = 0
+    @State private var imageConflictResolution: BackupArchiveService.ConflictResolution = .skip
+
     // NEW: SwiftUI file importer state
     @State private var showFileImporter = false
     
@@ -147,7 +155,7 @@ struct TimelineRestoreView: View {
         // NEW: Use SwiftUI's fileImporter instead of UIKit UIDocumentPickerViewController
         .fileImporter(
             isPresented: $showFileImporter,
-            allowedContentTypes: [.json, .text, .data],
+            allowedContentTypes: [.json, .text, .data, .zip, .archive],
             allowsMultipleSelection: false
         ) { result in
             print("📂 [TimelineRestoreView] fileImporter callback triggered")
@@ -165,6 +173,7 @@ struct TimelineRestoreView: View {
                 loadError = "Failed to pick file: \(error.localizedDescription)"
             }
         }
+        .debugViewName("TimelineRestoreView")
     }
     
     // MARK: - File Picker Initial View
@@ -224,7 +233,12 @@ struct TimelineRestoreView: View {
             
             // Selective import options
             selectiveImportSection
-            
+
+            // Image import options (only for .zip archives)
+            if isZipBackup && !archiveImageEntries.isEmpty {
+                imageImportSection
+            }
+
             // Preview filtered data
             previewSection
             
@@ -301,8 +315,8 @@ struct TimelineRestoreView: View {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") {
                             print("✅ [TimelineRestoreView] Date picker Done - was editing: \(mode == .start ? "START" : "END")")
-                            print("   Start: \(sliderStartDate.formatted(date: .abbreviated, time: .omitted))")
-                            print("   End: \(sliderEndDate.formatted(date: .abbreviated, time: .omitted))")
+                            print("   Start: \(sliderStartDate.utcMediumDateString)")
+                            print("   End: \(sliderEndDate.utcMediumDateString)")
                             validateAndUpdateDateRange()
                             datePickerMode = nil
                         }
@@ -324,9 +338,16 @@ struct TimelineRestoreView: View {
                             .font(.subheadline)
                             .fontWeight(.medium)
                         if let backup = decodedBackup {
-                            Text("\(backup.locations.count) locations, \(backup.events.count) events")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            HStack(spacing: 4) {
+                                Text("\(backup.locations.count) locations, \(backup.events.count) events")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                if isZipBackup && !archiveImageEntries.isEmpty {
+                                    Text("+ \(archiveImageEntries.count) photos")
+                                        .font(.caption)
+                                        .foregroundColor(.cyan)
+                                }
+                            }
                         }
                     }
                 }
@@ -368,7 +389,7 @@ struct TimelineRestoreView: View {
                         print("🔵 [TimelineRestoreView] Start date button tapped")
                         datePickerMode = .start
                     } label: {
-                        Text(sliderStartDate.formatted(date: .abbreviated, time: .omitted))
+                        Text(sliderStartDate.utcMediumDateString)
                             .font(.subheadline)
                             .foregroundColor(.primary)
                             .padding(.horizontal, 12)
@@ -393,7 +414,7 @@ struct TimelineRestoreView: View {
                         print("🔵 [TimelineRestoreView] End date button tapped")
                         datePickerMode = .end
                     } label: {
-                        Text(sliderEndDate.formatted(date: .abbreviated, time: .omitted))
+                        Text(sliderEndDate.utcMediumDateString)
                             .font(.subheadline)
                             .foregroundColor(.primary)
                             .padding(.horizontal, 12)
@@ -457,11 +478,11 @@ struct TimelineRestoreView: View {
                 let maxDate = backup.events.map { $0.date }.max() ?? Date()
                 
                 HStack {
-                    Text(minDate.formatted(date: .abbreviated, time: .omitted))
+                    Text(minDate.utcMediumDateString)
                         .font(.caption2)
                         .foregroundColor(.secondary)
                     Spacer()
-                    Text(maxDate.formatted(date: .abbreviated, time: .omitted))
+                    Text(maxDate.utcMediumDateString)
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
@@ -703,6 +724,57 @@ struct TimelineRestoreView: View {
         }
     }
     
+    private var imageImportSection: some View {
+        Section {
+            Toggle(isOn: $importImages) {
+                HStack {
+                    Image(systemName: "photo.fill")
+                        .foregroundColor(.cyan)
+                        .frame(width: 30)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Photos")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        let totalSize = BackupArchiveService.estimateImageSize(
+                            imageFilenames: Array(archiveImageEntries.keys)
+                        )
+                        Text("\(archiveImageEntries.count) photos (\(ByteCountFormatter.string(fromByteCount: totalSize, countStyle: .file)))")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+
+            if importImages && imageConflictCount > 0 {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                        Text("\(imageConflictCount) photo\(imageConflictCount == 1 ? "" : "s") already exist\(imageConflictCount == 1 ? "s" : "") on this device")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+
+                    Picker("When a photo already exists:", selection: $imageConflictResolution) {
+                        Text("Skip (keep existing)").tag(BackupArchiveService.ConflictResolution.skip)
+                        Text("Replace (overwrite)").tag(BackupArchiveService.ConflictResolution.replace)
+                        Text("Rename (import as copy)").tag(BackupArchiveService.ConflictResolution.rename)
+                    }
+                    .pickerStyle(.menu)
+                    .font(.caption)
+                }
+            }
+        } header: {
+            Text("Photo Import")
+        } footer: {
+            if importImages {
+                Text("Photos from the backup archive will be saved to the app's Documents folder.")
+            } else {
+                Text("Photos in the archive will not be imported. Only event data will be restored.")
+            }
+        }
+    }
+
     private var previewSection: some View {
         Section("Data to Import") {
             HStack {
@@ -890,11 +962,33 @@ struct TimelineRestoreView: View {
     private func loadBackupFile(from url: URL) async {
         decodedBackup = nil
         loadError = nil
-        
+        archiveImageEntries = [:]
+        isZipBackup = false
+
         do {
-            let data = try Data(contentsOf: url)
+            let data: Data
+
+            // Detect .zip archive vs plain .json
+            if BackupArchiveService.isZipArchive(at: url) {
+                isZipBackup = true
+                let extracted = try BackupArchiveService.extractArchive(at: url)
+                data = extracted.jsonData
+                archiveImageEntries = extracted.imageEntries
+
+                // Detect conflicts
+                imageConflictCount = BackupArchiveService.detectConflicts(
+                    imageFilenames: Array(extracted.imageEntries.keys)
+                ).count
+
+                if DebugConfig.shared.isEnabled && DebugConfig.shared.logPhotos {
+                    print("📷 [photos] [TimelineRestoreView] Loaded .zip archive: \(extracted.imageEntries.count) images, \(imageConflictCount) conflicts")
+                }
+            } else {
+                data = try Data(contentsOf: url)
+            }
+
             let decoder = JSONDecoder()
-            
+
             // Decode as Import (the actual structure in backup.json)
             let importData = try decoder.decode(Import.self, from: data)
             
@@ -933,7 +1027,8 @@ struct TimelineRestoreView: View {
                     note: eventData.note,
                     people: eventData.people ?? [],
                     activityIDs: eventData.activityIDs ?? [],
-                    affirmationIDs: eventData.affirmationIDs ?? []
+                    affirmationIDs: eventData.affirmationIDs ?? [],
+                    imageIDs: eventData.imageIDs ?? []
                 )
             }
             
@@ -1331,13 +1426,13 @@ struct TimelineRestoreView: View {
                         }
                         if !importActivities {
                             if !modifiedEvent.activityIDs.isEmpty {
-                                print("   🧹 Stripping \(modifiedEvent.activityIDs.count) activity IDs from event '\(modifiedEvent.location.name)' on \(modifiedEvent.date.formatted(date: .abbreviated, time: .omitted))")
+                                print("   🧹 Stripping \(modifiedEvent.activityIDs.count) activity IDs from event '\(modifiedEvent.location.name)' on \(modifiedEvent.date.utcMediumDateString)")
                             }
                             modifiedEvent.activityIDs = []
                         }
                         if !importAffirmationEvents {
                             if !modifiedEvent.affirmationIDs.isEmpty {
-                                print("   🧹 Stripping \(modifiedEvent.affirmationIDs.count) affirmation IDs from event '\(modifiedEvent.location.name)' on \(modifiedEvent.date.formatted(date: .abbreviated, time: .omitted))")
+                                print("   🧹 Stripping \(modifiedEvent.affirmationIDs.count) affirmation IDs from event '\(modifiedEvent.location.name)' on \(modifiedEvent.date.utcMediumDateString)")
                             }
                             modifiedEvent.affirmationIDs = []
                         }
@@ -1382,9 +1477,54 @@ struct TimelineRestoreView: View {
             }
         }
         
+        // v2.0: Import images from .zip archive
+        var importedImagesCount = 0
+        if isZipBackup && importImages && !archiveImageEntries.isEmpty {
+            // Filter images to only those referenced by imported events/locations
+            let startDateForImages = sliderStartDate
+            let endDateForImages = Calendar.current.date(byAdding: .day, value: 1, to: sliderEndDate) ?? sliderEndDate
+            let filteredEventsForImages = backup.events.filter { $0.date >= startDateForImages && $0.date < endDateForImages }
+
+            let relevantFilenames = Set(
+                BackupArchiveService.imageFilenames(for: filteredEventsForImages, locations: backup.locations)
+            )
+
+            let imagesToImport = archiveImageEntries.filter { relevantFilenames.contains($0.key) }
+
+            if !imagesToImport.isEmpty {
+                let filenameMap = BackupArchiveService.importImages(imagesToImport, resolution: imageConflictResolution)
+                importedImagesCount = filenameMap.count
+
+                // If rename resolution was used, remap image references in imported events
+                if imageConflictResolution == .rename {
+                    let hasRenames = filenameMap.contains { $0.key != $0.value }
+                    if hasRenames {
+                        for i in store.events.indices {
+                            let event = store.events[i]
+                            let remapped = event.imageIDs.map { filenameMap[$0] ?? $0 }
+                            if remapped != event.imageIDs {
+                                store.events[i].imageIDs = remapped
+                            }
+                        }
+                        for i in store.locations.indices {
+                            if let ids = store.locations[i].imageIDs {
+                                let remapped = ids.map { filenameMap[$0] ?? $0 }
+                                if remapped != ids {
+                                    store.locations[i].imageIDs = remapped
+                                }
+                            }
+                        }
+                        print("[TimelineRestoreView] Remapped image filenames in \(filenameMap.filter { $0.key != $0.value }.count) references")
+                    }
+                }
+
+                print("[TimelineRestoreView] Imported \(importedImagesCount) images with resolution: \(imageConflictResolution)")
+            }
+        }
+
         // Ensure "Other" location exists
         store.ensureOtherLocationExists(saveIfAdded: false)
-        
+
         // Save to backup.json
         store.storeData()
         
@@ -1412,6 +1552,9 @@ struct TimelineRestoreView: View {
         }
         if importPeople && importedPeopleCount > 0 {
             parts.append("\(importedPeopleCount) people")
+        }
+        if importedImagesCount > 0 {
+            parts.append("\(importedImagesCount) photo\(importedImagesCount == 1 ? "" : "s")")
         }
         
         if parts.isEmpty {

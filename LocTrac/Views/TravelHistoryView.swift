@@ -10,6 +10,7 @@ import MapKit
 
 struct TravelHistoryView: View {
     @EnvironmentObject var store: DataStore
+    @EnvironmentObject var debugConfig: DebugConfig
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
     @State private var locationFilter: LocationFilter = .locations
@@ -92,29 +93,23 @@ struct TravelHistoryView: View {
     }
     
     // Group stays by location (for "Locations" filter)
+    // Always sorted by most stays descending, with location name as tiebreaker
+    // to ensure stable ordering that never jumps on expand/collapse
     private var staysByLocation: [(location: Location, stays: [Event])] {
         let byLocation: [String: [Event]] = Dictionary(grouping: filteredEvents) { event in
             event.location.id
         }
-        
-        var result = byLocation.compactMap { (locationID: String, events: [Event]) -> (location: Location, stays: [Event])? in
+
+        return byLocation.compactMap { (locationID: String, events: [Event]) -> (location: Location, stays: [Event])? in
             guard let location = events.first?.location else { return nil }
             return (location: location, stays: events.sorted { $0.date > $1.date })
         }
-        
-        // Sort based on sortOrder
-        switch sortOrder {
-        case .country:
-            result.sort { ($0.location.country ?? "") < ($1.location.country ?? "") }
-        case .city:
-            result.sort { ($0.location.city ?? "") < ($1.location.city ?? "") }
-        case .mostVisited:
-            result.sort { $0.stays.count > $1.stays.count }
-        case .recent:
-            result.sort { ($0.stays.first?.date ?? Date.distantPast) > ($1.stays.first?.date ?? Date.distantPast) }
+        .sorted { lhs, rhs in
+            if lhs.stays.count != rhs.stays.count {
+                return lhs.stays.count > rhs.stays.count
+            }
+            return lhs.location.name < rhs.location.name
         }
-        
-        return result
     }
     
     // Group stays by country
@@ -236,6 +231,7 @@ struct TravelHistoryView: View {
                     .environmentObject(store)
             }
         }
+        .debugViewName("TravelHistoryView")
     }
     
     // MARK: - Stats Section

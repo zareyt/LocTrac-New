@@ -33,3 +33,40 @@ extension Date {
         return calendar.date(from: components)!
     }
 }
+
+extension Date {
+    /// UTC-safe date string for display. Prevents +/-1 day drift caused by
+    /// local-timezone formatting of dates stored as UTC midnight.
+    /// Use this instead of `.formatted(date:time:)` for any event date display.
+    private static let _utcMediumFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.dateStyle = .medium
+        df.timeStyle = .none
+        df.timeZone = TimeZone(secondsFromGMT: 0)
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 0)!
+        df.calendar = cal
+        return df
+    }()
+
+    private static let _utcLongFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.dateStyle = .long
+        df.timeStyle = .none
+        df.timeZone = TimeZone(secondsFromGMT: 0)
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 0)!
+        df.calendar = cal
+        return df
+    }()
+
+    /// Medium date format in UTC (e.g., "Dec 25, 2025")
+    var utcMediumDateString: String {
+        Self._utcMediumFormatter.string(from: self)
+    }
+
+    /// Long date format in UTC (e.g., "December 25, 2025")
+    var utcLongDateString: String {
+        Self._utcLongFormatter.string(from: self)
+    }
+}

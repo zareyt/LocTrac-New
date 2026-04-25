@@ -131,28 +131,32 @@ class NotificationManager: ObservableObject {
     
     func scheduleStayReminder(for store: DataStore) async {
         guard isNotificationsEnabled else { return }
-        
+
+        // Use UTC calendar to match how event dates are stored (UTC midnight)
+        var utcCalendar = Calendar(identifier: .gregorian)
+        utcCalendar.timeZone = TimeZone(secondsFromGMT: 0)!
+
         // Check if user has a stay for today
-        let today = Calendar.current.startOfDay(for: Date())
+        let today = utcCalendar.startOfDay(for: Date())
         let hasStayToday = store.events.contains { event in
-            Calendar.current.isDate(event.date, inSameDayAs: today)
+            utcCalendar.isDate(event.date, inSameDayAs: today)
         }
-        
+
         // Check for missing stays in the past 7 days
-        let sevenDaysAgo = Calendar.current.date(byAdding: .day, value: -7, to: today) ?? today
+        let sevenDaysAgo = utcCalendar.date(byAdding: .day, value: -7, to: today) ?? today
         let daysWithStays = Set(store.events.compactMap { event -> Date? in
-            let eventDay = Calendar.current.startOfDay(for: event.date)
+            let eventDay = utcCalendar.startOfDay(for: event.date)
             guard eventDay >= sevenDaysAgo && eventDay <= today else { return nil }
             return eventDay
         })
-        
+
         var missingDaysCount = 0
         var currentDate = sevenDaysAgo
         while currentDate <= today {
             if !daysWithStays.contains(currentDate) {
                 missingDaysCount += 1
             }
-            currentDate = Calendar.current.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
+            currentDate = utcCalendar.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
         }
         
         // Only send reminder if there are missing stays
@@ -180,14 +184,31 @@ class NotificationManager: ObservableObject {
             "hasStayToday": hasStayToday
         ]
         
-        // Schedule for 15 minutes after the affirmation
+        // Schedule for 15 minutes after the affirmation (non-repeating so content stays fresh)
+        // The notification is rescheduled with updated counts whenever events change
+        // (via DataStore.updateStayReminders) and on each app launch.
         let calendar = Calendar.current
         var components = calendar.dateComponents([.hour, .minute], from: notificationTime)
         components.minute = (components.minute ?? 0) + 15
-        
+
+        // If the scheduled time has already passed today, schedule for tomorrow
+        let now = Date()
+        if let scheduledToday = calendar.nextDate(after: calendar.startOfDay(for: now),
+                                                   matching: components,
+                                                   matchingPolicy: .nextTime),
+           scheduledToday <= now {
+            // Time already passed today — add tomorrow's date components
+            if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) {
+                let tomorrowComponents = calendar.dateComponents([.year, .month, .day], from: tomorrow)
+                components.year = tomorrowComponents.year
+                components.month = tomorrowComponents.month
+                components.day = tomorrowComponents.day
+            }
+        }
+
         let trigger = UNCalendarNotificationTrigger(
             dateMatching: components,
-            repeats: true
+            repeats: false
         )
         
         let request = UNNotificationRequest(

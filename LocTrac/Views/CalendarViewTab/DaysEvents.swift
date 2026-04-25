@@ -37,7 +37,7 @@ struct DaysEventsListView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle(dateSelected?.date?.formatted(date: .long, time: .omitted) ?? "")
+            .navigationTitle(dateSelected?.date?.utcLongDateString ?? "")
         }
         // Present the event form from a single, stable place
         .sheet(item: $formType) { form in

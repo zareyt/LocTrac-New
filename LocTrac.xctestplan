@@ -1,0 +1,40 @@
+{
+  "configurations" : [
+    {
+      "id" : "2770DB67-BC07-44C8-A69E-7ED70B589C57",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : {
+      "targets" : [
+        {
+          "containerPath" : "container:LocTrac.xcodeproj",
+          "identifier" : "3DD0AA8429A6EA0C003625C1",
+          "name" : "LocTrac"
+        }
+      ]
+    },
+    "testExecutionOrdering" : "random"
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:LocTrac.xcodeproj",
+        "identifier" : "3D7FE69A2F9C5A3800E7C299",
+        "name" : "LocTracTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:LocTrac.xcodeproj",
+        "identifier" : "3D3EFDA02F9A93CA005C019A",
+        "name" : "LocTracUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

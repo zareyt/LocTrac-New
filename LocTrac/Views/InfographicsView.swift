@@ -14,7 +14,7 @@ import MapKit
 /// Holds all precomputed data for a specific year
 struct Derived {
     let filteredEvents: [Event]
-    let eventTypeData: [(type: String, icon: String, count: Int, percentage: Int)]
+    let eventTypeData: [(type: String, icon: String, sfSymbol: String, color: Color, count: Int, percentage: Int)]
     let topLocations: [(name: String, count: Int, color: Color)]
     let eventsWithCoordinates: [Event]
     let polylineCoordinates: [CLLocationCoordinate2D]
@@ -51,6 +51,7 @@ struct VacationStats {
 
 struct InfographicsView: View {
     @EnvironmentObject var store: DataStore
+    @EnvironmentObject var debugConfig: DebugConfig
     @State private var selectedYear: String = "All Time"
     
     // MEMOIZATION: Store derived data per year
@@ -148,12 +149,13 @@ struct InfographicsView: View {
             DebugConfig.shared.log(.cache, "Data updated - clearing memoization cache")
             #endif
             derivedByYear.removeAll()
-            
+
             // Recompute current year
             Task {
                 await computeDerivedData(for: selectedYear)
             }
         }
+        .debugViewName("InfographicsView")
     }
     
     // MARK: - Derived Data Computation
@@ -300,18 +302,19 @@ struct InfographicsView: View {
     }
     
     // Compute event type data
-    private func computeEventTypeData(from events: [Event]) async -> [(type: String, icon: String, count: Int, percentage: Int)] {
+    private func computeEventTypeData(from events: [Event]) async -> [(type: String, icon: String, sfSymbol: String, color: Color, count: Int, percentage: Int)] {
         guard !events.isEmpty else { return [] }
-        
-        let grouped = Dictionary(grouping: events) { event in
-            Event.EventType(rawValue: event.eventType) ?? .unspecified
-        }
-        
+
+        let grouped = Dictionary(grouping: events) { $0.eventType }
+
         return grouped.map { (key, value) in
+            let item = store.eventTypeItem(for: key)
             let percentage = Int((Double(value.count) / Double(events.count)) * 100)
             return (
-                type: key.rawValue.capitalized,
-                icon: key.icon,
+                type: item.displayName,
+                icon: item.sfSymbol,
+                sfSymbol: item.sfSymbol,
+                color: item.color,
                 count: value.count,
                 percentage: percentage
             )
@@ -793,16 +796,17 @@ extension InfographicsView {
         VStack(alignment: .leading, spacing: 12) {
             Text("Event Types")
                 .font(.headline)
-            
+
             let data = derived.eventTypeData
             if !data.isEmpty {
+                // Donut chart with explicit colors matching EventType.color
                 Chart(data, id: \.type) { item in
                     SectorMark(
                         angle: .value("Count", item.count),
                         innerRadius: .ratio(0.5),
                         angularInset: 1.5
                     )
-                    .foregroundStyle(by: .value("Type", item.type))
+                    .foregroundStyle(item.color)
                     .cornerRadius(4)
                     .annotation(position: .overlay) {
                         Text("\(item.count)")
@@ -812,11 +816,18 @@ extension InfographicsView {
                     }
                 }
                 .frame(height: 250)
-                .chartLegend(position: .bottom, alignment: .center)
-                
+                .chartLegend(.hidden)
+
+                // Badge/chip legend
+                EventTypeBadgeFlow(data: data)
+
+                // Detail rows with SF Symbol icons
                 ForEach(data.sorted(by: { $0.count > $1.count }), id: \.type) { item in
-                    HStack {
-                        Text(item.icon)
+                    HStack(spacing: 12) {
+                        Image(systemName: item.sfSymbol)
+                            .font(.body)
+                            .foregroundStyle(item.color.gradient)
+                            .frame(width: 28)
                         Text(item.type)
                             .font(.subheadline)
                         Spacer()
@@ -839,6 +850,35 @@ extension InfographicsView {
         .padding()
         .background(Color(.secondarySystemBackground))
         .cornerRadius(16)
+    }
+}
+
+// MARK: - Event Type Badge Flow
+/// Horizontal wrapping layout of colored capsule badges for event types
+private struct EventTypeBadgeFlow: View {
+    let data: [(type: String, icon: String, sfSymbol: String, color: Color, count: Int, percentage: Int)]
+
+    var body: some View {
+        FlowLayout(spacing: 8) {
+            ForEach(data.sorted(by: { $0.count > $1.count }), id: \.type) { item in
+                HStack(spacing: 6) {
+                    Image(systemName: item.sfSymbol)
+                        .font(.caption)
+                        .foregroundColor(.white)
+                    Text(item.type)
+                        .font(.caption.bold())
+                        .foregroundColor(.white)
+                    Text("\(item.count)")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.8))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(item.color.gradient)
+                .clipShape(Capsule())
+            }
+        }
+        .padding(.horizontal)
     }
 }
 

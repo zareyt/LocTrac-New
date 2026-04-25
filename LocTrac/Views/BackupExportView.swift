@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
 
 struct BackupExportView: View {
     @EnvironmentObject var store: DataStore
+    @EnvironmentObject var debugConfig: DebugConfig
     @Environment(\.dismiss) private var dismiss
     
     init() {
@@ -28,11 +29,16 @@ struct BackupExportView: View {
     @State private var backupFiles: [BackupFileInfo] = []
     @State private var fileToDelete: BackupFileInfo?
     @State private var showDeleteConfirmation = false
-    
+
+    // v2.0: Photo export options
+    @State private var includePhotos = false
+    @State private var photoSizeEstimate: String = ""
+    @State private var photoCount: Int = 0
+
     // Present Timeline Restore flow with preselected URL (from list)
     @State private var showTimelineRestoreWithPreselected = false
     @State private var preselectedTimelineRestoreURL: URL?
-    
+
     // Present Timeline Restore flow without preselected URL (Files picker path)
     @State private var showTimelineRestoreWithoutPreselected = false
     
@@ -121,6 +127,7 @@ struct BackupExportView: View {
                     .environmentObject(store)
             }
         }
+        .debugViewName("BackupExportView")
     }
     
     // MARK: - View Components
@@ -194,6 +201,37 @@ struct BackupExportView: View {
     
     private var exportOptionsSection: some View {
         Section {
+            // Include Photos toggle
+            Toggle(isOn: $includePhotos) {
+                HStack {
+                    Image(systemName: "photo.fill")
+                        .foregroundColor(.cyan)
+                        .font(.title3)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Include Photos")
+                            .font(.headline)
+                        if includePhotos && photoCount > 0 {
+                            Text("\(photoCount) photos (\(photoSizeEstimate))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else if includePhotos && photoCount == 0 {
+                            Text("No photos to include")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text("Export as .zip with location and event photos")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+            }
+            .onChange(of: includePhotos) { _, newValue in
+                if newValue {
+                    updatePhotoEstimate()
+                }
+            }
+
             // Share button - now shows selection dialog
             Button(action: { showBackupSelectionForShare = true }) {
                 BackupOptionRow(
@@ -203,33 +241,35 @@ struct BackupExportView: View {
                     subtitle: backupFiles.isEmpty ? "Select which backup to share" : "\(backupFiles.count + 1) backup\(backupFiles.count == 0 ? "" : "s") available"
                 )
             }
-            
+
             // Create backup button
             Button(action: createBackup) {
                 BackupOptionRow(
                     icon: "arrow.clockwise.circle.fill",
                     color: .green,
-                    title: "Create Fresh Backup",
-                    subtitle: "Update backup file with current data"
+                    title: includePhotos ? "Create Backup with Photos" : "Create Fresh Backup",
+                    subtitle: includePhotos ? "Creates .zip archive with photos" : "Update backup file with current data"
                 )
             }
-            
+
             // Import button
             Button {
-                print("🔵 [BackupExportView] 'Import from Backup File' button tapped")
+                DebugConfig.shared.log(.persistence, "'Import from Backup File' button tapped")
                 showTimelineRestoreWithoutPreselected = true
             } label: {
                 BackupOptionRow(
                     icon: "clock.arrow.circlepath",
                     color: .orange,
                     title: "Import from Backup File",
-                    subtitle: "Select backup file to import"
+                    subtitle: "Supports .json and .zip formats"
                 )
             }
         } header: {
             Text("Backup & Import")
         } footer: {
-            Text("Your backup file (backup.json) contains all your locations, events, and activities. Keep it safe to restore your data if needed.")
+            Text(includePhotos
+                 ? "Your backup will be a .zip file containing all data plus photos. Larger file but preserves your images."
+                 : "Your backup file (backup.json) contains all your locations, events, and activities. Keep it safe to restore your data if needed.")
         }
     }
     
@@ -285,21 +325,28 @@ struct BackupExportView: View {
     private func backupFileRow(_ backupFile: BackupFileInfo) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text(backupFile.name)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
+                HStack(spacing: 6) {
+                    Text(backupFile.name)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    if backupFile.isZip {
+                        Image(systemName: "photo.fill")
+                            .font(.caption2)
+                            .foregroundColor(.cyan)
+                    }
+                }
+
                 HStack(spacing: 8) {
                     Image(systemName: "clock")
                         .font(.caption)
                     Text(backupFile.date, style: .relative)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    
-                    Text("•")
+
+                    Text("\u{2022}")
                         .foregroundColor(.secondary)
                         .font(.caption)
-                    
+
                     Text(backupFile.sizeString)
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -362,8 +409,7 @@ struct BackupExportView: View {
     private func createBackup() {
         // 1) Save current data to Documents/backup.json
         store.storeData()
-        
-        // 2) Also create a timestamped copy in temporary directory so it appears in Exported Backups
+
         guard let sourceURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
             .first?.appendingPathComponent("backup.json") else {
             errorMessage = "Could not locate backup file after saving."
@@ -375,28 +421,59 @@ struct BackupExportView: View {
             showExportError = true
             return
         }
+
         let tempDir = FileManager.default.temporaryDirectory
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd_HHmmss"
         let dateString = dateFormatter.string(from: Date())
-        let exportFileName = "LocTrac_Backup_\(dateString).json"
-        let tempURL = tempDir.appendingPathComponent(exportFileName)
-        
-        do {
-            if FileManager.default.fileExists(atPath: tempURL.path) {
-                try FileManager.default.removeItem(at: tempURL)
+
+        if includePhotos {
+            // Create .zip archive with photos
+            let exportFileName = "LocTrac_Backup_\(dateString).zip"
+            let tempURL = tempDir.appendingPathComponent(exportFileName)
+
+            do {
+                let jsonData = try Data(contentsOf: sourceURL)
+                let imageFilenames = BackupArchiveService.allReferencedImageFilenames(
+                    locations: store.locations, events: store.events
+                )
+
+                if FileManager.default.fileExists(atPath: tempURL.path) {
+                    try FileManager.default.removeItem(at: tempURL)
+                }
+
+                try BackupArchiveService.createArchive(
+                    jsonData: jsonData,
+                    imageFilenames: imageFilenames,
+                    outputURL: tempURL
+                )
+
+                DebugConfig.shared.log(.persistence, "Created .zip backup: \(exportFileName)")
+            } catch {
+                errorMessage = "Error creating photo backup: \(error.localizedDescription)"
+                showExportError = true
+                return
             }
-            try FileManager.default.copyItem(at: sourceURL, to: tempURL)
-        } catch {
-            errorMessage = "Error creating exported copy: \(error.localizedDescription)"
-            showExportError = true
+        } else {
+            // Create JSON-only backup
+            let exportFileName = "LocTrac_Backup_\(dateString).json"
+            let tempURL = tempDir.appendingPathComponent(exportFileName)
+
+            do {
+                if FileManager.default.fileExists(atPath: tempURL.path) {
+                    try FileManager.default.removeItem(at: tempURL)
+                }
+                try FileManager.default.copyItem(at: sourceURL, to: tempURL)
+            } catch {
+                errorMessage = "Error creating exported copy: \(error.localizedDescription)"
+                showExportError = true
+                return
+            }
         }
-        
-        // 3) Refresh file info and exported backups list
+
+        // Refresh file info and exported backups list
         loadFileInfo()
         loadBackupFiles()
-        
-        // 4) Show success alert
         showExportSuccess = true
     }
     
@@ -411,10 +488,10 @@ struct BackupExportView: View {
                 options: .skipsHiddenFiles
             )
             
-            // Filter for LocTrac backup files
+            // Filter for LocTrac backup files (.json and .zip)
             let backupURLs = fileURLs.filter { url in
                 url.lastPathComponent.hasPrefix("LocTrac_Backup_") &&
-                url.pathExtension == "json"
+                (url.pathExtension == "json" || url.pathExtension == "zip")
             }
             
             // Map to BackupFileInfo
@@ -460,6 +537,15 @@ struct BackupExportView: View {
         }
     }
     
+    private func updatePhotoEstimate() {
+        let filenames = BackupArchiveService.allReferencedImageFilenames(
+            locations: store.locations, events: store.events
+        )
+        photoCount = filenames.count
+        let size = BackupArchiveService.estimateImageSize(imageFilenames: filenames)
+        photoSizeEstimate = ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+    }
+
     private func exportAndShare() {
         guard let sourceURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("backup.json") else {
             errorMessage = "Could not locate backup file"
@@ -514,6 +600,7 @@ struct BackupFileInfo: Identifiable {
     let date: Date
     let size: Int64
     let sizeString: String
+    var isZip: Bool { url.pathExtension.lowercased() == "zip" }
 }
 
 // MARK: - Backup Option Row

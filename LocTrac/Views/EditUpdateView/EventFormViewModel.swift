@@ -2,7 +2,7 @@ import Foundation
 
 class EventFormViewModel: ObservableObject {
     @Published var date = Date()
-    @Published var eventType: Event.EventType = Event.EventType.allCases.first ?? .unspecified
+    @Published var eventType: String = UserDefaults.standard.string(forKey: "defaultEventType") ?? "unspecified"
     @Published var location: Location?
     @Published var city: String?
     @Published var state: String?  // v1.5: State/province
@@ -12,10 +12,12 @@ class EventFormViewModel: ObservableObject {
     @Published var note = ""
     @Published var showingAlert = false
     var dateSelected: Date?
+    var toDateSelected: Date?
     
     @Published var people: [Person] = []
     @Published var activityIDs: [String] = [] // NEW
     @Published var affirmationIDs: [String] = [] // NEW: Affirmations support
+    @Published var imageIDs: [String] = [] // v2.0: Event-level photos
 
     var id: String?
     var updating: Bool { id != nil }
@@ -24,7 +26,7 @@ class EventFormViewModel: ObservableObject {
 
     init(_ event: Event) {
         date = event.date.startOfDay
-        eventType = Event.EventType(rawValue: event.eventType) ?? .unspecified
+        eventType = event.eventType
         id = event.id
         location = event.location
         city = event.city
@@ -36,10 +38,11 @@ class EventFormViewModel: ObservableObject {
         people = event.people
         activityIDs = event.activityIDs // NEW
         affirmationIDs = event.affirmationIDs // NEW: Load affirmations
+        imageIDs = event.imageIDs // v2.0: Load event images
     }
 
     init(date: Date? = nil,
-         eventType: Event.EventType = .unspecified,
+         eventType: String = "unspecified",
          location: Location? = nil,
          id: String? = nil,
          city: String?,
@@ -62,8 +65,9 @@ class EventFormViewModel: ObservableObject {
         self.note = note
     }
 
-    init(dateSelected: Date? = nil) {
+    init(dateSelected: Date? = nil, toDateSelected: Date? = nil) {
         self.dateSelected = dateSelected
+        self.toDateSelected = toDateSelected
     }
 
     var incomplete: Bool {

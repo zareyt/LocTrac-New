@@ -4,8 +4,8 @@ This file provides Claude with everything it needs to assist effectively on the
 LocTrac project. Update this file whenever the architecture, conventions, or
 backlog change significantly.
 
-**Last Updated**: 2026-04-13
-**Current Version**: 1.5 (Complete - Ready for Release)
+**Last Updated**: 2026-04-25
+**Current Version**: 2.0
 **Author**: Tim Arey
 
 ---
@@ -39,10 +39,24 @@ LocTrac/
 │   ├── Event.swift                  ← Event model (stay, vacation, etc.)
 │   ├── Location.swift               ← Location model with Theme
 │   ├── RootView.swift               ← App entry point
-│   └── FirstLaunchWizard.swift      ← First-launch onboarding logic
+│   ├── FirstLaunchWizard.swift      ← First-launch onboarding logic
+│   ├── AuthState.swift              ← v2.0: Observable auth state (@EnvironmentObject)
+│   └── UserProfile.swift            ← v2.0: Profile model + profile.json persistence
 │
 ├── Services/
-│   └── ImportExport.swift           ← Import/Export Codable structs (Import, Export)
+│   ├── ImportExport.swift           ← Import/Export Codable structs (Import, Export)
+│   ├── KeychainHelper.swift         ← v2.0: Keychain read/write/delete wrapper
+│   ├── AuthenticationService.swift  ← v2.0: Auth logic actor (Apple Sign-In, email/password)
+│   ├── BiometricService.swift       ← v2.0: Face ID / Touch ID via LAContext
+│   ├── TOTPService.swift            ← v2.0: TOTP generation/verification (RFC 6238)
+│   └── Auth/                        ← v2.0: Auth-related views
+│       ├── WelcomeView.swift            ← First launch sign-in prompt
+│       ├── SignInView.swift             ← Apple + email login
+│       ├── SignUpView.swift             ← Account registration
+│       ├── ForgotPasswordView.swift     ← Password reset flow
+│       ├── TwoFactorSetupView.swift     ← TOTP QR code + backup codes
+│       ├── TwoFactorVerifyView.swift    ← TOTP code entry on login
+│       └── BiometricLockView.swift      ← Full-screen lock overlay for app lock
 │
 ├── Views/
 │   ├── HomeView.swift               ← Tab 0: dashboard, quick actions
@@ -66,6 +80,11 @@ LocTrac/
 │   │   ├── TripMigrationUtility.swift
 │   │   ├── TripsListView.swift
 │   │   └── TripsManagementView.swift
+│   ├── Profile/
+│   │   ├── ProfileView.swift            ← v2.0: Account hub
+│   │   ├── EditProfileView.swift        ← v2.0: Edit name, photo, email
+│   │   ├── PreferencesView.swift        ← v2.0: App preferences
+│   │   └── SecuritySettingsView.swift   ← v2.0: Password, 2FA, biometrics
 │   └── [Other view files...]
 │
 ├── Documentation/                   ← All .md docs live here
@@ -137,6 +156,58 @@ in views:
 **Persistence**: `storeData()` encodes everything to `backup.json` in the app's
 Documents directory. It also calls `bumpDataUpdate()` automatically.
 
+### AuthState — v2.0 Authentication (ObservableObject)
+
+```swift
+class AuthState: ObservableObject {
+    @Published var isAuthenticated: Bool
+    @Published var currentUser: UserProfile?
+    @Published var isLoading: Bool
+    @Published var authError: String?
+    @Published var requiresTwoFactor: Bool
+    @Published var hasDismissedMigrationPrompt: Bool
+
+    // Computed helpers
+    var currentAuthProvider: UserProfile.SignInMethod  // .apple, .email, .none
+    var currentEmail: String?
+    var initials: String  // "TA" from "Tim Arey"
+}
+```
+
+Injected alongside DataStore in `AppEntry.swift`:
+```swift
+@StateObject private var store = DataStore()
+@StateObject private var authState = AuthState()
+@State private var isLocked = false  // Biometric app lock
+
+var body: some Scene {
+    WindowGroup {
+        ZStack {
+            StartTabView()
+                .environmentObject(store)
+                .environmentObject(authState)
+            if isLocked {
+                BiometricLockView(isLocked: $isLocked)
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            // Lock on background, auto-unlock on active
+        }
+    }
+}
+```
+
+**Biometric App Lock**: When `BiometricService.isEnabled` and user is authenticated,
+the app locks on background (`scenePhase == .background`) and shows `BiometricLockView`
+as a full-screen overlay. On return to foreground, it auto-attempts biometric unlock.
+
+### UserProfile — v2.0 Separate Storage
+
+- Stored in `Documents/profile.json` — completely separate from `backup.json`
+- **Never** included in exports — auth data stays private
+- Preferences: `defaultLocationID`, `distanceUnit` (.miles/.kilometers), `defaultTransportMode`
+- Deleting `profile.json` returns the user to guest mode with all travel data intact
+
 ### Tab Layout (StartTabView)
 
 | Index | Label | View | Nav Title |
@@ -144,7 +215,7 @@ Documents directory. It also calls `bumpDataUpdate()` automatically.
 | 0 | Home | `HomeView` | "Home" |
 | 1 | Calendar | `ModernEventsCalendarView` | "Stays" |
 | 2 | Charts | `DonutChartView` | "Stays Overview" |
-| 3 | Locations | `LocationsUnifiedView` | "Locations" |
+| 3 | Travel Map | `LocationsUnifiedView` | "Travel Map" |
 | 4 | Infographic | `InfographicsView` | "Infographic" |
 
 ### Sheet Orchestration
@@ -156,14 +227,15 @@ environment objects to bubble up sheet requests.
 Sheet state variables in `StartTabView`:
 ```swift
 @State private var showAbout: Bool
+@State private var showProfile: Bool                 // v2.0: Profile & Settings sheet
 @State private var lformType: LocationFormType?      // add/update location
 @State private var showActivitiesManager: Bool
 @State private var showBackupExport: Bool
 @State private var showFirstLaunchWizard: Bool
 @State private var showTripsManagement: Bool
+@State private var showTravelHistory: Bool           // v2.0: moved next to Manage Trips
 @State private var showImportGolfshot: Bool          // prepared, not yet in menu
 @State private var showLocationsManagement: Bool
-@State private var showTravelHistory: Bool
 @State private var showCountryUpdater: Bool          // hidden, pending review
 @State private var showLocationSync: Bool            // hidden, pending review
 @State private var showDebugSettings: Bool           // v1.5: Debug system settings (DEBUG only)
@@ -171,8 +243,21 @@ Sheet state variables in `StartTabView`:
 @StateObject private var debugConfig = DebugConfig.shared  // v1.5: Debug configuration
 ```
 
-**Settings/Options Menu Location**: The main app settings menu is in `StartTabView`, 
-typically in a toolbar Menu button (often gear icon or ellipsis). To add new menu items,
+**v2.0 Menu Structure** (ellipsis.circle toolbar):
+1. **Profile & Account** — opens ProfileView sheet (first item)
+2. *(divider)*
+3. About LocTrac
+4. *(divider)*
+5. Manage Locations / Activities & Affirmations / Manage Trips / **Travel History** (moved here)
+6. *(divider)*
+7. Data Management submenu (Backup & Import, Enhance Location Data, Fix Orphaned Events [DEBUG])
+8. Debug Settings [DEBUG]
+
+**Notifications** menu item moved from main menu to **ProfileView** (under ACCOUNT section
+for signed-in users, under SETTINGS for signed-out users).
+
+**Settings/Options Menu Location**: The main app settings menu is in `StartTabView`,
+typically in a toolbar Menu button (ellipsis.circle). To add new menu items,
 find the `Menu { }` block in the toolbar and add your item there. For debug-only items,
 wrap in `#if DEBUG ... #endif`.
 
@@ -403,6 +488,11 @@ eventIDs.contains(trip.toEventID.uuidString)  // ERROR: toEventID is already a S
 8. **Navigation titles** are set centrally in `StartTabView.navigationTitleForSelection()`.
    Child views use `.navigationBarTitleDisplayMode(.inline)` only.
 
+9. **Build and verify** — After completing any code changes, always run
+   `BuildProject` to confirm the project compiles with zero errors. Use
+   `XcodeRefreshCodeIssuesInFile` for quick per-file checks during development.
+   Never consider a task complete until the build passes.
+
 ### State Management Patterns
 
 ```swift
@@ -546,7 +636,7 @@ var body: some View {
 | **Sheet conflicts** | UIKit-based file pickers conflict with SwiftUI sheets. Always use `.fileImporter` modifier. |
 | **Location in Event** | `Event.location` is an **embedded snapshot**, not a live reference. When a location is updated, existing events are NOT auto-updated — this is intentional (historical record). |
 | **"Other" location** | A special location named "Other" must always exist. `ensureOtherLocationExists()` is called on load and after imports. Never delete it. |
-| **Date handling** | All date display uses UTC calendar (`TimeZone(secondsFromGMT: 0)`) to avoid timezone-drift bugs. Follow this pattern. |
+| **Date handling** | All dates are stored as UTC midnight. **Never use `.formatted(date:time:)`** to display event/trip dates — it uses the local timezone and causes ±1 day drift. Use `date.utcMediumDateString` or `date.utcLongDateString` (defined in `Date+Extension.swift`). For `DatePicker`, set `.environment(\.timeZone, TimeZone(secondsFromGMT: 0)!)`. For `Calendar` operations, always use a UTC-pinned calendar. |
 | **Infographics cache** | Adding/updating/deleting through DataStore CRUD methods triggers cache invalidation automatically. Direct array mutations bypass this. |
 | **Trip migration** | On first load with events but no trips, `runTripMigration()` auto-creates trips. Do not re-run this manually. |
 | **calendarRefreshToken** | Call `store.bumpCalendarRefresh()` after any import to force the calendar view to reload. |
@@ -562,6 +652,20 @@ var body: some View {
 | **Geocoding efficiency** | `Event.isGeocoded` flag prevents re-geocoding successfully processed events. Set to `true` only when geocoding fully succeeds. Saves 50-66% of API calls on subsequent enhancement runs. Already-geocoded events are skipped silently. |
 | **Import location remapping** | v1.5 fix: Import now remaps old location IDs to current store IDs during merge. Special handling for "Other" location prevents orphaned events. Events reference valid locations after import. "Fix Orphaned Events" tool moved to DEBUG-only (issue resolved at import time). |
 | **Dynamic What's New** | v1.5+: Features are parsed from `VERSION_x.x_RELEASE_NOTES.md` files at runtime. Format: `### Title\nicon: symbol \| color: name\nDescription`. Falls back to hardcoded features in `WhatsNewFeature.swift` if parsing fails. Always include markdown file in Xcode target. See `WHATS_NEW_DYNAMIC_SYSTEM.md` for complete guide. |
+| **EventType colors** | v2.0: `Event.EventType` has `color: Color` and `sfSymbol: String` computed properties — the single source of truth for all event type display. Stay=red, Host=blue, Vacation=green, Family=purple, Business=brown, Unspecified=gray. Always use these properties; never hardcode event type colors. The legacy `icon` (emoji squares) is kept but deprecated. InfographicsView donut chart uses explicit `.foregroundStyle(item.color)` — NOT `.foregroundStyle(by:)` which auto-assigns colors. |
+| **One stay per day** | v2.0: Batch event creation (`createNewEvents()` in both `ModernEventFormView` and `EventFormView`) skips any date that already has an event. An alert informs the user how many days were skipped. This prevents duplicate stays on the same date. The check uses `store.events.map { $0.date.startOfDay }` for O(1) lookup. |
+| **Auth is separate from data** | v2.0: Authentication (`profile.json`, Keychain) is completely isolated from travel data (`backup.json`). Never put auth data in exports. Never put user IDs in backup.json. |
+| **profile.json vs backup.json** | v2.0: `profile.json` stores user profile and preferences. `backup.json` stores travel data. They are independent — deleting one does not affect the other. |
+| **AuthState injection** | v2.0: `AuthState` is injected via `.environmentObject()` alongside `DataStore` in `AppEntry.swift`. Both are `ObservableObject` with `@Published` properties. |
+| **Optional sign-in** | v2.0: Sign-in is never required. Users can always skip and use the app as a guest. Existing data is always accessible regardless of auth state. |
+| **Keychain service ID** | v2.0: All Keychain operations use service identifier `com.loctrac.auth`. |
+| **NSFaceIDUsageDescription** | v2.0: **Required** in Info.plist for Face ID. Without it, the app crashes on biometric access. Value: "LocTrac uses Face ID to securely unlock your account and verify your identity for password resets." |
+| **`.accent` vs `Color.accentColor`** | v2.0: SwiftUI's `.accent` is NOT a valid `ShapeStyle`. Use `Color.accentColor` in `.foregroundStyle()`, `.background()`, `.fill()`, etc. This caused 16 build errors during v2.0 development. |
+| **Auth views in Services/Auth/** | v2.0: Auth-related views (WelcomeView, SignInView, SignUpView, ForgotPasswordView, TwoFactorSetupView, TwoFactorVerifyView, BiometricLockView) live in `Services/Auth/`, NOT `Views/Auth/`. |
+| **Biometric app lock** | v2.0: `BiometricLockView` is a full-screen ZStack overlay in `AppEntry.swift`, driven by `scenePhase` monitoring. Locks on background when biometrics enabled + authenticated, auto-unlocks on foreground. |
+| **TOTP is real RFC 6238** | v2.0: TOTPService uses CryptoKit HMAC-SHA1 with Data-based secrets. Verification allows +/-1 period for clock drift. Backup codes stored in Keychain as JSON-encoded `[String]`. |
+| **2FA gates sign-in** | v2.0: When `TOTPService.isEnabled`, `signInWithEmail()` sets `requiresTwoFactor = true` instead of `isAuthenticated = true`. User must verify TOTP code before access. `completeTwoFactorAuth()` finishes the flow. |
+| **Info.plist required keys** | v2.0: `NSFaceIDUsageDescription` (Face ID), Sign in with Apple capability in entitlements (`com.apple.developer.applesignin`), `aps-environment` for push notifications. |
 
 ---
 
@@ -571,7 +675,8 @@ var body: some View {
 
 | Tag | Notes |
 |---|---|
-| `v1.5` | **In Development** — International location support with state/province fields, enhanced geocoding, data migration utility |
+| `v2.0` | **In Development** — Authentication (Apple Sign-In, email/password), user profile, biometrics, 2FA, preferences |
+| `v1.5` | International location support with state/province fields, enhanced geocoding, data migration utility |
 | `v1.4` | Infographics PDF/Screenshot export with real Apple Maps, Journey map visualization, Share button implementation with NotificationCenter |
 | `v1.3` | Travel History, Unified Locations, Trip Confirmation, Infographics tab, Affirmations, Timeline Restore |
 | `v3.0` (legacy label) | Default location, State detection, LocationsManagementView |
@@ -638,15 +743,17 @@ All documentation organized for clarity. Key files:
 | `PROJECT_ANALYSIS.md` | Architecture analysis, metrics, roadmap |
 | `KEY_CODE_CHANGES.md` | Major refactoring documentation |
 
-### **Current Version (v1.5 - In Development)**
+### **Current Version (v2.0 - In Development)**
 | File | Contents |
 |------|----------|
-| `VERSION_1.5_SUMMARY.md` | Quick overview and development status for v1.5 |
-| `VERSION_1.5_INTERNATIONAL_LOCATIONS.md` | Complete technical specification for international location support |
+| `DocumentationV2.0_IMPLEMENTATION_PLAN.md` | Complete implementation plan for auth & profile |
+| `VERSION_2.0_RELEASE_NOTES.md` | User-facing release notes for v2.0 |
 
-### **Previous Version (v1.4)**
+### **Previous Versions (v1.4 - v1.5)**
 | File | Contents |
 |------|----------|
+| `VERSION_1.5_RELEASE_NOTES.md` | User-facing release notes for v1.5 |
+| `VERSION_1.5_SUMMARY.md` | Quick overview for v1.5 |
 | `VERSION_1.4_RELEASE_NOTES.md` | User-facing release notes for v1.4 |
 | `LOCTRAC_V1.4_COMPLETE_SUMMARY.md` | Technical summary and feature breakdown |
 
@@ -721,6 +828,42 @@ Older version-specific docs (v1.1-v1.3), build fix notes, and feature proposals 
   - Prevents all orphaned events on import
   - "Fix Orphaned Events" tool moved to DEBUG-only (issue resolved)
 
+### v2.0 - Complete
+
+- [x] **Phase A: Auth Service & Models**
+  - `Services/KeychainHelper.swift` — Keychain wrapper (`com.loctrac.auth`)
+  - `Services/AuthenticationService.swift` — Auth actor (Apple Sign-In, email/password, session)
+  - `Models/AuthState.swift` — ObservableObject with 2FA gate, computed helpers
+  - `Models/UserProfile.swift` — Profile model + `profile.json` persistence
+  - `AppEntry.swift` — AuthState injection, biometric lock via scenePhase
+  - `Info.plist` — NSFaceIDUsageDescription, Sign in with Apple capability
+
+- [x] **Phase B: Sign-In Views**
+  - `Services/Auth/WelcomeView.swift` — First launch sign-in prompt (Skip or Sign In)
+  - `Services/Auth/SignInView.swift` — Apple + email/password login
+  - `Services/Auth/SignUpView.swift` — Account registration
+  - `Services/Auth/ForgotPasswordView.swift` — Password reset flow
+
+- [x] **Phase C: Profile Management**
+  - `Views/Profile/ProfileView.swift` — Account hub (profile, preferences, security, notifications)
+  - `Views/Profile/EditProfileView.swift` — Edit name, photo, email
+  - `Views/Profile/PreferencesView.swift` — Default location, distance unit, transport mode
+  - `StartTabView.swift` — showProfile state, menu item, sheet, menu reorganization
+
+- [x] **Phase E: Existing User Migration**
+  - One-time prompt for users with existing data
+  - Zero data loss — backup.json unchanged
+  - "Skip for now" always available
+
+- [x] **Phase D: Biometrics & 2FA**
+  - `Services/BiometricService.swift` — Face ID / Touch ID with enable/disable helpers
+  - `Services/TOTPService.swift` — Real TOTP (RFC 6238, HMAC-SHA1, Data-based secrets)
+  - `Services/Auth/TwoFactorSetupView.swift` — TOTP QR + backup codes
+  - `Services/Auth/TwoFactorVerifyView.swift` — TOTP code entry with backup code support
+  - `Services/Auth/BiometricLockView.swift` — Full-screen lock overlay for app lock
+  - `Views/Profile/SecuritySettingsView.swift` — Password, 2FA, biometrics toggles
+  - `AppEntry.swift` — scenePhase-driven biometric lock/unlock
+
 ### Short Term
 - [ ] Unit tests (Swift Testing) for DataStore CRUD and ImportExport
 - [ ] Unit tests for migration service
@@ -749,6 +892,85 @@ Older version-specific docs (v1.1-v1.3), build fix notes, and feature proposals 
 
 ---
 
+## 🚀 Ready to Publish Workflow
+
+When the user says **"I'm ready to publish this release"**, execute the following
+checklist in order. **Confirm each step with the user before proceeding.**
+
+### Pre-Flight Checks
+1. **Flip `DebugConfig.showDebugMenu` to `false`** (`Models/DebugConfig.swift`)
+   - Ask user to confirm: "Should I flip showDebugMenu to false?"
+   - This hides the Debug Settings menu item entirely
+
+2. **Review CHANGELOG** — Ensure all features, bug fixes, and improvements for
+   the current version are captured. Use existing wording where possible.
+
+3. **Review WhatsNew** — Verify `VERSION_x.x_RELEASE_NOTES.md` and
+   `WhatsNewFeature.swift` hardcoded fallback are in sync. Exclude
+   developer-specific items (testing, debug, one-off utilities).
+
+4. **Set Release Date** — Update `VERSION_x.x_RELEASE_NOTES.md` (Release Date
+   field) and `CHANGELOG.md` (`## [x.x] – YYYY-MM-DD`) to today's date.
+
+5. **Build Project** — Run `BuildProject` and confirm zero errors.
+
+### Git Operations (Confirm Before Each Step)
+
+6. **Stage all changes** — Show the user what will be committed:
+   ```
+   git add -A
+   git status
+   ```
+
+7. **Propose commit message** — Show the full commit message for user approval:
+   ```
+   v<X.Y> – <Short title>
+
+   New Features:
+   - Feature A
+   - Feature B
+
+   Bug Fixes:
+   - Fix A
+   - Fix B
+
+   Improvements:
+   - Improvement A
+   ```
+
+8. **Commit** — After user approves the message:
+   ```
+   git commit -m "<approved message>"
+   ```
+
+9. **Propose tag** — Show the tag for user approval:
+   ```
+   git tag -a v<X.Y> -m "Version <X.Y> – <summary>"
+   ```
+
+10. **Push** — After user approves:
+    ```
+    git push origin main --follow-tags
+    ```
+    Remote: `https://github.com/zareyt/LocTrac-New.git`
+
+### Post-Push Verification
+
+11. **Run regression tests** — Execute `RunAllTests` and report results.
+
+12. **Update CLAUDE.md** — Bump version history table, update "Current Version"
+    in header, update "Last Updated" date, and update footer.
+
+13. **Confirm completion** — Report summary of what was published.
+
+### Important Notes
+- **Never use `--tags`** on push (risks rejecting existing tags)
+- **Always use `--follow-tags`** to push only the new annotated tag
+- Remote is `origin` → `https://github.com/zareyt/LocTrac-New.git`
+- After publishing, flip `DebugConfig.showDebugMenu` back to `true` for next dev cycle
+
+---
+
 ## 💡 Tips for Claude When Helping on This Project
 
 1. **Always use Swift and SwiftUI** — never suggest Objective-C, React Native,
@@ -764,8 +986,10 @@ Older version-specific docs (v1.1-v1.3), build fix notes, and feature proposals 
    property must be optional in `Import` with a default to maintain backward
    compatibility with existing `backup.json` files.
 
-5. **Date display = UTC** — always use a UTC-pinned `Calendar` and `DateFormatter`
-   for any date shown to the user.
+5. **Date display = UTC** — never use `.formatted(date:time:)` on event or trip
+   dates. Use `date.utcMediumDateString` or `date.utcLongDateString` from
+   `Date+Extension.swift`. These use UTC-pinned formatters that prevent ±1 day
+   drift. For `DatePicker`, set `.environment(\.timeZone, TimeZone(secondsFromGMT: 0)!)`.
 
 6. **File picker = `.fileImporter`** — never `UIDocumentPickerViewController`.
 
@@ -803,7 +1027,23 @@ Older version-specific docs (v1.1-v1.3), build fix notes, and feature proposals 
     → `await MainActor.run { createPDFContent(...) }`. This ensures map snapshots
     complete before PDF rendering begins.
 
+15. **Auth data stays out of exports** — `profile.json` and Keychain data must never
+    be included in `backup.json` exports. The auth system is additive and isolated.
+
+16. **AuthState uses @EnvironmentObject** — same pattern as DataStore. Inject in
+    `AppEntry.swift`, consume with `@EnvironmentObject var authState: AuthState`.
+
+17. **Never block users on sign-in** — all auth flows must have a "Skip" or
+    "Continue without account" option. Existing data is always accessible.
+
+18. **Always ask about WhatsNew updates** — after completing any feature or bug
+    fix, ask the user: "Should I update the WhatsNew view (feature or bug fix
+    entry)?" Both `VERSION_2.0_RELEASE_NOTES.md` (dynamic parsing source) AND
+    the hardcoded fallback in `WhatsNewFeature.swift` must be kept in sync.
+    The dynamic parser reads from the markdown file first; the hardcoded array
+    is the safety net if parsing fails.
+
 ---
 
-*CLAUDE.md — LocTrac v1.4 — Tim Arey — 2026-04-08*
+*CLAUDE.md — LocTrac v2.0 — Tim Arey — 2026-04-25*
 *Update this file with each major release.*

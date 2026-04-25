@@ -137,19 +137,19 @@ extension OtherCityDetailView {
             HStack {
                 Image(systemName: "calendar")
                     .foregroundColor(.blue)
-                Text(event.date.formatted(date: .long, time: .omitted))
+                Text(event.date.utcLongDateString)
                     .font(.headline)
             }
             
             // Event Type
-            if let eventType = Event.EventType(rawValue: event.eventType) {
-                HStack {
-                    Text(eventType.icon)
-                        .font(.title3)
-                    Text(eventType.rawValue.capitalized)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
+            let eventTypeItem = store.eventTypeItem(for: event.eventType)
+            HStack {
+                Image(systemName: eventTypeItem.sfSymbol)
+                    .font(.title3)
+                    .foregroundStyle(eventTypeItem.color)
+                Text(eventTypeItem.displayName)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
             }
             
             // Activities

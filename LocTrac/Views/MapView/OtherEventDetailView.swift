@@ -79,7 +79,7 @@ extension OtherEventDetailView {
             HStack {
                 Image(systemName: "calendar")
                     .foregroundColor(.accentColor)
-                Text(event.date.formatted(date: .long, time: .omitted))
+                Text(event.date.utcLongDateString)
                     .font(.headline)
             }
         }
@@ -95,8 +95,9 @@ extension OtherEventDetailView {
             
             // Event Type
             HStack {
-                Text(eventTypeIcon)
+                Image(systemName: eventTypeSFSymbol)
                     .font(.title2)
+                    .foregroundStyle(eventTypeColor)
                 Text("Type:")
                     .foregroundColor(.secondary)
                 Text(eventTypeText)
@@ -221,18 +222,16 @@ extension OtherEventDetailView {
     
     // MARK: - Helpers
     
-    private var eventTypeIcon: String {
-        if let eventType = Event.EventType(rawValue: event.eventType) {
-            return eventType.icon
-        }
-        return "🔲"
+    private var eventTypeSFSymbol: String {
+        store.eventTypeItem(for: event.eventType).sfSymbol
     }
-    
+
+    private var eventTypeColor: Color {
+        store.eventTypeItem(for: event.eventType).color
+    }
+
     private var eventTypeText: String {
-        if let eventType = Event.EventType(rawValue: event.eventType) {
-            return eventType.rawValue.capitalized
-        }
-        return "Unspecified"
+        store.eventTypeItem(for: event.eventType).displayName
     }
     
     private var activityNames: [String] {

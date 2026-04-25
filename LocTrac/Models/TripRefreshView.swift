@@ -446,32 +446,19 @@ struct TripRefreshView: View {
     }
     
     private func performAnalysis() async -> RefreshResults {
-        print("\n🔍 === TRIP REFRESH ANALYSIS START ===")
-        print("📊 Current Data: \(store.events.count) events, \(store.trips.count) trips")
-        
         // Generate fresh trips from events
         let freshTrips = TripMigrationUtility.migrateEventsToTrips(events: store.events)
-        print("✅ Fresh Generation: \(freshTrips.count) trips")
-        
+
         var results = RefreshResults()
-        
-        print("\n🔍 Phase 1: Scanning for Problem Trips...")
-        // Find problem trips (trips with missing/invalid events)
-        for (index, trip) in store.trips.enumerated() {
+
+        // Phase 1: Find problem trips (trips with missing/invalid events)
+        for trip in store.trips {
             let fromEvent = store.events.first(where: { $0.id == trip.fromEventID })
             let toEvent = store.events.first(where: { $0.id == trip.toEventID })
-            
-            print("[\(index + 1)/\(store.trips.count)] Trip \(trip.id)")
-            print("   From Event ID: \(trip.fromEventID) - \(fromEvent != nil ? "✓ Found" : "❌ Missing")")
-            print("   To Event ID: \(trip.toEventID) - \(toEvent != nil ? "✓ Found" : "❌ Missing")")
-            print("   Departure: \(formatDate(trip.departureDate))")
-            print("   Arrival: \(formatDate(trip.arrivalDate))")
-            
+
             if fromEvent == nil || toEvent == nil {
                 let issue = fromEvent == nil && toEvent == nil ? "Both events missing" :
                            fromEvent == nil ? "Departure event missing" : "Arrival event missing"
-                print("   ⚠️ PROBLEM: \(issue)")
-                
                 results.problemTrips.append(ProblemTrip(
                     id: trip.id,
                     trip: trip,
@@ -480,17 +467,11 @@ struct TripRefreshView: View {
                     toEvent: toEvent
                 ))
                 results.deletions.append(trip)
-                print("   → Marked for DELETION")
             } else if let from = fromEvent, let to = toEvent {
-                // Check for "Unknown" destinations
-                let fromCountry = from.country ?? from.location.country
-                let toCountry = to.country ?? to.location.country
-                
-                print("   From: \(from.location.name) (\(from.city ?? "no city")) - Country: '\(fromCountry ?? "nil")'")
-                print("   To: \(to.location.name) (\(to.city ?? "no city")) - Country: '\(toCountry ?? "nil")'")
-                
+                let fromCountry = from.effectiveCountry
+                let toCountry = to.effectiveCountry
+
                 if fromCountry == nil || fromCountry == "Unknown" || toCountry == nil || toCountry == "Unknown" {
-                    print("   ⚠️ PROBLEM: Unknown destination or origin")
                     results.problemTrips.append(ProblemTrip(
                         id: trip.id,
                         trip: trip,
@@ -498,49 +479,28 @@ struct TripRefreshView: View {
                         fromEvent: from,
                         toEvent: to
                     ))
-                    // NOTE: Do NOT add to deletions here - this is just a warning, not an invalid trip
-                    print("   → Marked as PROBLEM (but not automatically for deletion)")
-                } else {
-                    print("   ✓ Valid countries")
                 }
             }
         }
-        
-        print("\n📊 Problem Trips Summary:")
-        print("   Total Problems: \(results.problemTrips.count)")
-        print("   Marked for Deletion: \(results.deletions.count)")
-        
-        print("\n🔍 Phase 2: Comparing with Fresh Trips...")
-        // Compare existing trips with fresh trips
+
+        // Phase 2: Compare existing trips with fresh trips
         for freshTrip in freshTrips {
             if let existingTrip = store.trips.first(where: {
                 $0.fromEventID == freshTrip.fromEventID &&
                 $0.toEventID == freshTrip.toEventID
             }) {
-                // Trip exists - check for changes
-                // ONLY compare: distance, departure date, arrival date
-                // EXCLUDE: transport mode (type) and notes
                 var changes: [String] = []
-                
+
                 if abs(existingTrip.distance - freshTrip.distance) > 0.1 {
                     changes.append("Distance: \(existingTrip.formattedDistance) → \(freshTrip.formattedDistance) mi")
                 }
-                
-                // REMOVED: Transport mode comparison (excluded per user request)
-                // if existingTrip.mode != freshTrip.mode {
-                //     changes.append("Transport: \(existingTrip.mode.rawValue) → \(freshTrip.mode.rawValue)")
-                // }
-                
                 if existingTrip.departureDate != freshTrip.departureDate {
-                    changes.append("Departure date changed")
+                    changes.append("Departure: \(existingTrip.departureDate.utcMediumDateString) → \(freshTrip.departureDate.utcMediumDateString)")
                 }
-                
                 if existingTrip.arrivalDate != freshTrip.arrivalDate {
-                    changes.append("Arrival date changed")
+                    changes.append("Arrival: \(existingTrip.arrivalDate.utcMediumDateString) → \(freshTrip.arrivalDate.utcMediumDateString)")
                 }
-                
-                // REMOVED: Notes comparison (excluded per user request)
-                
+
                 if !changes.isEmpty {
                     results.updates.append(TripUpdate(
                         id: existingTrip.id,
@@ -552,51 +512,22 @@ struct TripRefreshView: View {
                     results.unchanged.append(existingTrip)
                 }
             } else {
-                // New trip
                 results.additions.append(freshTrip)
             }
         }
-        
-        // Find trips that no longer have matching events (deletions)
-        print("\n🔍 Phase 3: Finding Invalid Trips...")
+
+        // Phase 3: Find trips that no longer have matching events (deletions)
         for existingTrip in store.trips {
             let stillValid = freshTrips.contains(where: {
                 $0.fromEventID == existingTrip.fromEventID &&
                 $0.toEventID == existingTrip.toEventID
             })
-            
             if !stillValid && !results.deletions.contains(where: { $0.id == existingTrip.id }) {
-                print("   ❌ Trip no longer valid: \(existingTrip.id)")
-                print("      From Event: \(existingTrip.fromEventID)")
-                print("      To Event: \(existingTrip.toEventID)")
-                print("      Dates: \(formatDate(existingTrip.departureDate)) → \(formatDate(existingTrip.arrivalDate))")
                 results.deletions.append(existingTrip)
             }
         }
-        
-        print("\n📊 === ANALYSIS COMPLETE ===")
-        print("   Problem Trips: \(results.problemTrips.count)")
-        print("   Deletions: \(results.deletions.count)")
-        print("   Updates: \(results.updates.count)")
-        print("   Additions: \(results.additions.count)")
-        print("   Unchanged: \(results.unchanged.count)")
-        print("\n⚠️ MISMATCH CHECK:")
-        print("   Problems Found: \(results.problemTrips.count)")
-        print("   Fixes Available: \(results.deletions.count + results.updates.count + results.additions.count)")
-        if results.problemTrips.count != results.deletions.count {
-            print("   ⚠️ NOTE: Not all problems result in deletions!")
-            print("   'Unknown destination' trips are flagged but may still be valid trips")
-        }
-        print("=========================\n")
-        
+
         return results
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .none
-        return formatter.string(from: date)
     }
     
     private func toggleSelection(_ id: UUID) {
@@ -674,6 +605,20 @@ struct TripRefreshView: View {
     }
 }
 
+// MARK: - Shared Display Name Helper
+
+/// Resolves "Other" location names to the event's city or country.
+/// Used by all trip row views in TripRefreshView.
+private func tripDisplayName(for event: Event?) -> String {
+    guard let event = event else { return "Unknown" }
+    if event.location.name == "Other" {
+        return event.effectiveCity
+            ?? event.effectiveCountry
+            ?? "Unknown City"
+    }
+    return event.location.name
+}
+
 // MARK: - Row Views
 
 struct ProblemTripRow: View {
@@ -722,11 +667,11 @@ struct ProblemTripRow: View {
     }
     
     private var tripRoute: String {
-        let from = problem.fromEvent?.location.name ?? "Unknown"
-        let to = problem.toEvent?.location.name ?? "Unknown"
+        let from = tripDisplayName(for: problem.fromEvent)
+        let to = tripDisplayName(for: problem.toEvent)
         return "\(from) → \(to)"
     }
-    
+
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
@@ -739,7 +684,14 @@ struct TripUpdateRow: View {
     let store: DataStore
     let isSelected: Bool
     let onToggle: () -> Void
-    
+
+    private var fromEvent: Event? {
+        store.events.first(where: { $0.id == update.existingTrip.fromEventID })
+    }
+    private var toEvent: Event? {
+        store.events.first(where: { $0.id == update.existingTrip.toEventID })
+    }
+
     var body: some View {
         Button {
             onToggle()
@@ -748,49 +700,47 @@ struct TripUpdateRow: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isSelected ? .blue : .gray)
                     .font(.title3)
-                
+
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text(tripRoute)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        Text(formatDate(update.existingTrip.departureDate))
+                    // Route
+                    Text("\(tripDisplayName(for: fromEvent)) → \(tripDisplayName(for: toEvent))")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+
+                    // Current trip details
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar")
                             .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                        Text("\(update.existingTrip.departureDate.utcMediumDateString) → \(update.existingTrip.arrivalDate.utcMediumDateString)")
+                            .font(.caption)
                     }
-                    
+                    .foregroundStyle(.secondary)
+
+                    HStack(spacing: 12) {
+                        Label("\(update.existingTrip.formattedDistance) mi", systemImage: "arrow.left.and.right")
+                        Label(update.existingTrip.mode.rawValue, systemImage: update.existingTrip.mode.icon)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                    // What changed
                     ForEach(update.changes, id: \.self) { change in
                         HStack(spacing: 4) {
-                            Image(systemName: "arrow.right")
+                            Image(systemName: "arrow.triangle.2.circlepath")
                                 .font(.caption2)
                                 .foregroundStyle(.blue)
                             Text(change)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.blue)
                         }
                     }
                 }
-                
+
                 Spacer()
             }
         }
         .buttonStyle(.plain)
-    }
-    
-    private var tripRoute: String {
-        let fromEvent = store.events.first(where: { $0.id == update.existingTrip.fromEventID })
-        let toEvent = store.events.first(where: { $0.id == update.existingTrip.toEventID })
-        let from = fromEvent?.location.name ?? "Unknown"
-        let to = toEvent?.location.name ?? "Unknown"
-        return "\(from) → \(to)"
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        return formatter.string(from: date)
     }
 }
 
@@ -799,7 +749,14 @@ struct TripAdditionRow: View {
     let store: DataStore
     let isSelected: Bool
     let onToggle: () -> Void
-    
+
+    private var fromEvent: Event? {
+        store.events.first(where: { $0.id == trip.fromEventID })
+    }
+    private var toEvent: Event? {
+        store.events.first(where: { $0.id == trip.toEventID })
+    }
+
     var body: some View {
         Button {
             onToggle()
@@ -808,45 +765,41 @@ struct TripAdditionRow: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isSelected ? .green : .gray)
                     .font(.title3)
-                
+
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text(tripRoute)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        Text(formatDate(trip.departureDate))
+                    // Route
+                    Text("\(tripDisplayName(for: fromEvent)) → \(tripDisplayName(for: toEvent))")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+
+                    // Dates
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar")
                             .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                        Text("\(trip.departureDate.utcMediumDateString) → \(trip.arrivalDate.utcMediumDateString)")
+                            .font(.caption)
                     }
-                    
+                    .foregroundStyle(.secondary)
+
+                    // Distance and mode
                     HStack(spacing: 12) {
                         Label("\(trip.formattedDistance) mi", systemImage: "arrow.left.and.right")
                         Label(trip.mode.rawValue, systemImage: trip.mode.icon)
                     }
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                    // Reason: consecutive events at different locations
+                    Text("New consecutive location change detected")
+                        .font(.caption2)
+                        .foregroundStyle(.green)
                 }
-                
+
                 Spacer()
             }
         }
         .buttonStyle(.plain)
-    }
-    
-    private var tripRoute: String {
-        let fromEvent = store.events.first(where: { $0.id == trip.fromEventID })
-        let toEvent = store.events.first(where: { $0.id == trip.toEventID })
-        let from = fromEvent?.location.name ?? "Unknown"
-        let to = toEvent?.location.name ?? "Unknown"
-        return "\(from) → \(to)"
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        return formatter.string(from: date)
     }
 }
 
@@ -855,7 +808,26 @@ struct TripDeletionRow: View {
     let store: DataStore
     let isSelected: Bool
     let onToggle: () -> Void
-    
+
+    private var fromEvent: Event? {
+        store.events.first(where: { $0.id == trip.fromEventID })
+    }
+    private var toEvent: Event? {
+        store.events.first(where: { $0.id == trip.toEventID })
+    }
+
+    /// Explain why the trip is being removed
+    private var deletionReason: String {
+        guard let from = fromEvent, let to = toEvent else {
+            if fromEvent == nil && toEvent == nil {
+                return "Both departure and arrival events are missing"
+            }
+            return fromEvent == nil ? "Departure event is missing" : "Arrival event is missing"
+        }
+        // Events exist but trip no longer generated — a new event was inserted between them
+        return "Events are no longer consecutive (new stay added between them)"
+    }
+
     var body: some View {
         Button {
             onToggle()
@@ -864,42 +836,49 @@ struct TripDeletionRow: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isSelected ? .red : .gray)
                     .font(.title3)
-                
+
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text(tripRoute)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        Text(formatDate(trip.departureDate))
+                    // Route
+                    Text("\(tripDisplayName(for: fromEvent)) → \(tripDisplayName(for: toEvent))")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+
+                    // Dates
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar")
                             .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                        Text("\(trip.departureDate.utcMediumDateString) → \(trip.arrivalDate.utcMediumDateString)")
+                            .font(.caption)
                     }
-                    
-                    Text("No longer matches event data")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    .foregroundStyle(.secondary)
+
+                    // Distance and mode
+                    HStack(spacing: 12) {
+                        Label("\(trip.formattedDistance) mi", systemImage: "arrow.left.and.right")
+                        Label(trip.mode.rawValue, systemImage: trip.mode.icon)
+                        if trip.isAutoGenerated {
+                            Text("Auto")
+                                .font(.caption2)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(Color.gray.opacity(0.2))
+                                .cornerRadius(4)
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                    // Reason for deletion
+                    Text(deletionReason)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
                 }
-                
+
                 Spacer()
             }
         }
         .buttonStyle(.plain)
-    }
-    
-    private var tripRoute: String {
-        let fromEvent = store.events.first(where: { $0.id == trip.fromEventID })
-        let toEvent = store.events.first(where: { $0.id == trip.toEventID })
-        let from = fromEvent?.location.name ?? "Unknown"
-        let to = toEvent?.location.name ?? "Unknown"
-        return "\(from) → \(to)"
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        return formatter.string(from: date)
     }
 }
 

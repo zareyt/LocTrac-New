@@ -119,7 +119,7 @@ struct LocationCoordinateUpdater {
             store.update(updatedEvent)
             updatedCount += 1
             
-            print("   ✅ Updated event \(event.id): \(event.date.formatted(date: .abbreviated, time: .omitted))")
+            print("   ✅ Updated event \(event.id): \(event.date.utcMediumDateString)")
         }
         
         print("✅ [Auto-Update] Complete: \(updatedCount) events updated")

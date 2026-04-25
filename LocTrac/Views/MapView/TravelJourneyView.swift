@@ -11,6 +11,7 @@ import MapKit
 struct TravelJourneyView: View {
     @EnvironmentObject var store: DataStore
     @EnvironmentObject var vm: LocationsMapViewModel // Share the map's view model
+    @EnvironmentObject var debugConfig: DebugConfig
     @Environment(\.dismiss) private var dismiss
     
     // Animation state
@@ -187,6 +188,7 @@ struct TravelJourneyView: View {
                 }
             }
         }
+        .debugViewName("TravelJourneyView")
     }
 }
 
@@ -456,10 +458,10 @@ extension TravelJourneyView {
         return VStack(alignment: .leading, spacing: 8) {
             HStack {
                 // Event type icon
-                if let eventType = Event.EventType(rawValue: event.eventType) {
-                    Text(eventType.icon)
-                        .font(.title2)
-                }
+                let eventTypeItem = store.eventTypeItem(for: event.eventType)
+                Image(systemName: eventTypeItem.sfSymbol)
+                    .font(.title2)
+                    .foregroundStyle(eventTypeItem.color)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     // Show location name or city for "Other" events
