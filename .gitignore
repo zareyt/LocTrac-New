@@ -38,5 +38,8 @@ LocTrac/Archived/
 LocTrac/WEEK*.md
 LocTrac/VERSION_*_SUMMARY.md
 
+# Large test fixtures
+LocTracTests/Fixtures/*.zip
+
 # Debug log files (generated at runtime)
 DebugLogs/
