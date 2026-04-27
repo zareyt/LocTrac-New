@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 @testable import LocTrac
 
 @Suite("Event Image Tests")
@@ -8,7 +9,7 @@ struct EventImageTests {
 
     private static let testLocation = Location(
         id: "loc1", name: "TestPlace", city: nil, state: nil,
-        latitude: 0, longitude: 0, country: nil, theme: .blue
+        latitude: 0, longitude: 0, country: nil, theme: .navy
     )
 
     private static func makeDate(year: Int, month: Int, day: Int) -> Date {
@@ -198,7 +199,9 @@ struct EventImageTests {
             activities: [],
             affirmations: [],
             trips: [],
-            eventTypes: []
+            eventTypes: [],
+            exerciseEntries: [],
+            cars: []
         )
 
         let encoder = JSONEncoder()

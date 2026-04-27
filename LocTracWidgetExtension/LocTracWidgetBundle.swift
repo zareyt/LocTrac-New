@@ -12,5 +12,9 @@ import SwiftUI
 struct LocTracWidgetBundle: WidgetBundle {
     var body: some Widget {
         LocTracWidget()
+        TravelSnapshotWidget()
+        ActivityPulseWidget()
+        GreenImpactWidget()
+        DashboardWidget()
     }
 }

@@ -27,11 +27,11 @@ struct StayReminderTests {
             latitude: 0,
             longitude: 0,
             country: nil,
-            theme: .gray
+            theme: .teal
         )
         return Event(
             id: UUID().uuidString,
-            eventType: "Stay",
+            eventType: .stay,
             date: date,
             location: otherLocation,
             city: "Test City",

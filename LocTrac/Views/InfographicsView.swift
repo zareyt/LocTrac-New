@@ -35,6 +35,9 @@ struct Derived {
     
     // Vacation-specific data (from "Other" location)
     let vacationStats: VacationStats
+
+    // Exercise data (from HealthKit)
+    let exerciseSummary: ExerciseSummary?
 }
 
 // MARK: - Vacation Statistics Model
@@ -51,6 +54,7 @@ struct VacationStats {
 
 struct InfographicsView: View {
     @EnvironmentObject var store: DataStore
+    @EnvironmentObject var authState: AuthState
     @EnvironmentObject var debugConfig: DebugConfig
     @State private var selectedYear: String = "All Time"
     
@@ -103,6 +107,9 @@ struct InfographicsView: View {
                     // Journey map
                     journeyMapSection(derived: derived)
                     
+                    // Exercise & fitness
+                    exerciseSection(derived: derived)
+
                     // Environmental impact
                     environmentalImpactSection(derived: derived)
                 } else {
@@ -257,6 +264,13 @@ struct InfographicsView: View {
         let activities = await topActivities
         let people = await topPeople
         
+        // Exercise summary — filter entries to dates that have stays in this year
+        let stayDates = Set(filtered.map { $0.date.startOfDay })
+        let exerciseEntries: [ExerciseEntry] = await MainActor.run {
+            store.exerciseEntries.filter { stayDates.contains($0.date.startOfDay) }
+        }
+        let exerciseSummary = ExerciseSummary.compute(from: exerciseEntries)
+
         // Create derived object
         let derived = Derived(
             filteredEvents: filtered,
@@ -278,7 +292,8 @@ struct InfographicsView: View {
             uniquePeopleCount: uniquePeopleCount,
             tripsCount: tripsCount,
             dateRange: dateRange,
-            vacationStats: vacationStats
+            vacationStats: vacationStats,
+            exerciseSummary: exerciseSummary
         )
         
         // Store in state
@@ -360,60 +375,102 @@ struct InfographicsView: View {
                 treesNeeded: 0, kWhEquivalent: 0, earthCircumferences: 0
             )
         }
-        
+
         var totalMiles = 0.0
         var flyingMiles = 0.0
         var drivingMiles = 0.0
+        var trainMiles = 0.0
+        var busMiles = 0.0
         var flyingTrips = 0
         var drivingTrips = 0
-        
-        for i in 0..<(events.count - 1) {
-            guard i + 1 < events.count else { break }
-            let current = events[i]
-            let next = events[i + 1]
-            
-            let currentLocationID = current.location.id
-            let nextLocationID = next.location.id
-            
-            let currentIsOther = current.location.name == "Other"
-            let nextIsOther = next.location.name == "Other"
-            
-            let isActuallyDifferentLocation: Bool
-            if currentIsOther && nextIsOther {
-                let currentCoord = coordinatesFor(current)
-                let nextCoord = coordinatesFor(next)
-                let distance = distanceBetween(currentCoord, and: nextCoord)
-                isActuallyDifferentLocation = distance > 1.0
-            } else if currentIsOther || nextIsOther {
-                isActuallyDifferentLocation = true
-            } else {
-                isActuallyDifferentLocation = currentLocationID != nextLocationID
-            }
-            
-            if isActuallyDifferentLocation {
-                let currentCoord = coordinatesFor(current)
-                let nextCoord = coordinatesFor(next)
-                let distance = distanceBetween(currentCoord, and: nextCoord)
-                totalMiles += distance
-                
-                if distance > 100 {
-                    flyingMiles += distance
+        var trainTrips = 0
+        var busTrips = 0
+        var drivingCO2WithCar = 0.0
+
+        // Use actual trip data when available for accurate mode and car-specific CO2
+        let filterYear = Int(selectedYear)  // nil for "All Time" or other non-numeric
+        let yearTrips = store.trips.filter { trip in
+            guard let filterYear else { return true }  // "All Time" includes all trips
+            let tripYear = Calendar(identifier: .gregorian).component(.year, from: trip.departureDate)
+            return tripYear == filterYear
+        }
+
+        if !yearTrips.isEmpty {
+            for trip in yearTrips {
+                totalMiles += trip.distance
+                switch trip.mode {
+                case .flying:
+                    flyingMiles += trip.distance
                     flyingTrips += 1
-                } else {
-                    drivingMiles += distance
+                case .driving:
+                    drivingMiles += trip.distance
                     drivingTrips += 1
+                    // Calculate car-specific CO2
+                    if let car = store.carForTrip(trip) {
+                        drivingCO2WithCar += trip.distance * car.co2PerMile
+                    } else {
+                        drivingCO2WithCar += trip.distance * Trip.TransportMode.driving.co2PerMile
+                    }
+                case .train:
+                    trainMiles += trip.distance
+                    trainTrips += 1
+                case .bus:
+                    busMiles += trip.distance
+                    busTrips += 1
+                default:
+                    break
                 }
             }
+        } else {
+            // Fallback: estimate from event pairs (legacy behavior)
+            for i in 0..<(events.count - 1) {
+                guard i + 1 < events.count else { break }
+                let current = events[i]
+                let next = events[i + 1]
+
+                let currentIsOther = current.location.name == "Other"
+                let nextIsOther = next.location.name == "Other"
+
+                let isActuallyDifferentLocation: Bool
+                if currentIsOther && nextIsOther {
+                    let currentCoord = coordinatesFor(current)
+                    let nextCoord = coordinatesFor(next)
+                    let distance = distanceBetween(currentCoord, and: nextCoord)
+                    isActuallyDifferentLocation = distance > 1.0
+                } else if currentIsOther || nextIsOther {
+                    isActuallyDifferentLocation = true
+                } else {
+                    isActuallyDifferentLocation = current.location.id != next.location.id
+                }
+
+                if isActuallyDifferentLocation {
+                    let currentCoord = coordinatesFor(current)
+                    let nextCoord = coordinatesFor(next)
+                    let distance = distanceBetween(currentCoord, and: nextCoord)
+                    totalMiles += distance
+
+                    if distance > 100 {
+                        flyingMiles += distance
+                        flyingTrips += 1
+                    } else {
+                        drivingMiles += distance
+                        drivingTrips += 1
+                    }
+                }
+            }
+            drivingCO2WithCar = drivingMiles * Trip.TransportMode.driving.co2PerMile
         }
-        
-        let flyingCO2 = flyingMiles * 0.9
-        let drivingCO2 = drivingMiles * 0.89
-        let totalCO2 = flyingCO2 + drivingCO2
-        
+
+        let flyingCO2 = flyingMiles * Trip.TransportMode.flying.co2PerMile
+        let drivingCO2 = drivingCO2WithCar > 0 ? drivingCO2WithCar : drivingMiles * Trip.TransportMode.driving.co2PerMile
+        let trainCO2 = trainMiles * Trip.TransportMode.train.co2PerMile
+        let busCO2 = busMiles * Trip.TransportMode.bus.co2PerMile
+        let totalCO2 = flyingCO2 + drivingCO2 + trainCO2 + busCO2
+
         let treesNeeded = totalCO2 / 48.0
         let kWhEquivalent = totalCO2 * 0.12
         let earthCircumferences = totalMiles / 24901.0
-        
+
         return TravelStatisticsCache(
             totalMiles: totalMiles,
             totalCO2: totalCO2,
@@ -423,9 +480,16 @@ struct InfographicsView: View {
             drivingMiles: drivingMiles,
             drivingCO2: drivingCO2,
             drivingTrips: drivingTrips,
+            trainMiles: trainMiles,
+            trainCO2: trainCO2,
+            trainTrips: trainTrips,
+            busMiles: busMiles,
+            busCO2: busCO2,
+            busTrips: busTrips,
             treesNeeded: treesNeeded,
             kWhEquivalent: kWhEquivalent,
-            earthCircumferences: earthCircumferences
+            earthCircumferences: earthCircumferences,
+            drivingCO2WithCar: drivingCO2WithCar
         )
     }
     
@@ -1477,6 +1541,167 @@ extension InfographicsView {
     }
 }
 
+// MARK: - Exercise & Fitness Section
+extension InfographicsView {
+    @ViewBuilder
+    private func exerciseSection(derived: Derived) -> some View {
+        if let summary = derived.exerciseSummary {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Image(systemName: "heart.fill")
+                        .foregroundColor(.red)
+                    Text("Exercise & Fitness")
+                        .font(.headline)
+                }
+
+                // Overview stats row
+                HStack(spacing: 12) {
+                    exerciseStatBox(icon: "flame.fill", value: formattedNumber(summary.totalCalories), label: "Calories", color: .orange)
+                    exerciseStatBox(icon: "clock.fill", value: formattedNumber(summary.totalMinutes), label: "Minutes", color: .blue)
+                    exerciseStatBox(icon: "calendar", value: formattedNumber(Double(summary.activeDays)), label: "Active Days", color: .green)
+                }
+
+                // Average per active day + total distance
+                HStack(spacing: 16) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chart.bar.fill")
+                            .foregroundColor(.purple)
+                            .font(.caption)
+                        Text("Avg \(formattedNumber(summary.avgMinutesPerDay)) min/day")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    if summary.totalDistanceMiles > 0 {
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Image(systemName: "road.lanes")
+                                .foregroundColor(.blue)
+                                .font(.caption)
+                            Text("\(formattedMiles(summary.totalDistanceMiles)) total")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
+                Divider()
+
+                // Workout type breakdown
+                Text("Workout Breakdown")
+                    .font(.subheadline).bold()
+
+                ForEach(summary.workoutTypeBreakdown.prefix(6), id: \.type) { item in
+                    HStack(spacing: 10) {
+                        Image(systemName: item.type.sfSymbol)
+                            .foregroundColor(item.type.color)
+                            .frame(width: 24)
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text(workoutDisplayName(for: item.type))
+                                    .font(.subheadline)
+                                Spacer()
+                                Text("\(item.count)")
+                                    .font(.subheadline).bold()
+                            }
+                            HStack(spacing: 8) {
+                                if item.totalMiles > 0 {
+                                    Text(formattedMiles(item.totalMiles))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Text(formattedDuration(item.totalMinutes))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+
+                // Cycling CO2 offset spotlight
+                if summary.cyclingMiles > 0 {
+                    Divider()
+                    HStack(spacing: 10) {
+                        Image(systemName: "leaf.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.green)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Cycling CO₂ Offset")
+                                .font(.subheadline).bold()
+                            Text("\(formattedMiles(summary.cyclingMiles)) across \(summary.cyclingRideCount) rides saved ~\(formattedNumber(summary.co2SavedLbs)) lbs CO₂ vs driving")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+            }
+            .padding()
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(16)
+        }
+    }
+
+    private func exerciseStatBox(icon: String, value: String, label: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(color)
+            Text(value)
+                .font(.system(size: 22, weight: .bold))
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+            Text(label)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(Color(.tertiarySystemBackground))
+        .cornerRadius(12)
+    }
+
+    /// Format a number with commas (e.g., 236911 → "236,911")
+    private func formattedNumber(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: value)) ?? "\(Int(value))"
+    }
+
+    /// Returns the user's mapped name for a workout type if one exists, otherwise the default display name.
+    private func workoutDisplayName(for type: ExerciseEntry.WorkoutType) -> String {
+        if let mapped = authState.currentUser?.workoutTypeActivityMappings[type.rawValue], !mapped.isEmpty {
+            return mapped
+        }
+        return type.displayName
+    }
+
+    /// Format miles with one decimal and comma separators (e.g., 1721.1 → "1,721.1 mi")
+    private func formattedMiles(_ miles: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 1
+        formatter.minimumFractionDigits = 1
+        let num = formatter.string(from: NSNumber(value: miles)) ?? String(format: "%.1f", miles)
+        return "\(num) mi"
+    }
+
+    /// Format duration — hours + minutes for large values (e.g., 23286 → "388 hr 6 min")
+    private func formattedDuration(_ minutes: Double) -> String {
+        let totalMinutes = Int(minutes)
+        if totalMinutes >= 120 {
+            let hours = totalMinutes / 60
+            let mins = totalMinutes % 60
+            let hFormatted = formattedNumber(Double(hours))
+            if mins == 0 {
+                return "\(hFormatted) hr"
+            }
+            return "\(hFormatted) hr \(mins) min"
+        }
+        return "\(totalMinutes) min"
+    }
+}
+
 // MARK: - Environmental Impact Section
 extension InfographicsView {
     @ViewBuilder
@@ -1511,17 +1736,21 @@ extension InfographicsView {
     
     @ViewBuilder
     private func environmentalImpactContent(stats: TravelStatisticsCache) -> some View {
-        carbonFootprintRating(co2: stats.totalCO2)
-        
+        let excludeTransit = authState.currentUser?.excludePublicTransitFromEnvironment ?? false
+        let effectiveCO2 = excludeTransit ? (stats.flyingCO2 + stats.drivingCO2) : stats.totalCO2
+
+        carbonFootprintRating(co2: effectiveCO2)
+
         Divider().padding(.vertical, 8)
-        
+
         HStack(spacing: 12) {
             VStack {
                 Image(systemName: "road.lanes")
                     .font(.title2)
                     .foregroundColor(.blue)
-                Text("\(Int(stats.totalMiles))")
-                    .font(.system(size: 32, weight: .bold))
+                Text(envFormattedNumber(stats.totalMiles))
+                    .font(.system(size: 28, weight: .bold))
+                    .minimumScaleFactor(0.7)
                 Text("Total Miles")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -1531,14 +1760,15 @@ extension InfographicsView {
             .padding()
             .background(Color(.tertiarySystemBackground))
             .cornerRadius(12)
-            
+
             VStack {
                 Image(systemName: "cloud.fill")
                     .font(.title2)
                     .foregroundColor(.orange)
-                Text("\(Int(stats.totalCO2))")
-                    .font(.system(size: 32, weight: .bold))
-                Text("lbs CO₂")
+                Text(envFormattedNumber(effectiveCO2))
+                    .font(.system(size: 28, weight: .bold))
+                    .minimumScaleFactor(0.7)
+                Text("lbs CO\u{2082}")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -1548,51 +1778,45 @@ extension InfographicsView {
             .background(Color(.tertiarySystemBackground))
             .cornerRadius(12)
         }
-        
+
         VStack(spacing: 12) {
             Divider()
             if stats.flyingMiles > 0 {
-                HStack(spacing: 12) {
-                    Image(systemName: "airplane")
-                        .font(.title3)
-                        .foregroundColor(.blue)
-                        .frame(width: 30)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Flying").font(.subheadline).fontWeight(.semibold)
-                        Text("\(stats.flyingTrips) trips").font(.caption2).foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("\(Int(stats.flyingMiles)) mi").font(.subheadline).fontWeight(.semibold)
-                        Text("\(Int(stats.flyingCO2)) lbs CO₂").font(.caption2).foregroundColor(.orange)
-                    }
-                }
-                .padding()
-                .background(Color(.secondarySystemBackground).opacity(0.5))
-                .cornerRadius(8)
+                transportBreakdownRow(
+                    icon: "airplane", color: .blue, label: "Flying",
+                    trips: stats.flyingTrips, miles: stats.flyingMiles, co2: stats.flyingCO2
+                )
             }
             if stats.drivingMiles > 0 {
-                HStack(spacing: 12) {
-                    Image(systemName: "car.fill")
-                        .font(.title3)
-                        .foregroundColor(.green)
-                        .frame(width: 30)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Driving").font(.subheadline).fontWeight(.semibold)
-                        Text("\(stats.drivingTrips) trips").font(.caption2).foregroundColor(.secondary)
-                    }
+                transportBreakdownRow(
+                    icon: "car.fill", color: .green, label: "Driving",
+                    trips: stats.drivingTrips, miles: stats.drivingMiles, co2: stats.drivingCO2,
+                    carNote: store.cars.isEmpty ? nil : "Vehicle-specific"
+                )
+            }
+            if stats.trainMiles > 0 && !excludeTransit {
+                transportBreakdownRow(
+                    icon: "train.side.front.car", color: .purple, label: "Train",
+                    trips: stats.trainTrips, miles: stats.trainMiles, co2: stats.trainCO2
+                )
+            }
+            if stats.busMiles > 0 && !excludeTransit {
+                transportBreakdownRow(
+                    icon: "bus.fill", color: .orange, label: "Bus",
+                    trips: stats.busTrips, miles: stats.busMiles, co2: stats.busCO2
+                )
+            }
+            if excludeTransit && (stats.trainMiles > 0 || stats.busMiles > 0) {
+                HStack {
+                    Image(systemName: "info.circle").font(.caption2).foregroundColor(.secondary)
+                    Text("Public transit excluded from calculations")
+                        .font(.caption2).foregroundColor(.secondary)
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("\(Int(stats.drivingMiles)) mi").font(.subheadline).fontWeight(.semibold)
-                        Text("\(Int(stats.drivingCO2)) lbs CO₂").font(.caption2).foregroundColor(.orange)
-                    }
                 }
-                .padding()
-                .background(Color(.secondarySystemBackground).opacity(0.5))
-                .cornerRadius(8)
+                .padding(.horizontal, 4)
             }
         }
-        
+
         VStack(spacing: 8) {
             Divider()
             HStack {
@@ -1600,13 +1824,49 @@ extension InfographicsView {
                 Text("That's equivalent to:").font(.caption).foregroundColor(.secondary)
                 Spacer()
             }
+            let effectiveTrees = effectiveCO2 / 48.0
+            let effectiveKWh = effectiveCO2 * 0.12
             VStack(alignment: .leading, spacing: 4) {
-                HStack { Text("🌳"); Text("\(Int(stats.treesNeeded)) trees needed to offset CO₂ for 1 year").font(.caption2).foregroundColor(.secondary) }
-                HStack { Text("⚡️"); Text("\(Int(stats.kWhEquivalent)) kWh of electricity").font(.caption2).foregroundColor(.secondary) }
-                HStack { Text("🌍"); Text("\(String(format: "%.1f", stats.earthCircumferences)) times around Earth").font(.caption2).foregroundColor(.secondary) }
+                HStack { Text("\u{1F333}"); Text("\(Int(effectiveTrees)) trees needed to offset CO\u{2082} for 1 year").font(.caption2).foregroundColor(.secondary) }
+                HStack { Text("\u{26A1}\u{FE0F}"); Text("\(Int(effectiveKWh)) kWh of electricity").font(.caption2).foregroundColor(.secondary) }
+                HStack { Text("\u{1F30D}"); Text("\(String(format: "%.1f", stats.earthCircumferences)) times around Earth").font(.caption2).foregroundColor(.secondary) }
             }
             .padding(.horizontal, 8)
         }
+    }
+
+    @ViewBuilder
+    private func transportBreakdownRow(icon: String, color: Color, label: String, trips: Int, miles: Double, co2: Double, carNote: String? = nil) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(color)
+                .frame(width: 30)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label).font(.subheadline).fontWeight(.semibold)
+                HStack(spacing: 4) {
+                    Text("\(trips) trips").font(.caption2).foregroundColor(.secondary)
+                    if let note = carNote {
+                        Text("(\(note))").font(.caption2).foregroundColor(.green)
+                    }
+                }
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("\(envFormattedNumber(miles)) mi").font(.subheadline).fontWeight(.semibold)
+                Text("\(envFormattedNumber(co2)) lbs CO\u{2082}").font(.caption2).foregroundColor(.orange)
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground).opacity(0.5))
+        .cornerRadius(8)
+    }
+
+    private func envFormattedNumber(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: value)) ?? "\(Int(value))"
     }
     
     @ViewBuilder
@@ -1881,11 +2141,14 @@ extension InfographicsView {
                 }
             }
             
+            // Exercise & fitness
+            exerciseSection(derived: derived)
+
             // Environmental impact (if travel data exists)
             if derived.eventsWithCoordinates.count > 1 && derived.travelStats.totalMiles > 0 {
                 environmentalImpactSection(derived: derived)
             }
-            
+
             // Footer with generation timestamp
             VStack(spacing: 4) {
                 Divider()
@@ -2407,10 +2670,12 @@ extension InfographicsView {
                 journeyMapSectionForExport(derived: derived)
             }
             
+            exerciseSection(derived: derived)
+
             if derived.eventsWithCoordinates.count > 1 && derived.travelStats.totalMiles > 0 {
                 environmentalImpactSection(derived: derived)
             }
-            
+
             // Footer
             VStack(spacing: 4) {
                 Divider()

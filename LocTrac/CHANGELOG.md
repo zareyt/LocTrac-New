@@ -7,6 +7,94 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [2.1] – 2026-04-27
+
+### Added
+
+- **Apple Health Integration**
+  - Read-only sync of workouts from Apple HealthKit (walking, running, cycling, hiking, swimming, yoga, strength, other)
+  - `ExerciseEntry` model with `WorkoutType` enum (8 types) and `ExerciseSummary` computation
+  - Actor-based `HealthKitService` with incremental sync (dedup via `sourceWorkoutID`)
+  - Activity auto-linking: matched workout types automatically added to that day's event activities
+  - Post-sync summary sheet with Add/Ignore workflow for unmatched workout types
+  - Ignored workout types remembered in `UserProfile.ignoredWorkoutTypesForActivities` for future syncs
+  - Persistent workout-to-activity mappings stored in `UserProfile.workoutTypeActivityMappings` — map once, applied on all future syncs
+  - Infographics workout breakdown shows mapped activity names (e.g., "Golfing" instead of "Other Workout")
+  - Exercise & Fitness section in Infographics tab: overview stats, per-type miles (walking, running, cycling, swimming, hiking), workout breakdown, cycling CO2 offset
+  - Configurable sync reminder (3/7/14/30 days) with orange banner on Home screen when overdue
+  - Formatted numbers with commas, hours+minutes for large durations
+  - Exercise data included in backup/restore via `ImportExport`
+  - 25+ unit tests in `HealthKitTests.swift` covering model, summary, CRUD, and backward compatibility
+  - `.healthKit` debug logging category
+
+- **Home Screen Widgets**
+  - 5 widget types: Daily Affirmation (updated), Travel Snapshot, Activity Pulse, Green Impact, Dashboard
+  - Travel Snapshot: countries, cities, days away, top destinations with flag emojis (small/medium)
+  - Activity Pulse: circular progress ring (150 min/week CDC target), active days, workouts, calories (small/medium)
+  - Green Impact: CO2 saved from cycling, miles cycled, driving CO2/month, tree-days equivalent (small/medium)
+  - Dashboard: multi-column layout combining travel, fitness, environment, and affirmation stats (medium/large)
+  - `WidgetData` shared model between main app and widget extension via App Group
+  - Widget data snapshot written after each save in DataStore
+  - 30-minute refresh policy for data widgets, midnight for affirmation
+
+### New Files
+
+- `Models/ExerciseEntry.swift` — ExerciseEntry model, WorkoutType enum, ExerciseSummary
+- `Models/WidgetData.swift` — Shared widget data model with App Group persistence
+- `Services/HealthKitService.swift` — Actor-based HealthKit query and sync service
+- `LocTracWidgetExtension/TravelSnapshotWidget.swift` — Travel stats widget
+- `LocTracWidgetExtension/ActivityPulseWidget.swift` — Fitness progress widget
+- `LocTracWidgetExtension/GreenImpactWidget.swift` — Environmental impact widget
+- `LocTracWidgetExtension/DashboardWidget.swift` — All-in-one dashboard widget
+- `LocTracTests/HealthKitTests.swift` — 25+ unit tests
+- `Documentation/HealthKit/HEALTHKIT_SUMMARY.md` — Architecture and design summary
+
+### Modified Files
+
+- `Models/DataStore.swift` — Exercise CRUD methods, `updateWidgetData()` call after save
+- `Models/UserProfile.swift` — Added `ignoredWorkoutTypesForActivities`, `workoutTypeActivityMappings`, HealthKit preference fields
+- `Models/DebugConfig.swift` — Added `.healthKit` logging category
+- `Services/ImportExport.swift` — Exercise entries in backup/restore
+- `Views/InfographicsView.swift` — Exercise & Fitness section with formatted stats, mapped workout names
+- `Views/HomeView.swift` — HealthKit sync reminder banner
+- `Views/Profile/PreferencesView.swift` — Health & Fitness settings, Sync Now, post-sync summary, persistent mappings
+- `Views/ListView Tab/ModernEventFormView.swift` — Activity picker redesigned as clean list layout, label updated
+- `Views/ListView Tab/ModernEventsCalendarView.swift` — Activity label updated
+- `LocTracWidgetExtension/LocTracWidget.swift` — Updated to read affirmation from App Group
+- `LocTracWidgetExtension/LocTracWidgetBundle.swift` — Registered all 5 widgets
+- `Info.plist` — Added `NSHealthShareUsageDescription`
+- `LocTrac.entitlements` — Added `com.apple.developer.healthkit` capability
+
+- **Environmental Factors & Vehicle Management**
+  - `Car` model with `FuelType` enum (gas, diesel, hybrid, electric) and EPA-derived CO2 calculations
+  - Vehicle CRUD (add, update, delete) with date range matching and default car flag
+  - Car-to-trip matching: explicit carID → date range overlap → default car
+  - Retroactive CO2 recalculation for all driving trips using car-specific emission rates
+  - Public transit exclusion toggle in UserProfile for environmental impact display
+  - `EnvironmentalFactorsView` — full car management UI with per-car impact summaries
+  - Transport breakdown (driving/flying/train/bus) in Infographics environmental section
+  - Cars included in backup/restore via `ImportExport` (optional, backward compatible)
+  - Trip model extended with optional `carID` for manual car assignment
+  - 25 unit tests across 6 suites in `EnvironmentalFactorsTests.swift`
+
+### New Files (Environmental Factors)
+
+- `Models/Car.swift` — Car model, FuelType enum, EPA CO2 constants, date range matching
+- `Views/EnvironmentalFactorsView.swift` — Vehicle management UI with form, list, and impact summary
+- `LocTracTests/EnvironmentalFactorsTests.swift` — 25 tests (model, CRUD, trip matching, import compat)
+
+### Modified Files (Environmental Factors)
+
+- `Models/DataStore.swift` — Car CRUD, carForTrip matching, recalculateDrivingTripsCO2
+- `Models/UserProfile.swift` — excludePublicTransitFromEnvironment toggle
+- `Views/Trips/Trip.swift` — Added optional carID field
+- `Services/ImportExport.swift` — CarData struct, cars in Import/Export, carID on trips
+- `Views/InfographicsView.swift` — Trip-based stats with car-specific CO2, transport breakdown
+- `Views/ListView Tab/InfographicsCacheManager.swift` — Expanded cache with train/bus/car fields
+- `Views/StartTabView.swift` — Environmental Factors sheet in Manage Data menu
+
+---
+
 ## [2.0] – 2026-04-25
 
 ### Added

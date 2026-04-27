@@ -110,7 +110,7 @@ struct ActivitiesManagementContent: View {
     @State private var searchText = ""
     @State private var showingAddSheet = false
     @State private var editingActivity: Activity?
-    
+
     var filteredActivities: [Activity] {
         if searchText.isEmpty {
             return store.activities.sorted { $0.name < $1.name }
@@ -190,11 +190,6 @@ struct ActivitiesManagementContent: View {
                     .onTapGesture {
                         editingActivity = activity
                     }
-            }
-            .onDelete { indexSet in
-                for index in indexSet {
-                    store.deleteActivity(filteredActivities[index])
-                }
             }
         }
         .listStyle(.insetGrouped)
@@ -278,24 +273,86 @@ struct ActivityManagementRow: View {
     }
 }
 
-// Simple activity editor (you can expand this)
 struct ActivityEditorView: View {
     @EnvironmentObject var store: DataStore
     @Environment(\.dismiss) private var dismiss
-    
+
     let activity: Activity?
     @State private var name: String = ""
-    
+    @State private var showDeleteConfirmation = false
+
     init(activity: Activity?) {
         self.activity = activity
         _name = State(initialValue: activity?.name ?? "")
     }
-    
+
+    /// Events that reference this activity, sorted by date descending
+    private var referencingEvents: [Event] {
+        guard let activity else { return [] }
+        return store.events
+            .filter { $0.activityIDs.contains(activity.id) }
+            .sorted { $0.date > $1.date }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
                 Section("Activity Name") {
                     TextField("e.g., Skiing, Hiking, Dining", text: $name)
+                }
+
+                if let activity {
+                    // Events referencing this activity
+                    Section {
+                        if referencingEvents.isEmpty {
+                            Text("This activity is not used in any events.")
+                                .foregroundColor(.secondary)
+                                .font(.subheadline)
+                        } else {
+                            ForEach(referencingEvents) { event in
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(event.date.utcMediumDateString)
+                                            .font(.subheadline)
+                                        Text(event.effectiveCity ?? event.location.name)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    Button {
+                                        removeActivityFromEvent(activity: activity, event: event)
+                                    } label: {
+                                        Image(systemName: "minus.circle.fill")
+                                            .foregroundColor(.red)
+                                    }
+                                    .buttonStyle(.borderless)
+                                }
+                            }
+                        }
+                    } header: {
+                        Text("Events (\(referencingEvents.count))")
+                    } footer: {
+                        if !referencingEvents.isEmpty {
+                            Text("Tap the minus button to remove this activity from an individual event.")
+                        }
+                    }
+
+                    // Delete activity section
+                    Section {
+                        Button(role: .destructive) {
+                            showDeleteConfirmation = true
+                        } label: {
+                            HStack {
+                                Spacer()
+                                Label("Delete Activity", systemImage: "trash")
+                                Spacer()
+                            }
+                        }
+                    } footer: {
+                        if !referencingEvents.isEmpty {
+                            Text("Deleting will remove this activity and its references from all \(referencingEvents.count) event\(referencingEvents.count == 1 ? "" : "s").")
+                        }
+                    }
                 }
             }
             .navigationTitle(activity == nil ? "New Activity" : "Edit Activity")
@@ -306,7 +363,7 @@ struct ActivityEditorView: View {
                         dismiss()
                     }
                 }
-                
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button(activity == nil ? "Create" : "Save") {
                         saveActivity()
@@ -314,13 +371,29 @@ struct ActivityEditorView: View {
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+            .alert("Delete Activity", isPresented: $showDeleteConfirmation) {
+                Button("Delete", role: .destructive) {
+                    if let activity {
+                        store.deleteActivity(activity)
+                    }
+                    dismiss()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                let count = referencingEvents.count
+                if count > 0 {
+                    Text("Delete \"\(name)\"? This will remove it from \(count) event\(count == 1 ? "" : "s").")
+                } else {
+                    Text("Delete \"\(name)\"?")
+                }
+            }
         }
     }
-    
+
     private func saveActivity() {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return }
-        
+
         if let existing = activity {
             var updated = existing
             updated.name = trimmedName
@@ -329,8 +402,14 @@ struct ActivityEditorView: View {
             let newActivity = Activity(name: trimmedName)
             store.addActivity(newActivity)
         }
-        
+
         dismiss()
+    }
+
+    private func removeActivityFromEvent(activity: Activity, event: Event) {
+        var updated = event
+        updated.activityIDs.removeAll { $0 == activity.id }
+        store.update(updated)
     }
 }
 

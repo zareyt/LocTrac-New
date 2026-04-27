@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 @testable import LocTrac
 
 @Suite("SmartStayAction Logic Tests")
@@ -21,7 +22,7 @@ struct SmartStayActionTests {
     private static func makeEvent(date: Date, id: String = UUID().uuidString) -> Event {
         let location = Location(
             id: "loc1", name: "Test", city: nil, state: nil,
-            latitude: 0, longitude: 0, country: nil, theme: .blue
+            latitude: 0, longitude: 0, country: nil, theme: .navy
         )
         return Event(
             id: id,
@@ -39,7 +40,7 @@ struct SmartStayActionTests {
 
     @Test("Empty events returns addToday")
     func emptyEventsReturnsAddToday() {
-        let result = SmartStayAction.determine(events: [], today: makeDate(year: 2026, month: 4, day: 22))
+        let result = SmartStayAction.determine(events: [], today: Self.makeDate(year: 2026, month: 4, day: 22))
         #expect(result == .addToday)
     }
 

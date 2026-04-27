@@ -170,6 +170,13 @@ class DebugConfig: ObservableObject {
         }
     }
 
+    /// HealthKit sync and exercise data operations
+    @Published var logHealthKit: Bool {
+        didSet {
+            UserDefaults.standard.set(logHealthKit, forKey: "Debug.logHealthKit")
+        }
+    }
+
     // MARK: - File Logging
 
     /// When enabled, all debug log output is also written to DebugLogs/debug_log.txt
@@ -205,6 +212,7 @@ class DebugConfig: ObservableObject {
         self.logPhotos = UserDefaults.standard.bool(forKey: "Debug.logPhotos")
         self.logCalendar = UserDefaults.standard.bool(forKey: "Debug.logCalendar")
         self.logAuth = UserDefaults.standard.bool(forKey: "Debug.logAuth")
+        self.logHealthKit = UserDefaults.standard.bool(forKey: "Debug.logHealthKit")
         self.logToFile = isUITesting || UserDefaults.standard.bool(forKey: "Debug.logToFile")
 
         if isUITesting {
@@ -232,6 +240,7 @@ class DebugConfig: ObservableObject {
         logPhotos = true
         logCalendar = true
         logAuth = true
+        logHealthKit = true
     }
 
     /// Disable all debug features
@@ -252,6 +261,7 @@ class DebugConfig: ObservableObject {
         logPhotos = false
         logCalendar = false
         logAuth = false
+        logHealthKit = false
         logToFile = false
     }
 
@@ -273,6 +283,7 @@ class DebugConfig: ObservableObject {
         logPhotos = false
         logCalendar = true
         logAuth = false
+        logHealthKit = false
     }
 
     /// Preset: Data debugging only
@@ -293,6 +304,7 @@ class DebugConfig: ObservableObject {
         logPhotos = true
         logCalendar = false
         logAuth = true
+        logHealthKit = true
     }
 }
 
@@ -387,6 +399,7 @@ enum LogCategory {
     case photos
     case calendar
     case auth
+    case healthKit
 
     var emoji: String {
         switch self {
@@ -404,6 +417,7 @@ enum LogCategory {
         case .photos: return "📷"
         case .calendar: return "📅"
         case .auth: return "🔐"
+        case .healthKit: return "💪"
         }
     }
 
@@ -423,6 +437,7 @@ enum LogCategory {
         case .photos: return "photos"
         case .calendar: return "calendar"
         case .auth: return "auth"
+        case .healthKit: return "healthKit"
         }
     }
 
@@ -443,6 +458,7 @@ enum LogCategory {
         case .photos: return config.logPhotos
         case .calendar: return config.logCalendar
         case .auth: return config.logAuth
+        case .healthKit: return config.logHealthKit
         }
     }
 }

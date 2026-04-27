@@ -362,7 +362,7 @@ struct ModernEventFormView: View {
                 Button {
                     showActivitiesPicker = true
                 } label: {
-                    Label("Edit Activities", systemImage: "pencil.circle")
+                    Label("Add, Modify, Delete Activities", systemImage: "pencil.circle")
                 }
 
                 Button(role: .destructive) {
@@ -1270,29 +1270,27 @@ struct ActivityPickerSheet: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                FlowLayoutActivities(spacing: 8) {
-                    ForEach(activities) { activity in
-                        let isSelected = selectedIDs.contains(activity.id)
-                        Button {
-                            toggleActivity(activity.id)
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                                    .font(.system(size: 14))
-                                Text(activity.name)
-                                    .font(.system(size: 14, weight: .medium))
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(isSelected ? Color.green.opacity(0.15) : Color(.systemGray6))
-                            .foregroundStyle(isSelected ? .green : .primary)
-                            .clipShape(Capsule())
+            List {
+                ForEach(activities) { activity in
+                    let isSelected = selectedIDs.contains(activity.id)
+                    Button {
+                        toggleActivity(activity.id)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 18))
+                                .foregroundStyle(isSelected ? .green : .secondary)
+                            Text(activity.name)
+                                .font(.body)
+                                .foregroundStyle(.primary)
+                            Spacer()
                         }
+                        .contentShape(Rectangle())
                     }
+                    .listRowBackground(isSelected ? Color.green.opacity(0.08) : Color.clear)
                 }
-                .padding()
             }
+            .listStyle(.plain)
             .navigationTitle("Select Activities")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

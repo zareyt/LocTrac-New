@@ -10,7 +10,11 @@ import SwiftUI
 
 struct DebugSettingsView: View {
     @EnvironmentObject var debugConfig: DebugConfig
+    @EnvironmentObject var authState: AuthState
+    @EnvironmentObject var store: DataStore
     @Environment(\.dismiss) var dismiss
+    @State private var showSyncResetConfirmation = false
+    @State private var showFullResetConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -21,6 +25,7 @@ struct DebugSettingsView: View {
                     uiFeaturesSection
                     loggingCategoriesSection
                     fileLoggingSection
+                    healthKitDebugSection
                     activeCountSection
                     aboutSection
                 }
@@ -113,6 +118,7 @@ struct DebugSettingsView: View {
                 DebugToggleRow(emoji: "📷", title: "Photos", subtitle: "Photo add, delete, import/export", isOn: $debugConfig.logPhotos)
                 DebugToggleRow(emoji: "📅", title: "Calendar", subtitle: "Decorations and date rendering", isOn: $debugConfig.logCalendar)
                 DebugToggleRow(emoji: "🔐", title: "Auth", subtitle: "Authentication and profile", isOn: $debugConfig.logAuth)
+                DebugToggleRow(emoji: "💪", title: "HealthKit", subtitle: "Exercise sync and data", isOn: $debugConfig.logHealthKit)
             }
         } header: {
             Text("Console Logging Categories")
@@ -181,6 +187,57 @@ struct DebugSettingsView: View {
         }
     }
 
+    private var healthKitDebugSection: some View {
+        Section {
+            if let lastSync = authState.currentUser?.lastHealthKitSync {
+                HStack {
+                    Text("Last Sync")
+                    Spacer()
+                    Text(lastSync.utcMediumDateString)
+                        .foregroundColor(.secondary)
+                }
+            } else {
+                HStack {
+                    Text("Last Sync")
+                    Spacer()
+                    Text("Never")
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            HStack {
+                Text("Exercise Entries")
+                Spacer()
+                Text("\(store.exerciseEntries.count)")
+                    .foregroundColor(.secondary)
+            }
+
+            Button(role: .destructive) {
+                showFullResetConfirmation = true
+            } label: {
+                Label("Full Re-sync (Delete All & Reset)", systemImage: "arrow.triangle.2.circlepath")
+            }
+            .disabled(store.exerciseEntries.isEmpty && authState.currentUser?.lastHealthKitSync == nil)
+        } header: {
+            Text("HealthKit")
+        } footer: {
+            Text("Deletes all exercise entries and resets the sync date. The next sync will re-import everything from HealthKit as if syncing for the first time.")
+        }
+        .alert("Full HealthKit Re-sync", isPresented: $showFullResetConfirmation) {
+            Button("Delete All & Reset", role: .destructive) {
+                store.exerciseEntries.removeAll()
+                store.storeData()
+                if var profile = authState.currentUser {
+                    profile.lastHealthKitSync = nil
+                    authState.updateProfile(profile)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will delete all \(store.exerciseEntries.count) exercise entries and reset the sync date. Go to Profile > Preferences > Sync Now to re-import from HealthKit.")
+        }
+    }
+
     private var aboutSection: some View {
         Section {
             VStack(alignment: .leading, spacing: 6) {
@@ -212,6 +269,7 @@ struct DebugSettingsView: View {
             debugConfig.logPhotos,
             debugConfig.logCalendar,
             debugConfig.logAuth,
+            debugConfig.logHealthKit,
         ].filter { $0 }.count
     }
 }

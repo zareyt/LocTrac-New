@@ -10,5 +10,7 @@
 	<string>LocTrac sends daily affirmations and gentle reminders to log your travels. Notifications are optional and help you stay consistent with your travel tracking.</string>
 	<key>UIFileSharingEnabled</key>
 	<true/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>LocTrac reads your workout data to display exercise statistics alongside your travel stays. No health data is ever shared or uploaded.</string>
 </dict>
 </plist>

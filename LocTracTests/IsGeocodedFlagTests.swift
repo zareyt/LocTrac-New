@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 @testable import LocTrac
 
 @Suite("isGeocoded Flag Tests")
@@ -9,7 +10,7 @@ struct IsGeocodedFlagTests {
     private static func makeLocation(id: String = "loc-1", name: String = "Loft") -> Location {
         Location(id: id, name: name, city: "Denver", state: "Colorado",
                  latitude: 39.7392, longitude: -104.9903, country: "United States",
-                 theme: .blue)
+                 theme: .navy)
     }
 
     private static func makeEvent(
@@ -105,29 +106,6 @@ struct IsGeocodedFlagTests {
         #expect(shouldKeepGeocoded == false)
     }
 
-    // MARK: - Codable Round-Trip
-
-    @Test("isGeocoded survives JSON encode/decode")
-    func geocodedCodableRoundTrip() throws {
-        let event = Self.makeEvent(isGeocoded: true)
-        let data = try JSONEncoder().encode(event)
-        let decoded = try JSONDecoder().decode(Event.self, from: data)
-        #expect(decoded.isGeocoded == true)
-    }
-
-    @Test("isGeocoded defaults to false when missing from JSON")
-    func geocodedMissingFromJSON() throws {
-        // Simulate a legacy backup without isGeocoded field
-        let location = Self.makeLocation()
-        let event = Self.makeEvent(location: location, isGeocoded: true)
-        var data = try JSONEncoder().encode(event)
-
-        // Decode to dictionary, remove isGeocoded, re-encode
-        var dict = try JSONSerialization.jsonObject(with: data) as! [String: Any]
-        dict.removeValue(forKey: "isGeocoded")
-        data = try JSONSerialization.data(withJSONObject: dict)
-
-        let decoded = try JSONDecoder().decode(Event.self, from: data)
-        #expect(decoded.isGeocoded == false)
-    }
+    // Note: Event is not Codable (serialization uses Export/Import pipeline).
+    // isGeocoded is a runtime-only flag not persisted in backup.json.
 }

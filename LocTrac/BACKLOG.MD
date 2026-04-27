@@ -6,11 +6,12 @@ Before we start always refer to Claude.md, any new feature or bug fix should upd
 New Feature and Doc Prompt
 See Claude.md,  update VERSION_2.0_RELEASE_NOTES.md, CHAMGELOG and make sure claude.md is up to date with all of our changes.  Create a page view for this feature in WhatsNew.  Any questions or clarifications?
 
-Ready to Publish
-See Claude.md,  I have completed all the feature, bug and improvements for this release.  I want to review changeling and check whatsnew is up to date with all of them.  Commit and Tag  and push this version to lithium, create a new release, verify Release Date is correct and run a regression test.  Add this to claude.md so all I have to do is say I’m ready to publish this release.  Confirm anything, ask any clarifying questions so we can optimize this step in the future.
+
+“Ready to Publish”
+See Claude.md,  I have completed all the feature, bug and improvements for this release.  I want to review CHANGELOG and check whatsnew is up to date with most of them, I don’t want all of them in WhatsNew like testing and debug or developer specific or 1-offs.  Commit and Tag  and push this version to lithium, create a new release, verify Release Version  (v2.1) Date is correct and run a regression test.  Add this to claude.md so all I have to do is say I’m ready to publish this release.  Confirm anything, ask any clarifying questions so we can optimize this step in the future.
 
 Documentation update
-See Claude.md,  Please review all of these (version 2.0) changes Features, Bugs, Enhancements, improvements are captured in the CHAMGELOG, use existing wordage in CHANGELOG  if the essence of these are already in there. 
+See Claude.md,  Please review all of these (version 2.1) changes Features, Bugs, Enhancements, improvements are captured in the CHAMGELOG, use existing wordage in CHANGELOG  if the essence of these are already in there.   Make sure all relevant changes are added to claude.mdon 
 
 Backlog Features and Bugs
 
@@ -21,22 +22,35 @@ Backlog Features and Bugs
 🔧Feature - Batch Delete (HOLD For now)
 - [ ] See CLAUDE.md I want to create a utility the lets me select a date range delete option to remove all event stay data from a date range.  Add it to Main Menu, Administration Do you any questions, suggestions or clarifications before we start?
 
+🔧Feature - Access moving to iOS 26.0 ()
+- [ ] See CLAUDE.md I want to perform a code assessment for stability, robustness, data storage, security and best practices and moving to iIS 26.0 and latest Swift stable version. Do you any questions, suggestions or clarifications before we start?
 
+🔧Feature - Enable Cloud ()
+- [ ] See CLAUDE.md I want to allow the user to store data on their iCloud instead of locally, this should be a preference setting under their profile. Do you any questions, suggestions or clarifications before we start?
 
+🔧Feature - Plan and Start a Trip()
+- [ ] See CLAUDE.md I want to give the user an option to plan a trip.  This would turn on gps tracking at the start of the trip, compute the environmental impacts of the trip, there should be reminders and notifications to add the day event along the trip.  Anything else you can think of?   Do you any questions, suggestions or clarifications before we start?
 
 ————————————————————
-🔧Feature - Environmental Factors menu view
-- [ ] See CLAUDE.md Create a menu item for managing environmental impacts.  Option to remove trains and buses from environment impact calculations for public transportation, I want to be able to have my car mileage impacts incorporated into the infographics environmental impacts section.  Field for total miles per year, car type model epa rating, etc, type electric/hybrid/gas/diesel, add variable CO2 per mile for each car.  The type of car should impact the environmental impacts section.  Dates range car was used that should be applied to env calculations for any driving trips during that timeframe. Current car should be applied to any new trip if driving is selected.  Create a new menu optional “Environmental Factors” and create a manage car for Create, Update and delete. provide tests per @LocTrac Testing Master Guide.md Do you any questions, suggestions or clarifications before we start?
-
-🔧Feature - Car usage
-- [ ] See CLAUDE.md I want to be able to have my car mileage impacts incorporated into the infographics environmental impacts section.  Field for total miles per year, car type model epa rating, etc, type electric/hybrid/gas/diesel.  The type of car should impact the environmental impacts section.  Current car should be applied to any new trip if driving is selected.  Create a new menu optional “Environmental Factors” and create a manage car for Create, Update and delete. provide tests per @LocTrac Testing Master Guide.md Do you any questions, suggestions or clarifications before we start?
-
 🔧Feature - add Claude to app
-- [ ] See CLAUDE.md Add a Claude interface to LocTrac so users can ask questions about events, trips, activity, people.  Create all necessary views and api integrations to Claude. [prerequisite - User id, profile] provide tests per @LocTrac Testing Master Guide.md Do you any questions, suggestions or clarifications before we start?
+- [ ] See CLAUDE.md Add a Claude interface to LocTrac so users can ask questions about events, trips, activity, people.  Create all necessary views and api integrations to Claude. Example questions “How how much longer would i have to forgo traveling to increase my environmental impact up one grade”, “which days did i cycle on”.  I assume the only way to do this is through anthropic api, each user who wants to use this feature would have to provide key and add to their profile.  provide tests per @LocTrac Testing Master Guide.md Do you any questions, suggestions or clarifications before we start?
 
-🔧Feature - Integration with Apple fitness.  
-- [ ] See CLAUDE.md I want to create an interface into Apple HealthKit to extract exercise entry to activity and minutes, also extract biking exercise and miles.  New fields will have to be created to store these extra fields and displayed in infographics activities section.  Add this as an optional feature to user profile, Exercise activity may need a more complex supporting data model. provide tests per @LocTrac Testing Master Guide.md Do you any questions, suggestions or clarifications before we start?
-
+Version 2.1
+Completed 
+🔧Feature - Environmental Factors menu view (version 2.1)
+- [x] See CLAUDE.md Create a menu item for managing environmental impacts.  Option to remove trains and buses from environment impact calculations for public transportation, I want to be able to have my car mileage impacts incorporated into the infographics environmental impacts section.  Field for total miles per year, car type model epa rating, etc, type electric/hybrid/gas/diesel, add variable CO2 per mile for each car.  The type of car should impact the environmental impacts section.  Dates range car was used that should be applied to env calculations for any driving trips during that timeframe. Current car should be applied to any new trip if driving is selected.  Create a new menu optional “Environmental Factors” and create a manage car for Create, Update and delete. provide tests per @LocTrac Testing Master Guide.md Do you any questions, suggestions or clarifications before we start?
+🔧Feature - Integration with Apple fitness (version 2.1)
+- [x] See CLAUDE.md I want to create an interface into Apple HealthKit to extract exercise entry to activity and minutes, also extract biking exercise and miles.  New fields will have to be created to store these extra fields and displayed in infographics activities section.  Come up with a detailed implementation plan, there will need to be required activities to support this.  Add this as an optional feature to user profile, Exercise activity may need a more complex supporting data model. provide tests per @LocTrac Testing Master Guide.md Do you any questions, suggestions or clarifications before we start?
+🔧Feature - Exercise sync mapping  (Version 2.1)
+- [x] When syncing with Apple Healthcare if an exercise event = “Other Workout” it means it doesn’t know what is is ask the user if they want to keep it, ignore it or map it to another category (new or existing”.  Sync should check if Activity already exists and not allow duplicates.
+Feature - manage activities   (Version 2.1)
+- [x] User should have an option to delete an activity and all its corresponding event entries.  Ask for confirmation after determining how many entries will be removed.
+Feature - New Widget   (Version 2.1)
+- [x] I want to create a new widget that that highlights key information from the app so you have any recommendations? Maybe one for travel, environment, activities and one for all?
+Improvement - activity list   (Version 2.1)
+- [x] I want to better organize the activity category list when user is selecting activity for event add and event update.  It’s busy for the user.  Perhaps to lined up columns?.  See pic
+🔧Bug - infographic exercise mapping  (Version 2.1)
+- [x] Infographics Exercise doesn’t use activity name mapping.  Still see “Other Workout” when I mapped to folding.  Mappings aren’t persistent every time I sync I have to re-map.  See pic
 
 Version 2.0
 Completed 
@@ -108,10 +122,8 @@ Improvement - Change tab name(version 2.0)
 Planned for Future
 * Date range filtering in Travel History
 * Calendar heat map visualization
-* Enhanced photo galleries
-* Travel timeline view
 * More statistics and analytics
-🔧 Ideas for Version 2.0
+🔧 Ideas for Version 3.0
 * iCloud sync across devices
 * Apple Watch companion app
 * Advanced trip planning

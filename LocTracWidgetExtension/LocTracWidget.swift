@@ -76,11 +76,21 @@ struct DailyAffirmationProvider: TimelineProvider {
         return Affirmation.presets[index]
     }
     
-    /// Load user's affirmations from shared App Group storage
+    /// Load today's affirmation from App Group shared data.
+    /// Falls back to nil if App Group data isn't available yet.
     private func loadUserAffirmations() -> [Affirmation]? {
-        // TODO: Implement App Group shared data when iCloud sync is added
-        // For now, use presets
-        return nil
+        guard let widgetData = WidgetData.load(),
+              let text = widgetData.todaysAffirmationText else {
+            return nil
+        }
+        // Create a single-element array with today's affirmation from the shared data
+        let category = Affirmation.Category(rawValue: widgetData.todaysAffirmationCategory ?? "") ?? .gratitude
+        let affirmation = Affirmation(
+            text: text,
+            category: category,
+            color: widgetData.todaysAffirmationColor ?? "blue"
+        )
+        return [affirmation]
     }
 }
 

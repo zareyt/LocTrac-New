@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 @testable import LocTrac
 
 @Suite("BulkPersonAssign Logic Tests")
@@ -18,7 +19,7 @@ struct BulkPersonAssignTests {
 
     private static let testLocation = Location(
         id: "loc1", name: "TestPlace", city: nil, state: nil,
-        latitude: 0, longitude: 0, country: nil, theme: .blue
+        latitude: 0, longitude: 0, country: nil, theme: .navy
     )
 
     private static func makeEvent(

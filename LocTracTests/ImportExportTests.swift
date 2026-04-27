@@ -34,7 +34,9 @@ struct ImportExportTests {
             activities: [activity],
             affirmations: [],
             trips: [],
-            eventTypes: [eventType]
+            eventTypes: [eventType],
+            exerciseEntries: [],
+            cars: []
         )
 
         let data = try encoder.encode(export)
@@ -89,7 +91,9 @@ struct ImportExportTests {
             activities: [activity],
             affirmations: [],
             trips: [],
-            eventTypes: [eventType]
+            eventTypes: [eventType],
+            exerciseEntries: [],
+            cars: []
         )
 
         let data = try encoder.encode(export)
@@ -198,7 +202,9 @@ struct ImportExportTests {
             activities: [],
             affirmations: [],
             trips: [],
-            eventTypes: []
+            eventTypes: [],
+            exerciseEntries: [],
+            cars: []
         )
 
         let data = try encoder.encode(export)
@@ -220,7 +226,9 @@ struct ImportExportTests {
                 activities: [],
                 affirmations: [],
                 trips: [],
-                eventTypes: []
+                eventTypes: [],
+                exerciseEntries: [],
+                cars: []
             )
         )
         let dict = try #require(

@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 @testable import LocTrac
 
 @Suite("AuthenticationService Tests")

@@ -47,6 +47,11 @@
 		3D7FE6872F9BD6D100E7C299 /* CopyEventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7FE6862F9BD6D100E7C299 /* CopyEventView.swift */; };
 		3D7FE6892F9C0DB900E7C299 /* BulkPersonAssignView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7FE6882F9C0DB900E7C299 /* BulkPersonAssignView.swift */; };
 		3D7FE6912F9C1DF700E7C299 /* BackupArchiveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7FE6902F9C1DF700E7C299 /* BackupArchiveService.swift */; };
+		3D7FE6D62F9D06B800E7C299 /* ExerciseEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7FE6D52F9D06B800E7C299 /* ExerciseEntry.swift */; };
+		3D7FE6D82F9D077800E7C299 /* HealthKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7FE6D72F9D077800E7C299 /* HealthKitService.swift */; };
+		3D7FE6DD2F9D342600E7C299 /* VERSION_2.1_RELEASE_NOTES.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D7FE6DC2F9D342600E7C299 /* VERSION_2.1_RELEASE_NOTES.md */; };
+		3D7FE6DF2F9D37E600E7C299 /* Car.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7FE6DE2F9D37E600E7C299 /* Car.swift */; };
+		3D7FE6E12F9D3BEA00E7C299 /* EnvironmentalFactorsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7FE6E02F9D3BEA00E7C299 /* EnvironmentalFactorsView.swift */; };
 		3D955C3C2F8AC3B3001B06DF /* LOCATION_MANAGEMENT_ENHANCEMENTS.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D955C3B2F8AC3B3001B06DF /* LOCATION_MANAGEMENT_ENHANCEMENTS.md */; };
 		3D955C3E2F8AC583001B06DF /* LOCATION_MANAGEMENT_ENHANCEMENTS 2.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D955C3D2F8AC583001B06DF /* LOCATION_MANAGEMENT_ENHANCEMENTS 2.md */; };
 		3D955C402F8AD50D001B06DF /* LOCATION_UI_FIXES_AND_ARCHITECTURE_CHANGE.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D955C3F2F8AD50D001B06DF /* LOCATION_UI_FIXES_AND_ARCHITECTURE_CHANGE.md */; };
@@ -83,6 +88,8 @@
 		3DB2C2C02F82C9890048A585 /* WhatsNewFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DB2C2BF2F82C9890048A585 /* WhatsNewFeature.swift */; };
 		3DB2C2C22F82C9980048A585 /* WhatsNewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DB2C2C12F82C9980048A585 /* WhatsNewView.swift */; };
 		3DB2C2C42F82C9A10048A585 /* MarkdownDocumentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DB2C2C32F82C9A10048A585 /* MarkdownDocumentView.swift */; };
+		3DB38FD82F9FB5700082449A /* WidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DB38FD72F9FB5700082449A /* WidgetData.swift */; };
+		3DB38FD92F9FB5700082449A /* WidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DB38FD72F9FB5700082449A /* WidgetData.swift */; };
 		3DB4B3362F74816A00E0A42C /* LocationsManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DB4B3352F74816A00E0A42C /* LocationsManagementView.swift */; };
 		3DB4B3382F74817000E0A42C /* DefaultLocationHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DB4B3372F74817000E0A42C /* DefaultLocationHelper.swift */; };
 		3DB4B3422F74824A00E0A42C /* LOCATION_MANAGEMENT_VISUAL_GUIDE.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DB4B3412F74824A00E0A42C /* LOCATION_MANAGEMENT_VISUAL_GUIDE.swift */; };
@@ -226,6 +233,11 @@
 		3D7FE6882F9C0DB900E7C299 /* BulkPersonAssignView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BulkPersonAssignView.swift; sourceTree = "<group>"; };
 		3D7FE6902F9C1DF700E7C299 /* BackupArchiveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupArchiveService.swift; sourceTree = "<group>"; };
 		3D7FE69B2F9C5A3800E7C299 /* LocTracTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LocTracTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3D7FE6D52F9D06B800E7C299 /* ExerciseEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseEntry.swift; sourceTree = "<group>"; };
+		3D7FE6D72F9D077800E7C299 /* HealthKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitService.swift; sourceTree = "<group>"; };
+		3D7FE6DC2F9D342600E7C299 /* VERSION_2.1_RELEASE_NOTES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = VERSION_2.1_RELEASE_NOTES.md; sourceTree = "<group>"; };
+		3D7FE6DE2F9D37E600E7C299 /* Car.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Car.swift; sourceTree = "<group>"; };
+		3D7FE6E02F9D3BEA00E7C299 /* EnvironmentalFactorsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentalFactorsView.swift; sourceTree = "<group>"; };
 		3D85466F2F81F2F000E9FF13 /* CHANGELOG.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; };
 		3D918BD329ABFEB5004A724C /* Seed.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = Seed.json; sourceTree = "<group>"; };
 		3D955C3B2F8AC3B3001B06DF /* LOCATION_MANAGEMENT_ENHANCEMENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LOCATION_MANAGEMENT_ENHANCEMENTS.md; sourceTree = "<group>"; };
@@ -271,6 +283,7 @@
 		3DB2C2D72F82F6250048A585 /* CRITICAL_BUGS_FIXED.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CRITICAL_BUGS_FIXED.md; sourceTree = "<group>"; };
 		3DB2C2D92F8305870048A585 /* IMPORT_UX_IMPROVEMENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMPORT_UX_IMPROVEMENTS.md; sourceTree = "<group>"; };
 		3DB2C2DF2F85BF460048A585 /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLAUDE.md; sourceTree = "<group>"; };
+		3DB38FD72F9FB5700082449A /* WidgetData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetData.swift; sourceTree = "<group>"; };
 		3DB4B3352F74816A00E0A42C /* LocationsManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationsManagementView.swift; sourceTree = "<group>"; };
 		3DB4B3372F74817000E0A42C /* DefaultLocationHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultLocationHelper.swift; sourceTree = "<group>"; };
 		3DB4B3412F74824A00E0A42C /* LOCATION_MANAGEMENT_VISUAL_GUIDE.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LOCATION_MANAGEMENT_VISUAL_GUIDE.swift; sourceTree = "<group>"; };
@@ -363,7 +376,31 @@
 		3D7FE6CA2F9C665100E7C299 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				ActivityPickerTests.swift,
+				AuthenticationServiceTests.swift,
+				BackupArchiveTests.swift,
+				BulkPersonAssignTests.swift,
+				DataStoreCRUDTests.swift,
+				DateEdgeCaseTests.swift,
+				DebugConfigTests.swift,
+				EnvironmentalFactorsTests.swift,
+				EventFormViewModelTests.swift,
+				EventImageTests.swift,
+				EventTypeCRUDTests.swift,
 				"Fixtures/LocTrac_Backup_2026-04-24_163827.zip",
+				HealthKitTests.swift,
+				ImportExportTests.swift,
+				IntegrationTests.swift,
+				IsGeocodedFlagTests.swift,
+				LocTracTests.swift,
+				RegressionTests.swift,
+				SmartStayActionTests.swift,
+				StayReminderTests.swift,
+				TestDataFactory.swift,
+				TOTPKeychainTests.swift,
+				TripMigrationTests.swift,
+				UserProfileAuthStateTests.swift,
+				UTCDateFormattingTests.swift,
 			);
 			target = 3D7FE69A2F9C5A3800E7C299 /* LocTracTests */;
 		};
@@ -465,6 +502,7 @@
 				3DA3D69B2F96E583000A0AFC /* BiometricService.swift */,
 				3DA3D69D2F96E584000A0AFC /* TOTPService.swift */,
 				3D7FE6902F9C1DF700E7C299 /* BackupArchiveService.swift */,
+				3D7FE6D72F9D077800E7C299 /* HealthKitService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -522,6 +560,7 @@
 				3DD0AACC29A6EB13003625C1 /* Extensions */,
 				3DD0AA8C29A6EA0E003625C1 /* Assets.xcassets */,
 				3DD0AA8E29A6EA0E003625C1 /* Preview Content */,
+				3D7FE6DC2F9D342600E7C299 /* VERSION_2.1_RELEASE_NOTES.md */,
 			);
 			path = LocTrac;
 			sourceTree = "<group>";
@@ -537,6 +576,7 @@
 		3DD0AA9A29A6EAB8003625C1 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				3DB38FD72F9FB5700082449A /* WidgetData.swift */,
 				3DD040A12F88AC8C006C2A9A /* PendingTripItem.swift */,
 				3D1E896B2F8D99710068BD33 /* DebugConfig.swift */,
 				3DD040952F88A976006C2A9A /* Activity.swift */,
@@ -555,6 +595,8 @@
 				3DA3D6992F96E574000A0AFC /* AuthState.swift */,
 				3D3EFD912F9930E3005C019A /* EventTypeItem.swift */,
 				3D3EFD992F9965CC005C019A /* SmartStayAction.swift */,
+				3D7FE6D52F9D06B800E7C299 /* ExerciseEntry.swift */,
+				3D7FE6DE2F9D37E600E7C299 /* Car.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -604,6 +646,7 @@
 				3D3EFD932F993186005C019A /* EventTypesManagementView.swift */,
 				3D7FE6862F9BD6D100E7C299 /* CopyEventView.swift */,
 				3D7FE6882F9C0DB900E7C299 /* BulkPersonAssignView.swift */,
+				3D7FE6E02F9D3BEA00E7C299 /* EnvironmentalFactorsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -879,6 +922,7 @@
 				3DD5BC5F2F8E889A00C8A195 /* Changelog.md in Resources */,
 				3DD0AA8D29A6EA0E003625C1 /* Assets.xcassets in Resources */,
 				3D5BED442F8AA8E800C98261 /* CITY_NAME_UNKNOWN_FIX.md in Resources */,
+				3D7FE6DD2F9D342600E7C299 /* VERSION_2.1_RELEASE_NOTES.md in Resources */,
 				3D955C422F8AD66A001B06DF /* LOCATION_REFERENCE_MIGRATION_PLAN.md in Resources */,
 				3DD0AACB29A6EAED003625C1 /* Launch Screen.storyboard in Resources */,
 				3D5BED422F8A982C00C98261 /* LONGITUDE_DEBUG_LOGGING.md in Resources */,
@@ -906,6 +950,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3DB38FD82F9FB5700082449A /* WidgetData.swift in Sources */,
 				3DA98F572F86F1F6003B46BA /* Affirmation.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -919,6 +964,7 @@
 				3D065F4F29DD02200078E77A /* LocationMapAnnotationView.swift in Sources */,
 				3DD040A42F88AD89006C2A9A /* BackupExportView.swift in Sources */,
 				3DD040A22F88AC8C006C2A9A /* PendingTripItem.swift in Sources */,
+				3DB38FD92F9FB5700082449A /* WidgetData.swift in Sources */,
 				3DD6713A29CB897800E54846 /* CardView.swift in Sources */,
 				3DD0409C2F88AB83006C2A9A /* NotificationManager.swift in Sources */,
 				3DD040982F88AA93006C2A9A /* LocationsMapViewModel.swift in Sources */,
@@ -936,6 +982,7 @@
 				3D1E89562F8D80CD0068BD33 /* CountryNameMapper.swift in Sources */,
 				3D98EC9C2F742E4700C5B8C0 /* ModernEventsCalendarView.swift in Sources */,
 				3DD0AABA29A6EAD1003625C1 /* LocationFormViewModel.swift in Sources */,
+				3D7FE6DF2F9D37E600E7C299 /* Car.swift in Sources */,
 				3D3EFD922F9930E3005C019A /* EventTypeItem.swift in Sources */,
 				3D5176882F71CB8B00231C27 /* FirstLaunchWizard.swift in Sources */,
 				3DB2C2BE2F82C97D0048A585 /* AppVersionManager.swift in Sources */,
@@ -963,6 +1010,7 @@
 				3DD040A82F88ADE8006C2A9A /* LocationSyncUtilityView.swift in Sources */,
 				3DB4B3462F74989E00E0A42C /* LocationSheetEditorModel.swift in Sources */,
 				3DB2C2C22F82C9980048A585 /* WhatsNewView.swift in Sources */,
+				3D7FE6D62F9D06B800E7C299 /* ExerciseEntry.swift in Sources */,
 				3DD0AAC429A6EAD1003625C1 /* EventsCalendarView.swift in Sources */,
 				3DEB4FF72F70634A004B6339 /* LocationsUnifiedView.swift in Sources */,
 				3DA3D6982F96E574000A0AFC /* AuthenticationService.swift in Sources */,
@@ -970,6 +1018,7 @@
 				3DA3D69E2F96E584000A0AFC /* TOTPService.swift in Sources */,
 				3DB2C2C02F82C9890048A585 /* WhatsNewFeature.swift in Sources */,
 				3DB4B3422F74824A00E0A42C /* LOCATION_MANAGEMENT_VISUAL_GUIDE.swift in Sources */,
+				3D7FE6E12F9D3BEA00E7C299 /* EnvironmentalFactorsView.swift in Sources */,
 				3D008D4229B67F8300AD3565 /* DonutChartView.swift in Sources */,
 				3D065F5029DD02200078E77A /* LocationDetailView.swift in Sources */,
 				3DD040AE2F88AE53006C2A9A /* ReverseGeocoder.swift in Sources */,
@@ -985,6 +1034,7 @@
 				3DD5BC732F8E93EE00C8A195 /* OrphanedEventsAnalyzer.swift in Sources */,
 				3DD0AABE29A6EAD1003625C1 /* LocationFormType.swift in Sources */,
 				3DEB50132F709068004B6339 /* TravelJourneyView.swift in Sources */,
+				3D7FE6D82F9D077800E7C299 /* HealthKitService.swift in Sources */,
 				3D008D3D29B67B8300AD3565 /* Charts.swift in Sources */,
 				3DD0AAC529A6EAD1003625C1 /* CalendarView.swift in Sources */,
 				3DA3D69C2F96E583000A0AFC /* BiometricService.swift in Sources */,
@@ -1098,7 +1148,7 @@
 				DEVELOPMENT_TEAM = P9SQ5C2UHQ;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = TimOrg.LocTracTests;
@@ -1108,7 +1158,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LocTrac.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LocTrac";
 			};
@@ -1124,7 +1174,7 @@
 				DEVELOPMENT_TEAM = P9SQ5C2UHQ;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = TimOrg.LocTracTests;
@@ -1133,7 +1183,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LocTrac.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LocTrac";
 			};
@@ -1356,7 +1406,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = TimOrg.LocTrac;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1395,7 +1445,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = TimOrg.LocTrac;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

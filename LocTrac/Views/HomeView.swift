@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var store: DataStore
+    @EnvironmentObject var authState: AuthState
     @EnvironmentObject var debugConfig: DebugConfig
 
     // Callbacks provided by StartTabView
@@ -164,6 +165,7 @@ struct HomeView: View {
         ScrollView {
             VStack(spacing: 16) {
                 header
+                healthKitSyncReminder
                 quickActions
                 dailyAffirmationSection
                 environmentImpactSection
@@ -224,6 +226,51 @@ struct HomeView: View {
         .controlSize(.large)
     }
     
+    // HealthKit Sync Reminder
+    @ViewBuilder
+    private var healthKitSyncReminder: some View {
+        if let profile = authState.currentUser,
+           profile.healthKitEnabled,
+           isSyncOverdue(profile: profile) {
+            HStack(spacing: 10) {
+                Image(systemName: "heart.text.clipboard")
+                    .foregroundColor(.orange)
+                    .font(.title3)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("HealthKit Sync Overdue")
+                        .font(.subheadline).bold()
+                    Text("Last synced \(syncAgoText(profile: profile)). Open Preferences to sync.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.orange.opacity(0.1))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(Color.orange.opacity(0.3), lineWidth: 1)
+            )
+        }
+    }
+
+    private func isSyncOverdue(profile: UserProfile) -> Bool {
+        guard let lastSync = profile.lastHealthKitSync else { return true }
+        let daysSince = Calendar.current.dateComponents([.day], from: lastSync, to: Date()).day ?? 0
+        return daysSince >= profile.healthKitSyncReminderDays
+    }
+
+    private func syncAgoText(profile: UserProfile) -> String {
+        guard let lastSync = profile.lastHealthKitSync else { return "never" }
+        let daysSince = Calendar.current.dateComponents([.day], from: lastSync, to: Date()).day ?? 0
+        if daysSince == 0 { return "today" }
+        if daysSince == 1 { return "1 day ago" }
+        return "\(daysSince) days ago"
+    }
+
     // Daily Affirmation Section
     private var dailyAffirmationSection: some View {
         VStack(alignment: .leading, spacing: 8) {

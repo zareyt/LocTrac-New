@@ -385,9 +385,69 @@ struct TravelStatisticsCache: Codable {
     let drivingMiles: Double
     let drivingCO2: Double
     let drivingTrips: Int
+    let trainMiles: Double
+    let trainCO2: Double
+    let trainTrips: Int
+    let busMiles: Double
+    let busCO2: Double
+    let busTrips: Int
     let treesNeeded: Double
     let kWhEquivalent: Double
     let earthCircumferences: Double
+    let drivingCO2WithCar: Double  // Car-specific CO2 for driving (if cars exist)
+
+    // Backward-compatible initializer for legacy cache entries
+    init(
+        totalMiles: Double, totalCO2: Double,
+        flyingMiles: Double, flyingCO2: Double, flyingTrips: Int,
+        drivingMiles: Double, drivingCO2: Double, drivingTrips: Int,
+        trainMiles: Double = 0, trainCO2: Double = 0, trainTrips: Int = 0,
+        busMiles: Double = 0, busCO2: Double = 0, busTrips: Int = 0,
+        treesNeeded: Double, kWhEquivalent: Double, earthCircumferences: Double,
+        drivingCO2WithCar: Double = 0
+    ) {
+        self.totalMiles = totalMiles
+        self.totalCO2 = totalCO2
+        self.flyingMiles = flyingMiles
+        self.flyingCO2 = flyingCO2
+        self.flyingTrips = flyingTrips
+        self.drivingMiles = drivingMiles
+        self.drivingCO2 = drivingCO2
+        self.drivingTrips = drivingTrips
+        self.trainMiles = trainMiles
+        self.trainCO2 = trainCO2
+        self.trainTrips = trainTrips
+        self.busMiles = busMiles
+        self.busCO2 = busCO2
+        self.busTrips = busTrips
+        self.treesNeeded = treesNeeded
+        self.kWhEquivalent = kWhEquivalent
+        self.earthCircumferences = earthCircumferences
+        self.drivingCO2WithCar = drivingCO2WithCar
+    }
+
+    // Tolerant decoder for cached data missing new fields
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        totalMiles = try container.decode(Double.self, forKey: .totalMiles)
+        totalCO2 = try container.decode(Double.self, forKey: .totalCO2)
+        flyingMiles = try container.decode(Double.self, forKey: .flyingMiles)
+        flyingCO2 = try container.decode(Double.self, forKey: .flyingCO2)
+        flyingTrips = try container.decode(Int.self, forKey: .flyingTrips)
+        drivingMiles = try container.decode(Double.self, forKey: .drivingMiles)
+        drivingCO2 = try container.decode(Double.self, forKey: .drivingCO2)
+        drivingTrips = try container.decode(Int.self, forKey: .drivingTrips)
+        trainMiles = (try? container.decode(Double.self, forKey: .trainMiles)) ?? 0
+        trainCO2 = (try? container.decode(Double.self, forKey: .trainCO2)) ?? 0
+        trainTrips = (try? container.decode(Int.self, forKey: .trainTrips)) ?? 0
+        busMiles = (try? container.decode(Double.self, forKey: .busMiles)) ?? 0
+        busCO2 = (try? container.decode(Double.self, forKey: .busCO2)) ?? 0
+        busTrips = (try? container.decode(Int.self, forKey: .busTrips)) ?? 0
+        treesNeeded = try container.decode(Double.self, forKey: .treesNeeded)
+        kWhEquivalent = try container.decode(Double.self, forKey: .kWhEquivalent)
+        earthCircumferences = try container.decode(Double.self, forKey: .earthCircumferences)
+        drivingCO2WithCar = (try? container.decode(Double.self, forKey: .drivingCO2WithCar)) ?? 0
+    }
 }
 
 /// Event type data cache

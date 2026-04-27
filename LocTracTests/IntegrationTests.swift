@@ -161,7 +161,9 @@ struct IntegrationTests {
             activities: [activity],
             affirmations: [affirmation],
             trips: [trip],
-            eventTypes: [eventType]
+            eventTypes: [eventType],
+            exerciseEntries: [],
+            cars: []
         )
         let jsonData = try encoder.encode(export)
 
@@ -291,23 +293,27 @@ struct IntegrationTests {
         let baseDate = Date().startOfDay
         let events = [
             TestDataFactory.makeEvent(
-                id: "evt-m1", location: denverLoc,
+                id: "evt-m1",
                 date: cal.date(byAdding: .day, value: 0, to: baseDate)!.startOfDay,
+                location: denverLoc,
                 latitude: 39.7392, longitude: -104.9903
             ),
             TestDataFactory.makeEvent(
-                id: "evt-m2", location: caboLoc,
+                id: "evt-m2",
                 date: cal.date(byAdding: .day, value: 5, to: baseDate)!.startOfDay,
+                location: caboLoc,
                 latitude: 22.8905, longitude: -109.9167, country: "Mexico"
             ),
             TestDataFactory.makeEvent(
-                id: "evt-m3", location: denverLoc,
+                id: "evt-m3",
                 date: cal.date(byAdding: .day, value: 10, to: baseDate)!.startOfDay,
+                location: denverLoc,
                 latitude: 39.7392, longitude: -104.9903
             ),
             TestDataFactory.makeEvent(
-                id: "evt-m4", location: caboLoc,
+                id: "evt-m4",
                 date: cal.date(byAdding: .day, value: 15, to: baseDate)!.startOfDay,
+                location: caboLoc,
                 latitude: 22.8905, longitude: -109.9167, country: "Mexico"
             ),
         ]

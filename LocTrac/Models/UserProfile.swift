@@ -23,6 +23,16 @@ struct UserProfile: Codable, Identifiable {
     var defaultTransportMode: String?
     var defaultEventType: String?
 
+    // HealthKit (v2.1)
+    var healthKitEnabled: Bool
+    var healthKitSyncReminderDays: Int
+    var lastHealthKitSync: Date?
+    var ignoredWorkoutTypesForActivities: [String]  // WorkoutType rawValues the user chose to ignore
+    var workoutTypeActivityMappings: [String: String]  // WorkoutType rawValue -> Activity name (e.g. "otherWorkout": "Golfing")
+
+    // Environmental Factors (v2.1)
+    var excludePublicTransitFromEnvironment: Bool
+
     init(
         id: String = UUID().uuidString,
         displayName: String,
@@ -34,7 +44,13 @@ struct UserProfile: Codable, Identifiable {
         defaultLocationID: String? = nil,
         distanceUnit: DistanceUnit = .miles,
         defaultTransportMode: String? = nil,
-        defaultEventType: String? = nil
+        defaultEventType: String? = nil,
+        healthKitEnabled: Bool = false,
+        healthKitSyncReminderDays: Int = 7,
+        lastHealthKitSync: Date? = nil,
+        ignoredWorkoutTypesForActivities: [String] = [],
+        workoutTypeActivityMappings: [String: String] = [:],
+        excludePublicTransitFromEnvironment: Bool = false
     ) {
         self.id = id
         self.displayName = displayName
@@ -47,6 +63,45 @@ struct UserProfile: Codable, Identifiable {
         self.distanceUnit = distanceUnit
         self.defaultTransportMode = defaultTransportMode
         self.defaultEventType = defaultEventType
+        self.healthKitEnabled = healthKitEnabled
+        self.healthKitSyncReminderDays = healthKitSyncReminderDays
+        self.lastHealthKitSync = lastHealthKitSync
+        self.ignoredWorkoutTypesForActivities = ignoredWorkoutTypesForActivities
+        self.workoutTypeActivityMappings = workoutTypeActivityMappings
+        self.excludePublicTransitFromEnvironment = excludePublicTransitFromEnvironment
+    }
+
+    // MARK: - Codable (backward compat for HealthKit fields)
+
+    enum CodingKeys: String, CodingKey {
+        case id, displayName, email, photoData, signInMethod, createdDate, lastLoginDate
+        case defaultLocationID, distanceUnit, defaultTransportMode, defaultEventType
+        case healthKitEnabled, healthKitSyncReminderDays, lastHealthKitSync
+        case ignoredWorkoutTypesForActivities
+        case workoutTypeActivityMappings
+        case excludePublicTransitFromEnvironment
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        displayName = try container.decode(String.self, forKey: .displayName)
+        email = try container.decodeIfPresent(String.self, forKey: .email)
+        photoData = try container.decodeIfPresent(Data.self, forKey: .photoData)
+        signInMethod = try container.decode(SignInMethod.self, forKey: .signInMethod)
+        createdDate = try container.decode(Date.self, forKey: .createdDate)
+        lastLoginDate = try container.decode(Date.self, forKey: .lastLoginDate)
+        defaultLocationID = try container.decodeIfPresent(String.self, forKey: .defaultLocationID)
+        distanceUnit = try container.decode(DistanceUnit.self, forKey: .distanceUnit)
+        defaultTransportMode = try container.decodeIfPresent(String.self, forKey: .defaultTransportMode)
+        defaultEventType = try container.decodeIfPresent(String.self, forKey: .defaultEventType)
+        // v2.1: HealthKit fields — optional for backward compat with existing profile.json
+        healthKitEnabled = (try? container.decode(Bool.self, forKey: .healthKitEnabled)) ?? false
+        healthKitSyncReminderDays = (try? container.decode(Int.self, forKey: .healthKitSyncReminderDays)) ?? 7
+        lastHealthKitSync = try container.decodeIfPresent(Date.self, forKey: .lastHealthKitSync)
+        ignoredWorkoutTypesForActivities = (try? container.decode([String].self, forKey: .ignoredWorkoutTypesForActivities)) ?? []
+        workoutTypeActivityMappings = (try? container.decode([String: String].self, forKey: .workoutTypeActivityMappings)) ?? [:]
+        excludePublicTransitFromEnvironment = (try? container.decode(Bool.self, forKey: .excludePublicTransitFromEnvironment)) ?? false
     }
 
     // MARK: - Computed Properties

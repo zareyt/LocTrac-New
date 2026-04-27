@@ -4,8 +4,8 @@ This file provides Claude with everything it needs to assist effectively on the
 LocTrac project. Update this file whenever the architecture, conventions, or
 backlog change significantly.
 
-**Last Updated**: 2026-04-25
-**Current Version**: 2.0
+**Last Updated**: 2026-04-26
+**Current Version**: 2.1
 **Author**: Tim Arey
 
 ---
@@ -41,10 +41,13 @@ LocTrac/
 │   ├── RootView.swift               ← App entry point
 │   ├── FirstLaunchWizard.swift      ← First-launch onboarding logic
 │   ├── AuthState.swift              ← v2.0: Observable auth state (@EnvironmentObject)
+│   ├── ExerciseEntry.swift          ← v2.1: Exercise model, WorkoutType, ExerciseSummary
+│   ├── Car.swift                    ← v2.1: Vehicle model, FuelType, EPA CO2 calculations
 │   └── UserProfile.swift            ← v2.0: Profile model + profile.json persistence
 │
 ├── Services/
 │   ├── ImportExport.swift           ← Import/Export Codable structs (Import, Export)
+│   ├── HealthKitService.swift       ← v2.1: Actor-based HealthKit workout sync
 │   ├── KeychainHelper.swift         ← v2.0: Keychain read/write/delete wrapper
 │   ├── AuthenticationService.swift  ← v2.0: Auth logic actor (Apple Sign-In, email/password)
 │   ├── BiometricService.swift       ← v2.0: Face ID / Touch ID via LAContext
@@ -61,6 +64,7 @@ LocTrac/
 ├── Views/
 │   ├── HomeView.swift               ← Tab 0: dashboard, quick actions
 │   ├── StartTabView.swift           ← Root TabView + all sheet orchestration
+│   ├── EnvironmentalFactorsView.swift ← v2.1: Vehicle management & environmental settings
 │   ├── TimelineRestoreView.swift    ← Selective backup restore with date filter
 │   ├── CalendarViewTab/
 │   │   └── CalendarView.swift (ModernEventsCalendarView)  ← Tab 1: Stays
@@ -129,6 +133,7 @@ class DataStore: ObservableObject {
     @Published var activities: [Activity]
     @Published var affirmations: [Affirmation]
     @Published var trips: [Trip]
+    @Published var cars: [Car]                   // v2.1: vehicles for environmental impact
     @Published var pendingTrip: (trip: Trip, fromEvent: Event, toEvent: Event)?
     @Published var calendarRefreshToken: UUID   // bump to force calendar refresh
     @Published var dataUpdateToken: UUID         // bump to notify data changed
@@ -150,6 +155,11 @@ in views:
 | Add affirmation | `store.addAffirmation(_ affirmation: Affirmation)` |
 | Add trip | `store.addTrip(_ trip: Trip)` |
 | Delete trip | `store.deleteTrip(_ trip: Trip)` |
+| Add car | `store.addCar(_ car: Car)` |
+| Update car | `store.updateCar(_ car: Car)` |
+| Delete car | `store.deleteCar(_ car: Car)` |
+| Car for trip | `store.carForTrip(_ trip: Trip) -> Car?` |
+| Recalculate driving CO2 | `store.recalculateDrivingTripsCO2()` |
 | Save manually | `store.storeData()` or `store.save()` |
 | Force calendar refresh | `store.bumpCalendarRefresh()` |
 
@@ -238,6 +248,7 @@ Sheet state variables in `StartTabView`:
 @State private var showLocationsManagement: Bool
 @State private var showCountryUpdater: Bool          // hidden, pending review
 @State private var showLocationSync: Bool            // hidden, pending review
+@State private var showEnvironmentalFactors: Bool    // v2.1: Vehicle management & env settings
 @State private var showDebugSettings: Bool           // v1.5: Debug system settings (DEBUG only)
 @State private var pendingItem: PendingTripItem?     // drives trip confirmation
 @StateObject private var debugConfig = DebugConfig.shared  // v1.5: Debug configuration
@@ -248,7 +259,7 @@ Sheet state variables in `StartTabView`:
 2. *(divider)*
 3. About LocTrac
 4. *(divider)*
-5. Manage Locations / Activities & Affirmations / Manage Trips / **Travel History** (moved here)
+5. Manage Locations / Activities & Affirmations / Manage Trips / **Travel History** / **Environmental Factors** (v2.1)
 6. *(divider)*
 7. Data Management submenu (Backup & Import, Enhance Location Data, Fix Orphaned Events [DEBUG])
 8. Debug Settings [DEBUG]
@@ -664,6 +675,15 @@ var body: some View {
 | **Auth views in Services/Auth/** | v2.0: Auth-related views (WelcomeView, SignInView, SignUpView, ForgotPasswordView, TwoFactorSetupView, TwoFactorVerifyView, BiometricLockView) live in `Services/Auth/`, NOT `Views/Auth/`. |
 | **Biometric app lock** | v2.0: `BiometricLockView` is a full-screen ZStack overlay in `AppEntry.swift`, driven by `scenePhase` monitoring. Locks on background when biometrics enabled + authenticated, auto-unlocks on foreground. |
 | **TOTP is real RFC 6238** | v2.0: TOTPService uses CryptoKit HMAC-SHA1 with Data-based secrets. Verification allows +/-1 period for clock drift. Backup codes stored in Keychain as JSON-encoded `[String]`. |
+| **HealthKit is read-only** | v2.1: LocTrac never writes to HealthKit. Only `com.apple.developer.healthkit` entitlement needed (no `.healthkit.access` write types). `NSHealthShareUsageDescription` in Info.plist. No `NSHealthUpdateUsageDescription`. |
+| **ExerciseEntry in exports** | v2.1: `exerciseEntries` is optional in `Import` struct — old backups decode fine. UserProfile HealthKit fields use tolerant decoding. |
+| **HealthKit activity auto-linking** | v2.1: During sync, workout types matched case-insensitively to Activity names. Matched activities added to that day's event. Unmatched types shown in post-sync summary (Add/Ignore). Ignored types stored in `UserProfile.ignoredWorkoutTypesForActivities`. |
+| **HealthKit sync dedup** | v2.1: Uses `sourceWorkoutID` (HKWorkout UUID string) to prevent duplicates. Already-synced entries skipped silently without triggering cache resets. |
+| **Exercise entries require stays** | v2.1: Exercise entries only display in Infographics for dates that have existing stay events. Entries without matching stays are skipped during sync. |
+| **Car-trip matching** | v2.1: `carForTrip()` priority: (1) explicit `trip.carID`, (2) car whose date range covers `trip.departureDate`, (3) default car. `addCar` with `isDefault=true` auto-clears other defaults. |
+| **EPA CO2 constants** | v2.1: Gas=19.6 lbs/gal, Diesel=22.4 lbs/gal, US Grid=0.855 lbs/kWh. Default MPG: gas=25, diesel=30, hybrid=35, electric=30 kWh/100mi. `co2PerMileOverride` takes precedence. |
+| **Cars in exports** | v2.1: `cars` is optional in `Import` struct — old backups decode fine. `Trip.carID` is optional. |
+| **Public transit exclusion** | v2.1: `UserProfile.excludePublicTransitFromEnvironment` toggle. Applied in Infographics display layer only — train/bus data is still computed, just hidden when toggled on. |
 | **2FA gates sign-in** | v2.0: When `TOTPService.isEnabled`, `signInWithEmail()` sets `requiresTwoFactor = true` instead of `isAuthenticated = true`. User must verify TOTP code before access. `completeTwoFactorAuth()` finishes the flow. |
 | **Info.plist required keys** | v2.0: `NSFaceIDUsageDescription` (Face ID), Sign in with Apple capability in entitlements (`com.apple.developer.applesignin`), `aps-environment` for push notifications. |
 
@@ -675,7 +695,8 @@ var body: some View {
 
 | Tag | Notes |
 |---|---|
-| `v2.0` | **In Development** — Authentication (Apple Sign-In, email/password), user profile, biometrics, 2FA, preferences |
+| `v2.1` | Apple Health Integration — read-only HealthKit sync, activity auto-linking, Infographics exercise section |
+| `v2.0` | Authentication (Apple Sign-In, email/password), user profile, biometrics, 2FA, preferences |
 | `v1.5` | International location support with state/province fields, enhanced geocoding, data migration utility |
 | `v1.4` | Infographics PDF/Screenshot export with real Apple Maps, Journey map visualization, Share button implementation with NotificationCenter |
 | `v1.3` | Travel History, Unified Locations, Trip Confirmation, Infographics tab, Affirmations, Timeline Restore |
@@ -743,13 +764,17 @@ All documentation organized for clarity. Key files:
 | `PROJECT_ANALYSIS.md` | Architecture analysis, metrics, roadmap |
 | `KEY_CODE_CHANGES.md` | Major refactoring documentation |
 
-### **Current Version (v2.0 - In Development)**
+### **Current Version (v2.1)**
 | File | Contents |
 |------|----------|
-| `DocumentationV2.0_IMPLEMENTATION_PLAN.md` | Complete implementation plan for auth & profile |
-| `VERSION_2.0_RELEASE_NOTES.md` | User-facing release notes for v2.0 |
+| `VERSION_2.1_RELEASE_NOTES.md` | User-facing release notes for v2.1 (HealthKit) |
+| `Documentation/HealthKit/HEALTHKIT_SUMMARY.md` | HealthKit architecture and design summary |
 
-### **Previous Versions (v1.4 - v1.5)**
+### **Previous Versions (v1.4 - v2.0)**
+| File | Contents |
+|------|----------|
+| `VERSION_2.0_RELEASE_NOTES.md` | User-facing release notes for v2.0 (Auth) |
+| `DocumentationV2.0_IMPLEMENTATION_PLAN.md` | Implementation plan for auth & profile |
 | File | Contents |
 |------|----------|
 | `VERSION_1.5_RELEASE_NOTES.md` | User-facing release notes for v1.5 |
@@ -958,16 +983,23 @@ checklist in order. **Confirm each step with the user before proceeding.**
 
 11. **Run regression tests** — Execute `RunAllTests` and report results.
 
-12. **Update CLAUDE.md** — Bump version history table, update "Current Version"
-    in header, update "Last Updated" date, and update footer.
+12. **Bump CLAUDE.md to next version** — After publishing, update CLAUDE.md for
+    the next development cycle:
+    - Header: `**Current Version**: <next version>` (e.g., 2.1 → 2.2)
+    - Header: `**Last Updated**: <today's date>`
+    - Version history table: add new row for the version just published
+    - Footer: update version number to match
+    - Documentation Files table: update "Current Version" section
 
-13. **Confirm completion** — Report summary of what was published.
+13. **Flip `DebugConfig.showDebugMenu` back to `true`** for the next dev cycle.
+
+14. **Confirm completion** — Report summary of what was published.
 
 ### Important Notes
 - **Never use `--tags`** on push (risks rejecting existing tags)
 - **Always use `--follow-tags`** to push only the new annotated tag
 - Remote is `origin` → `https://github.com/zareyt/LocTrac-New.git`
-- After publishing, flip `DebugConfig.showDebugMenu` back to `true` for next dev cycle
+- Steps 12-13 prepare for the next dev cycle — commit them separately if desired
 
 ---
 
@@ -1045,5 +1077,5 @@ checklist in order. **Confirm each step with the user before proceeding.**
 
 ---
 
-*CLAUDE.md — LocTrac v2.0 — Tim Arey — 2026-04-25*
+*CLAUDE.md — LocTrac v2.1 — Tim Arey — 2026-04-25*
 *Update this file with each major release.*

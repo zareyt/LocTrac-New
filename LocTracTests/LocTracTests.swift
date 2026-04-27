@@ -39,8 +39,8 @@ struct EventEffectiveAddressTests {
     func otherEventFullAddress() {
         let event = TestDataFactory.makeOtherEvent(
             city: "Paris",
-            country: "France",
-            state: "Ile-de-France"
+            state: "Ile-de-France",
+            country: "France"
         )
         #expect(event.effectiveAddress == "Paris, Ile-de-France, France")
     }
@@ -101,8 +101,8 @@ struct EventEffectiveAddressTests {
     func otherEventShortAddress() {
         let event = TestDataFactory.makeOtherEvent(
             city: "Denver",
-            country: "United States",
-            state: "Colorado"
+            state: "Colorado",
+            country: "United States"
         )
         // effectiveShortAddress for Other: city + state only (no country)
         #expect(event.effectiveShortAddress == "Denver, Colorado")

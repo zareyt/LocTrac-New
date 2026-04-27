@@ -28,6 +28,7 @@ struct StartTabView: View {
     @State private var showOrphanedEventsAnalyzer: Bool = false // For orphaned events management
     @State private var showBulkPersonAssign: Bool = false // Bulk assign a contact to events in date range
     @State private var showNotificationSettings: Bool = false // For notification settings
+    @State private var showEnvironmentalFactors: Bool = false // v2.1: Environmental factors management
     
     // Debug configuration
     @StateObject private var debugConfig = DebugConfig.shared
@@ -172,6 +173,12 @@ struct StartTabView: View {
                             } label: {
                                 Label("Manage Trips", systemImage: "airplane")
                             }
+
+                            Button {
+                                showEnvironmentalFactors = true
+                            } label: {
+                                Label("Environmental Factors", systemImage: "leaf.fill")
+                            }
                         } label: {
                             Label("Manage Data", systemImage: "tray.full.fill")
                         }
@@ -209,16 +216,16 @@ struct StartTabView: View {
                             }
 
                             #if DEBUG
-                            Button {
-                                showOrphanedEventsAnalyzer = true
-                            } label: {
-                                Label("Fix Orphaned Events (Debug)", systemImage: "wrench.and.screwdriver")
-                            }
-
-                            Divider()
-
                             // Debug Settings — gated by compile-time flag
                             if DebugConfig.showDebugMenu {
+                                Divider()
+
+                                Button {
+                                    showOrphanedEventsAnalyzer = true
+                                } label: {
+                                    Label("Fix Orphaned Events (Debug)", systemImage: "wrench.and.screwdriver")
+                                }
+
                                 Button {
                                     showDebugSettings = true
                                 } label: {
@@ -347,6 +354,11 @@ struct StartTabView: View {
             .sheet(isPresented: $showBulkPersonAssign) {
                 BulkPersonAssignView()
                     .environmentObject(store)
+            }
+            .sheet(isPresented: $showEnvironmentalFactors) {
+                EnvironmentalFactorsView()
+                    .environmentObject(store)
+                    .environmentObject(authState)
             }
             // "What's New" version upgrade sheet
             .sheet(isPresented: $showWhatsNew, onDismiss: {

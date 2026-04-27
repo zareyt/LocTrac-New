@@ -66,7 +66,8 @@ struct TOTPServiceTests {
         let secret = TOTPService.generateSecret()
         let code = TOTPService.generateCode(secret: secret)
         #expect(code.count == 6)
-        #expect(code.allSatisfy(\.isNumber))
+        let allDigits = code.allSatisfy(\.isNumber)
+        #expect(allDigits)
     }
 
     @Test("generateCode is deterministic for same secret and time")

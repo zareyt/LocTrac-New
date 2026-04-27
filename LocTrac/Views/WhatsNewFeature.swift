@@ -263,6 +263,34 @@ struct WhatsNewFeature: Identifiable {
                 ),
             ]
 
+        case "2.1":
+            return [
+                WhatsNewFeature(
+                    symbolName: "heart.fill",
+                    symbolColor: .red,
+                    title: "Apple Health Integration",
+                    description: "Sync workouts from Apple Health alongside your stays. To set up: Profile & Account → Preferences → Health & Fitness → toggle on, then tap Sync Now. View per-type miles, calories, workout breakdowns, and cycling CO₂ offsets. Unmatched workout types can be mapped to your activities — mappings are saved for future syncs."
+                ),
+                WhatsNewFeature(
+                    symbolName: "rectangle.on.rectangle.angled",
+                    symbolColor: .blue,
+                    title: "Home Screen Widgets",
+                    description: "Five new widgets: Travel Snapshot, Activity Pulse, Green Impact, Dashboard, and Daily Affirmation. Track countries, exercise progress, CO₂ savings, and more at a glance in small, medium, and large sizes."
+                ),
+                WhatsNewFeature(
+                    symbolName: "leaf.fill",
+                    symbolColor: .green,
+                    title: "Environmental Factors & Vehicle Management",
+                    description: "Manage your vehicles and see their real environmental impact on your travels. Add cars with fuel type, MPG or kWh efficiency, and date ranges. EPA-derived CO₂ calculations, per-car impact summaries, and transport breakdowns in Infographics."
+                ),
+                WhatsNewFeature(
+                    symbolName: "figure.walk",
+                    symbolColor: .orange,
+                    title: "Activity Management",
+                    description: "Edit an activity to see every event date it appears on, with the option to remove it from individual events. Delete an activity entirely with a confirmation showing how many events will be affected."
+                ),
+            ]
+
         default:
             return []
         }

@@ -258,7 +258,7 @@ struct BackupArchiveTests {
             city: nil,
             latitude: 0,
             longitude: 0,
-            theme: .blue,
+            theme: .navy,
             imageIDs: ["loc1.jpg", "loc2.jpg"]
         )
 
@@ -266,6 +266,8 @@ struct BackupArchiveTests {
             eventType: .stay,
             date: Date(),
             location: location,
+            latitude: 0,
+            longitude: 0,
             note: "",
             imageIDs: ["evt1.jpg"]
         )

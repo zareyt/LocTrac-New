@@ -849,7 +849,7 @@ struct ModernEventEditorSheet: View {
                         Button {
                             showingActivitiesPicker = true
                         } label: {
-                            Label("Edit Activities", systemImage: "pencil.circle")
+                            Label("Add, Modify, Delete Activities", systemImage: "pencil.circle")
                         }
 
                         Button(role: .destructive) {
